@@ -2,6 +2,13 @@
 
 Status: Draft for the Master Data Architecture; the existing Admin v0 publication rules remain Approved.
 
+## Wikidata Venue Source A amendment
+
+- `venues.inception_year`: 明示されたopening / inception year。field provenance必須。
+- QIDは`source_records.external_id`で一意管理し、Muuzee内部PKはUUIDを維持する。
+- Raw claims / classは`source_records.raw_payload`、曖昧な同一Venue候補は`venue_external_match_candidates`、field単位の採用・競合は`venue_field_sources`へ保持する。
+- P18は`source_image_candidates`でRights未判定候補として保持し、Primaryへ自動昇格しない。
+
 ## Canonical entities
 
 | Table | Role |
@@ -69,3 +76,9 @@ Images live in the private `exhibition-images` Supabase Storage bucket, never in
 Venue enrichment retains ranked Wikidata candidates and a single actionable coordinate candidate, optional Geolonia comparison, P18 candidates, and search traces. The adopted Wikidata ID is the `matched` row in `venue_external_match_candidates`; it is not duplicated on `venues`. Raw Wikidata, Commons, and Geolonia payloads remain in `source_records`.
 
 See `docs/master-data-architecture.md` for ownership, enrichment, and update-frequency rules.
+
+## Master Admin v1 application rules
+
+Master Admin v1 does not add derived database columns. Completeness is calculated in application code from canonical fields, Primary media, and explicit relations. Manual and CSV operations append field provenance history; only one row per field remains `is_current`. Publication changes are separate server-side actions and CSV cannot publish a master directly.
+
+Work–Artist and Work–Venue Holding edits write only `work_artists` and `collection_holdings`. Artist and Venue related-content sections are derived from those relations rather than duplicated onto master rows. See `docs/master-admin-v1.md` for the CRUD, CSV, publication, and delete-safety behavior.

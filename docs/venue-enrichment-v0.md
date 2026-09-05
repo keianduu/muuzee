@@ -2,6 +2,8 @@
 
 Status: Draft, local verification only (2026-09-05).
 
+This document covers the existing Venue → Wikidata candidate lookup flow. The separate Wikidata → Japan Venue Master Source A import is documented in [`docs/integrations/wikidata-venue-import.md`](./integrations/wikidata-venue-import.md).
+
 ## Purpose
 
 Venue Enrichment treats three judgments independently:

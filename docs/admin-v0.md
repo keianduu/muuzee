@@ -1,5 +1,7 @@
 # Muuzee Admin v0
 
+> Master Admin v1 now provides shared Venue / Artist / Work CRUD, CSV, Completeness, publication, relation, and deletion-safety workflows. See `docs/master-admin-v1.md`. The Exhibition workflow described here remains in service.
+
 ## Purpose
 
 Admin v0 completes this internal workflow:
@@ -49,7 +51,7 @@ The research prompt is generated locally from the exhibition and occurrence. It 
 
 Upload requires an image, source type, and one of three rights classifications. Source URL, credit, and usage / judgment notes are optional metadata. The three classifications map to `rejected` (explicit redistribution prohibition), `needs_review` (no usable statement / unclear), and `approved` (explicit permission compatible with the intended use). Choosing `approved` is an explicit human action. The private Storage object is referenced by `media_assets`; Admin uses signed URLs for previews.
 
-The schema now permits the same `media_assets` model for Exhibition, Venue, Artist, and Work, with exactly one explicit owner per row. Admin v0 still exposes only the existing Exhibition and Venue media workflows; Artist/Work Admin screens are future scope.
+The schema uses the same `media_assets` model for Exhibition, Venue, Artist, and Work, with exactly one explicit owner per row. Master Admin v1 now exposes Artist and Work media upload/review while preserving the existing Exhibition and Venue workflows.
 
 Media asset previews use `object-fit: contain` so the complete image remains visible instead of being cropped to a landscape thumbnail.
 

@@ -21,6 +21,7 @@ export type VenueRow = {
   publication_status: "draft" | "ready" | "published" | "archived";
   is_active: boolean;
   official_url: string | null;
+  inception_year: number | null;
   latitude: number | null;
   longitude: number | null;
   wikidata_match_status: string;
@@ -145,6 +146,7 @@ export type VenueMatchCandidateRow = {
   confidence: number;
   match_reasons: string[];
   status: string;
+  raw_payload?: unknown;
 };
 
 export type ExhibitionRow = {

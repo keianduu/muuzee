@@ -1,0 +1,16 @@
+import type { MasterEntity } from "@/lib/admin/master-config";
+
+export function MasterFilter({ entity, params }: { entity: MasterEntity; params: Record<string, string> }) {
+  return <form className="master-filter">
+    <div className="field"><label htmlFor="q">Search（キーワード検索）</label><input id="q" name="q" defaultValue={params.q}/></div>
+    {entity === "venues" && <div className="field"><label htmlFor="type">Venue Type（会場種別）</label><select id="type" name="type" defaultValue={params.type}><option value="">All（すべて）</option><option>museum</option><option>gallery</option><option>art_space</option><option>commercial_space</option><option>other</option></select></div>}
+    <div className="field"><label htmlFor="status">Publication（公開状態）</label><select id="status" name="status" defaultValue={params.status}><option value="">All（すべて）</option><option value="draft">Draft（下書き）</option><option value="ready">Ready（公開準備完了）</option><option value="published">Published（公開中）</option><option value="archived">Archived（アーカイブ）</option></select></div>
+    <div className="field"><label htmlFor="image">Image（画像）</label><select id="image" name="image" defaultValue={params.image}><option value="">All（すべて）</option><option value="present">Present（あり）</option><option value="missing">Missing（なし）</option></select></div>
+    {entity === "venues" && <div className="field"><label htmlFor="coordinates">Coordinates（座標）</label><select id="coordinates" name="coordinates" defaultValue={params.coordinates}><option value="">All（すべて）</option><option value="present">Present（あり）</option><option value="missing">Missing（なし）</option></select></div>}
+    <div className="field"><label htmlFor="completeness">Completeness（情報充足率）</label><select id="completeness" name="completeness" defaultValue={params.completeness}><option value="">All（すべて）</option><option value="100">Incomplete（未完了）</option><option value="80">Below 80%（80%未満）</option><option value="50">Below 50%（50%未満）</option></select></div>
+    <div className="field"><label htmlFor="source">Source（出典）</label><select id="source" name="source" defaultValue={params.source}><option value="">All（すべて）</option><option value="manual">Manual（手動）</option><option value="csv_import">CSV Import</option><option value="wikidata">Wikidata</option><option value="art_commons">Art Commons</option></select></div>
+    {entity === "venues" && <div className="field"><label htmlFor="match">Wikidata Match（照合状態）</label><select id="match" name="match" defaultValue={params.match}><option value="">All（すべて）</option><option value="matched">Linked（紐付け済み）</option><option value="review">Needs Review（要確認）</option><option value="rejected">Ignored（対象外）</option></select></div>}
+    {entity === "venues" && <div className="field"><label htmlFor="active">Active（運用状態）</label><select id="active" name="active" defaultValue={params.active}><option value="">All（すべて）</option><option value="true">Active（運用中）</option><option value="false">Inactive（停止中）</option></select></div>}
+    <button className="button secondary">Filter（絞り込み）</button>
+  </form>;
+}

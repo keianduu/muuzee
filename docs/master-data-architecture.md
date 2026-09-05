@@ -2,6 +2,10 @@
 
 Status: Draft. This document is the technical Source of Truth for the current master-data schema.
 
+## Venue Source A
+
+Venue Master Source AはWikidata。Japanのmuseum / art gallery系QIDをDiscoveryし、QIDをstable external IDとして差分同期する。Full Syncは事前COUNTに依存せず、root別・QID順のcursor paginationで最後のpageまで逐次保存する。既存Venueとの曖昧一致は重複作成せずHuman Reviewへ送り、新規VenueはDraftから開始する。詳細は[`docs/integrations/wikidata-venue-import.md`](./integrations/wikidata-venue-import.md)を参照。
+
 ## 1. Core masters
 
 Muuzee has four independent canonical masters. Their internal UUIDs are the only canonical relation keys.
@@ -62,12 +66,14 @@ These tables record where a value came from; they do not silently overwrite a ma
 
 ## 6. AI and CSV fallback
 
-AI and CSV import are not implemented in this scope. The schema supports the future sequence:
+Master Admin v1 implements CSV export, Preview, conflict detection, explicit Confirm, and field-level `csv_import` provenance. AI enrichment remains unimplemented. The supported sequence is:
 
 ```text
 Detect missing fields
   → export/research using CSV or AI
-  → import as provenance candidate
+  → Preview and classify New / Update / Unchanged / Invalid
+  → stop Manual / Approved conflicts for explicit human confirmation
+  → import as unreviewed provenance
   → mark generated_by_ai when applicable
   → human review
   → update master and current provenance explicitly
@@ -118,9 +124,9 @@ Master enrichment and daily exhibition sync must not be combined into one job. T
 
 ## 10. Current and future scope
 
-Current scope is schema, migration, compatibility, validation SQL, and documentation. Existing Art Commons import, Exhibition Admin, and Venue Admin continue to operate on this schema.
+Current scope includes schema, validation SQL, the existing Art Commons / Exhibition / Venue workflows, and Master Admin v1 shared CRUD / CSV / publication / deletion-safety interfaces.
 
-Future scope includes master-source APIs, Artist/Work matching, CSV workflows, AI-assisted research, dedicated master Admin screens, remote environments, deployment, and scheduling. None is implemented by this architecture migration.
+Future scope includes real Artist/Work source adapters and matching, AI-assisted research, authenticated remote environments, deployment, scheduling, and remote-environment Full Sync. Venue currently has Wikidata Source A Import and the existing Venue Enrichment adapter; both remain local-only and human-review-first.
 
 ## Validation and reproducibility
 

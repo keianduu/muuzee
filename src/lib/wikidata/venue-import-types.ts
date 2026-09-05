@@ -1,0 +1,50 @@
+export type WikidataVenueType = "museum" | "gallery" | "art_space" | "commercial_space" | "other";
+
+export type WikidataVenue = {
+  qid: string;
+  name: string;
+  nameEn: string | null;
+  aliases: string[];
+  venueType: WikidataVenueType;
+  rawTypeIds: string[];
+  discoveryRootIds: string[];
+  countryCode: "JP";
+  administrativeAreaId: string | null;
+  region: string | null;
+  city: string | null;
+  address: string | null;
+  postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  officialUrl: string | null;
+  imageFileTitle: string | null;
+  commonsCategory: string | null;
+  inceptionYear: number | null;
+  openingHours: string | null;
+  description: string | null;
+  raw: unknown;
+};
+
+export type WikidataVenueImportSummary = {
+  runId: string;
+  mode: "count" | "full";
+  requested: number | null;
+  discoveryOffset: number;
+  discovered: number;
+  fetched: number;
+  processed: number;
+  discoveryPages: number;
+  retryCount: number;
+  currentOffset: number;
+  currentCursor: string | null;
+  currentRoot: string | null;
+  newVenues: number;
+  linkedExisting: number;
+  updated: number;
+  unchanged: number;
+  needsReview: number;
+  imageCandidatesAdded: number;
+  errors: Array<{ qid?: string; message: string }>;
+  before: { total: number; averageCompleteness: number };
+  after: { total: number; averageCompleteness: number };
+};
