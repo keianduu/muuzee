@@ -29,7 +29,7 @@ export function scoreWikidataCandidate(venue: { name: string; official_url?: str
   if (venue.prefecture && description.includes(venue.prefecture)) { confidence += 0.08; reasons.push("prefecture match"); }
   if (venue.city && description.includes(venue.city)) { confidence += 0.07; reasons.push("city match"); }
   confidence = Math.max(0, Math.min(1, Number(confidence.toFixed(2))));
-  return { ...candidate, confidence, reasons, suggestedStatus: confidence >= WIKIDATA_AUTO_MATCH_THRESHOLD ? "matched" : confidence >= WIKIDATA_CANDIDATE_THRESHOLD ? "candidate" : "needs_review" };
+  return { ...candidate, confidence, reasons, suggestedStatus: confidence >= WIKIDATA_AUTO_MATCH_THRESHOLD ? "matched" : "candidate" };
 }
 
 export function rankWikidataCandidates(venue: { name: string; official_url?: string | null; prefecture?: string | null; city?: string | null }, candidates: WikidataVenueCandidate[]) {

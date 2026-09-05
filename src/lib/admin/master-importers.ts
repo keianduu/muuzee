@@ -7,7 +7,7 @@ export type MasterImportResult = {
   updated: number;
   skipped: number;
   unchanged?: number;
-  needsReview: number;
+  sourceSelectionRequired: number;
   imageCandidatesAdded?: number;
   errors: string[];
 };
@@ -29,7 +29,7 @@ export const MASTER_IMPORTERS: Record<MasterEntity, MasterImporter[]> = {
       entity: "venues",
       sampleAvailable: true,
       fullSyncAvailable: true,
-      description: "日本のMuseum / Art GalleryをQIDで同期します。新規はDraft、曖昧な既存候補はNeeds Reviewになります。",
+      description: "日本のMuseum / Art GalleryをQIDで同期します。新規はDraft、複数のidentity候補だけSource Selectionになります。",
     },
     {
       key: "wikidata-enrichment",

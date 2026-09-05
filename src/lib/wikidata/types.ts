@@ -15,5 +15,5 @@ export type WikidataVenueCandidate = {
 export type ScoredWikidataCandidate = WikidataVenueCandidate & {
   confidence: number;
   reasons: string[];
-  suggestedStatus: "matched" | "candidate" | "needs_review";
+  suggestedStatus: "matched" | "candidate";
 };

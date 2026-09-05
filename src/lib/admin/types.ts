@@ -56,6 +56,37 @@ export type VenueRow = {
   media_assets?: MediaAssetRow[];
   source_records?: SourceRecordRow[];
   venue_external_match_candidates?: VenueMatchCandidateRow[];
+  official_venue_crawl_results?: OfficialVenueCrawlResultRow[];
+  venue_field_sources?: VenueFieldSourceRow[];
+};
+
+export type VenueFieldSourceRow = {
+  id: string;
+  field_name: string;
+  source: string;
+  source_url: string | null;
+  generated_by_ai: boolean;
+  ai_confidence: "high" | "medium" | "low" | null;
+  transformation_notes: string | null;
+  review_status: string;
+  is_current: boolean;
+  created_at: string;
+};
+
+export type OfficialVenueCrawlResultRow = {
+  id: string;
+  crawl_status: string;
+  crawled_at: string;
+  crawl_source_url: string | null;
+  discovered_urls: string[];
+  extracted_values: Record<string, unknown>;
+  field_source_urls: Record<string, string>;
+  description_source_text: string | null;
+  official_source_text: string | null;
+  description_source_url: string | null;
+  phone: string | null;
+  ambiguous_fields: Record<string, unknown>;
+  notes: string | null;
 };
 
 export type OccurrenceRow = {

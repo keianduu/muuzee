@@ -1,7 +1,7 @@
 export type VenueEnrichmentResult = {
   venueId: string;
   venueName: string;
-  matchStatus: "matched" | "candidate" | "needs_review" | "unmatched" | "rejected";
+  matchStatus: "matched" | "candidate" | "unmatched" | "rejected";
   wikidataId: string | null;
   confidence: number | null;
   coordinateAdded: boolean;
@@ -18,7 +18,7 @@ export type VenueEnrichmentBatchResult = {
   runId: string;
   processed: number;
   matched: number;
-  needsReview: number;
+  sourceSelectionRequired: number;
   coordinateAdded: number;
   coordinateCandidateFound: number;
   imageCandidateAdded: number;

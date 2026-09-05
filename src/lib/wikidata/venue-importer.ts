@@ -11,6 +11,7 @@ import { discoverWikidataVenuePage, discoverWikidataVenues, type DiscoveredWikid
 import { mapWikidataVenue } from "./venue-mapper";
 import { WIKIDATA_VENUE_CLASSES } from "./venue-type-mapper";
 import type { WikidataVenue, WikidataVenueImportSummary } from "./venue-import-types";
+import { shouldApplySourceField } from "@/lib/venue-enrichment/source-application";
 
 const DATA_SOURCE_KEY = "wikidata";
 const COMMONS_SOURCE_KEY = "wikimedia_commons";
@@ -39,8 +40,7 @@ export function shouldSkipWikidataVenue(existing: ExistingSource | null, checksu
 }
 
 export function isProtectedVenueField(value: unknown, provenance?: { source?: string; review_status?: string } | null) {
-  const hasValue = value !== null && value !== undefined && (!Array.isArray(value) || value.length > 0) && String(value).trim() !== "";
-  return hasValue || provenance?.source === "manual" || provenance?.review_status === "approved";
+  return !shouldApplySourceField(value, provenance?.source, "wikidata");
 }
 
 export function wikidataImportRunStatus(fetched: number, errorCount: number) {
@@ -151,7 +151,7 @@ async function insertProvenance(db: SupabaseClient, venueId: string, field: stri
   }
   const { error } = await db.from("venue_field_sources").insert({
     venue_id: venueId, field_name: field, source: "wikidata", source_url: `https://www.wikidata.org/wiki/${qid}`,
-    source_record_id: sourceRecordId, value_snapshot: value, generated_by_ai: false, review_status: "unreviewed", is_current: current,
+    source_record_id: sourceRecordId, value_snapshot: value, generated_by_ai: false, review_status: current ? "applied" : "unreviewed", is_current: current,
   });
   if (error) throw error;
 }
@@ -214,11 +214,11 @@ function asScoredCandidate(venue: WikidataVenue, confidence = 1, reasons: string
     id: venue.qid, labelJa: venue.name, labelEn: venue.nameEn, aliases: venue.aliases, description: venue.description,
     officialUrl: venue.officialUrl, latitude: venue.latitude, longitude: venue.longitude,
     imageFileTitle: venue.imageFileTitle, countryId: "Q17", raw: sourceEnvelope(venue), confidence, reasons,
-    suggestedStatus: confidence >= AUTO_MATCH ? "matched" : confidence >= POSSIBLE_MATCH ? "candidate" : "needs_review",
+    suggestedStatus: confidence >= AUTO_MATCH ? "matched" : "candidate",
   };
 }
 
-async function saveMatchCandidate(db: SupabaseClient, venueId: string, venue: WikidataVenue, confidence: number, reasons: string[], status: "matched" | "needs_review") {
+async function saveMatchCandidate(db: SupabaseClient, venueId: string, venue: WikidataVenue, confidence: number, reasons: string[], status: "matched" | "candidate") {
   const { data: prior } = await db.from("venue_external_match_candidates").select("status").eq("venue_id", venueId).eq("provider", "wikidata").eq("external_id", venue.qid).maybeSingle();
   const preserved = prior?.status === "rejected" || prior?.status === "matched" ? prior.status : status;
   const { error } = await db.from("venue_external_match_candidates").upsert({
@@ -228,7 +228,7 @@ async function saveMatchCandidate(db: SupabaseClient, venueId: string, venue: Wi
     raw_payload: sourceEnvelope(venue), last_seen_at: new Date().toISOString(),
   }, { onConflict: "venue_id,provider,external_id" });
   if (error) throw error;
-  return preserved as "matched" | "needs_review" | "rejected";
+  return preserved as "matched" | "candidate" | "rejected";
 }
 
 async function addCommonsCandidate(db: SupabaseClient, commonsSourceId: string, venueId: string, venue: WikidataVenue) {
@@ -288,7 +288,7 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
     currentCursor: null,
     currentRoot: null,
     newVenues: 0, linkedExisting: 0, updated: 0, unchanged: 0,
-    needsReview: 0, imageCandidatesAdded: 0, errors: [], before, after: before,
+    sourceSelectionRequired: 0, imageCandidatesAdded: 0, errors: [], before, after: before,
   };
   const persistProgress = async (status: "running" | "completed" | "partial" | "failed", finished = false) => {
     const update: Record<string, unknown> = {
@@ -328,8 +328,8 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
           const match = bestExistingMatch(existing, venue);
           const classification = classifyWikidataVenueMatch(match?.scored.confidence || 0);
           if (classification === "possible" && match) {
-            const status = await saveMatchCandidate(db, match.row.id, venue, match.scored.confidence, match.scored.reasons, "needs_review");
-            if (status === "rejected") result.unchanged += 1; else result.needsReview += 1;
+            const status = await saveMatchCandidate(db, match.row.id, venue, match.scored.confidence, match.scored.reasons, "candidate");
+            if (status === "rejected") result.unchanged += 1; else result.sourceSelectionRequired += 1;
             continue;
           }
           if (classification === "high" && match) {
@@ -397,40 +397,4 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
     await persistProgress(result.processed > 0 ? "partial" : "failed", true);
     return result;
   }
-}
-
-export async function createVenueFromWikidataCandidate(existingVenueId: string, candidateId: string, db: SupabaseClient = createSupabaseAdminClient()) {
-  const ids = await sourceIds(db);
-  const { data, error } = await db.from("venue_external_match_candidates").select("*").eq("id", candidateId).eq("venue_id", existingVenueId).single();
-  if (error || !data) throw error || new Error("Candidate not found");
-  const envelope = data.raw_payload as { normalized?: WikidataVenue };
-  const venue = envelope.normalized || null;
-  if (!venue || venue.countryCode !== "JP") throw new Error("Create New is only available for a Japan Venue Import candidate");
-  const source = await upsertSourceRecord(db, ids[DATA_SOURCE_KEY], venue, null);
-  if (source.stored.venue_id) throw new Error("This QID is already linked to another Venue");
-  const created = await createVenue(db, venue, source.stored.id);
-  await db.from("source_records").update({ venue_id: created.id }).eq("id", source.stored.id);
-  await saveMatchCandidate(db, created.id, venue, 1, ["Human chose Create New"], "matched");
-  await db.from("venue_external_match_candidates").update({ status: "rejected" }).eq("id", candidateId);
-  await addCommonsCandidate(db, ids[COMMONS_SOURCE_KEY], created.id, venue);
-  return created.id;
-}
-
-export async function linkWikidataCandidateToExisting(existingVenueId: string, candidateId: string, db: SupabaseClient = createSupabaseAdminClient()) {
-  const ids = await sourceIds(db);
-  const [{ data: candidate, error: candidateError }, { data: existing, error: existingError }] = await Promise.all([
-    db.from("venue_external_match_candidates").select("*").eq("id", candidateId).eq("venue_id", existingVenueId).single(),
-    db.from("venues").select("*").eq("id", existingVenueId).single(),
-  ]);
-  if (candidateError || !candidate) throw candidateError || new Error("Candidate not found");
-  if (existingError || !existing) throw existingError || new Error("Venue not found");
-  const envelope = candidate.raw_payload as { normalized?: WikidataVenue };
-  const venue = envelope.normalized || null;
-  if (!venue || venue.countryCode !== "JP") throw new Error("Source A Link is only available for a Japan Venue Import candidate");
-  const source = await upsertSourceRecord(db, ids[DATA_SOURCE_KEY], venue, existingVenueId);
-  if (source.stored.venue_id && source.stored.venue_id !== existingVenueId) throw new Error("This QID is already linked to another Venue");
-  await db.from("source_records").update({ venue_id: existingVenueId }).eq("id", source.stored.id);
-  await fillExistingVenue(db, existing as ExistingVenue, venue, source.stored.id, { confidence: Number(candidate.confidence || 1), reasons: ["Human selected Link", ...(candidate.match_reasons || [])] });
-  await saveMatchCandidate(db, existingVenueId, venue, Number(candidate.confidence || 1), ["Human selected Link", ...(candidate.match_reasons || [])], "matched");
-  await addCommonsCandidate(db, ids[COMMONS_SOURCE_KEY], existingVenueId, venue);
 }

@@ -32,6 +32,7 @@ Status: Draft for the Master Data Architecture; the existing Admin v0 publicatio
 | `source_records` | Unique external record ID, latest raw payload, and optional explicit master owner |
 | `venue_field_sources`, `artist_field_sources`, `work_field_sources`, `exhibition_field_sources` | Field-level provenance and review history |
 | `source_image_candidates` | External image references and raw rights metadata awaiting review |
+| `official_venue_crawl_results` | Immutable-per-run Source B extraction output, ambiguity, visited URLs, and field evidence before CSV confirmation |
 | `venue_external_match_candidates` | Ranked Wikidata candidates, confidence, threshold evidence, and human state |
 | `media_assets` | Storage-backed, human-reviewed images owned by exactly one master |
 | `import_runs` | Import/enrichment execution counts, errors, metrics, and timing |
@@ -79,6 +80,6 @@ See `docs/master-data-architecture.md` for ownership, enrichment, and update-fre
 
 ## Master Admin v1 application rules
 
-Master Admin v1 does not add derived database columns. Completeness is calculated in application code from canonical fields, Primary media, and explicit relations. Manual and CSV operations append field provenance history; only one row per field remains `is_current`. Publication changes are separate server-side actions and CSV cannot publish a master directly.
+Master Admin v1 does not add derived database columns. Completeness is calculated in application code from canonical fields, Primary media, and explicit relations. Manual, Official Website, trusted API, Wikidata, and CSV operations append field provenance history; only one row per field remains `is_current`. Priority is `Manual > Official Website > Trusted API > Wikidata`. CSV is only a transport: a known source must be declared in `source_type`, and an undeclared generic CSV cannot automatically displace attributable source data. Reliable values are applied at explicit import confirmation without a separate field decision, while ambiguity and higher-priority conflicts remain reviewable. Publication changes are separate server-side actions and CSV cannot publish a master directly.
 
 Work–Artist and Work–Venue Holding edits write only `work_artists` and `collection_holdings`. Artist and Venue related-content sections are derived from those relations rather than duplicated onto master rows. See `docs/master-admin-v1.md` for the CRUD, CSV, publication, and delete-safety behavior.

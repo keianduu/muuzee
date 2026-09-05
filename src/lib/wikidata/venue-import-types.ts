@@ -42,7 +42,7 @@ export type WikidataVenueImportSummary = {
   linkedExisting: number;
   updated: number;
   unchanged: number;
-  needsReview: number;
+  sourceSelectionRequired: number;
   imageCandidatesAdded: number;
   errors: Array<{ qid?: string; message: string }>;
   before: { total: number; averageCompleteness: number };

@@ -4,11 +4,11 @@ Status: Draft. This is the local production-implementation reference for Venue /
 
 ## Wikidata Venue API Import
 
-`/admin/venues`の`API Import → Wikidata`から件数指定Importと全件同期を実行できる。全件同期は事前COUNTなしでroot別・QID cursor paginationを行う。実行中は最新の`import_runs.metrics`を2秒間隔で読み、Processed / Fetched / Pages / Retries / New Venue / Linked Existing / Updated / Unchanged / Needs Review / Image Candidate Added / Errorsを表示する。完了時はVenue件数・平均Completenessの前後も表示する。Possible MatchはVenue詳細でLink / Create New / Ignoreを人が判断する。
+`/admin/venues`の`API Import → Wikidata`から件数指定Importと全件同期を実行できる。全件同期は事前COUNTなしでroot別・QID cursor paginationを行う。単一候補はSource Priorityに従って自動適用し、複数候補だけVenue詳細のDataタブでSource Candidateを選択する。confidenceとreasonは診断表示であり、Field適用の承認ボタンやNeeds Review Gateは持たない。
 
 ## 1. Purpose and routes
 
-Master Admin v1 adds human-review-first management for the three low-frequency masters. It does not change the existing Exhibition import and editorial workflow.
+Master Admin v1 adds source-aware management for the three low-frequency masters. Human review is focused on ambiguity and explicit priority overrides; final publication remains a human content-level action. It does not change the existing Exhibition import and editorial workflow.
 
 | Master | List + Detail Drawer | Manual create | Legacy detail URL |
 | --- | --- | --- | --- |
@@ -57,17 +57,21 @@ Upload
   → Import
 ```
 
-Preview classifies every row as `new`, `update`, `unchanged`, or `invalid`, and displays changed fields. A changed field is a conflict when its current provenance is `manual` or `approved`. The normal Confirm action stops on Invalid rows and requires a second explicit human confirmation before overwriting conflicts.
+Preview classifies every row as `new`, `update`, `unchanged`, or `invalid`, displays Before → After, and identifies higher-priority or ambiguous conflicts. The normal Confirm action stops on Invalid rows and requires a second explicit human confirmation before overriding conflicts.
 
-Imported fields are recorded as:
+Ordinary CSV fields are recorded as `csv_import`; Official Website CSV fields are recorded as `official_website`. Imported reliable fields use `review_status = applied`; Manual writes use `approved`.
 
 ```text
-source = csv_import
-review_status = unreviewed
+source = csv_import | official_website | trusted_api
+review_status = applied
 is_current = true
 ```
 
 Previous provenance is retained as history with `is_current = false`. CSV never directly publishes a master; newly created rows remain Draft and the publication column is informational on export.
+
+## 4.1 Official Website Source B
+
+`/admin/venues`の`公式サイト情報取得`は、選択Venueまたは現在のFilterから最大50件を対象に、同一domain・robots.txt準拠・最大6ページのbounded crawlを実行する。結果はMasterへ直接保存せず、Crawl Result → CSV Download → CSV Preview → Confirmを必須とする。最新Crawlと履歴、抽出値、Field Source URLはVenue DrawerのDataタブで確認できる。詳細は[`docs/integrations/official-venue-crawler.md`](./integrations/official-venue-crawler.md)を参照。
 
 CSV Export supports complete current records and a template. It is not limited by list pagination.
 
@@ -75,13 +79,13 @@ CSV Export supports complete current records and a template. It is not limited b
 
 External import is represented by the shared `MasterImporter` interface. The UI exposes only registered, real adapters:
 
-- Venue: Wikidata Source Aは件数指定Importと明示的な全件同期、既存Venue起点のVenue Enrichmentはbounded sampleを実行できる。候補のidentity / coordinate / image / rightsは必要に応じて人が確認する。
+- Venue: Wikidata Source Aは件数指定Importと明示的な全件同期、既存Venue起点のVenue Enrichmentはbounded sampleを実行できる。identity候補が複数のときだけ人がSourceを選ぶ。単一座標は自動適用し、画像はPrimary選択とrights確認を分離する。
 - Artist: no source adapter is connected, so the UI says unavailable.
 - Work: no source adapter is connected, so the UI says unavailable.
 
 Artist / WorkのFull Syncは、adapterがdeterministic pagination、update identity、error aggregation、rate limiting、human-review boundaryを実装するまでunavailableのままにする。No sample or Full Sync button generates fictional data.
 
-Standard future import results use `fetched / created / updated / skipped / needsReview / errors`.
+Standard future import results use `fetched / created / updated / skipped / sourceSelectionRequired / errors`.
 
 ## 6. Completeness
 
@@ -119,7 +123,7 @@ Venue / Artist / Work rows open a right-side Detail Drawer. `selected={id}` rema
 
 The Drawer uses the shared `状態 / 編集 / データ` information architecture. It is 40–55% of the desktop viewport, becomes a full-screen sheet on narrow viewports, traps focus, closes with Escape or the close button, and blocks background interaction.
 
-Work detail supports explicit add/remove operations for Artist and Holding Venue relations. Selectors perform server-side search and return at most 20 candidates. Artist detail derives related Exhibitions and Works; Venue detail derives related Exhibitions and Holdings. Existing Venue Enrichment, candidate review, coordinate review, image rights, and media operations remain available below the shared master sections.
+Work detail supports explicit add/remove operations for Artist and Holding Venue relations. Selectors perform server-side search and return at most 20 candidates. Artist detail derives related Exhibitions and Works; Venue detail derives related Exhibitions and Holdings. VenueのDataタブはQID、Source、confidence、reason、Provenanceと複数候補時のSource選択を表示する。Field reviewとcoordinate採用操作は持たない。
 
 Venue coordinate status and candidate coordinates provide a Google Maps link generated as `https://www.google.com/maps?q={latitude},{longitude}` and opened in a new tab. An inline map is not included in v2 because the current production app has no map dependency and the external link covers human verification without adding a tile-provider dependency.
 
@@ -133,7 +137,7 @@ Artist and Work can upload Storage-backed images with the same three-way rights 
 
 External image references remain Candidates and never become Primary or rights-approved automatically. Detail previews use `object-fit: contain` so the complete image is visible.
 
-Field Provenance displays Manual, CSV, API, and future AI sources when recorded. AI enrichment is not implemented. A future AI adapter must write `generated_by_ai = true`, retain raw evidence, remain unreviewed by default, and never publish automatically.
+Field Provenance displays Manual, CSV, API, and AI transformation history. Source BのAI補完はAdminからCSVと固定Promptを取得し、Codexで構造化したCSVを既存Previewへ戻す。ConfirmしたFieldは`source=official_website`と公式URLを維持し、`generated_by_ai = true`、confidence、notesを記録する。AIはSourceとして扱わず、自動公開しない。
 
 ## 11. Validation evidence
 

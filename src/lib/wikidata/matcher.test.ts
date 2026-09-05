@@ -21,13 +21,13 @@ describe("Wikidata venue matcher", () => {
 
   it("does not auto-match an exact name with a conflicting official domain", () => {
     const result = scoreWikidataCandidate({ name: "国立新美術館", official_url: "https://example.jp" }, candidate({ description: "museum", countryId: null }));
-    expect(result.suggestedStatus).toBe("needs_review");
+    expect(result.suggestedStatus).toBe("candidate");
     expect(result.reasons).toContain("official domain mismatch");
   });
 
-  it("keeps weak name-only results for review", () => {
+  it("keeps weak name-only results as diagnostics candidates", () => {
     const result = scoreWikidataCandidate({ name: "同名施設" }, candidate({ labelJa: "別の施設", labelEn: null, description: null, countryId: null }));
-    expect(result.suggestedStatus).toBe("needs_review");
+    expect(result.suggestedStatus).toBe("candidate");
     expect(result.confidence).toBe(0);
   });
 });

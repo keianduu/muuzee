@@ -5,7 +5,7 @@ import { distanceMeters, findCoordinateCandidate, findImageCandidates } from "./
 const candidate = (id: string, confidence: number, options: { image?: string; coordinates?: [number, number] } = {}): ScoredWikidataCandidate => ({
   id, confidence, imageFileTitle: options.image || null, labelJa: id, labelEn: null, aliases: [], description: null,
   officialUrl: null, latitude: options.coordinates?.[0] ?? null, longitude: options.coordinates?.[1] ?? null,
-  countryId: "Q17", raw: {}, reasons: [], suggestedStatus: confidence >= 0.85 ? "matched" : confidence >= 0.6 ? "candidate" : "needs_review",
+  countryId: "Q17", raw: {}, reasons: [], suggestedStatus: confidence >= 0.85 ? "matched" : "candidate",
 });
 
 describe("venue enrichment threshold policy", () => {
@@ -37,7 +37,7 @@ describe("venue enrichment threshold policy", () => {
     expect(result).toMatchObject({ threshold: 0.8, candidate: { id: "Q1", latitude: 35, longitude: 139 } });
   });
 
-  it("continues below 0.60 and records the low threshold for human review", () => {
+  it("continues below 0.60 and records the low diagnostic threshold", () => {
     const image = findImageCandidates([candidate("Q-low-image", 0.35, { image: "Low-confidence.jpg" })]);
     const coordinate = findCoordinateCandidate([candidate("Q-low-coordinate", 0.25, { coordinates: [35, 139] })]);
     expect(image.foundThreshold).toBe(0.35);

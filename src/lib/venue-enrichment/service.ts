@@ -9,6 +9,7 @@ import type { ScoredWikidataCandidate } from "@/lib/wikidata/types";
 import { processVenueEnrichmentItems } from "./batch";
 import { CANDIDATE_MIN_THRESHOLD, distanceMeters, ENTITY_AUTO_MATCH_THRESHOLD, findCoordinateCandidate, findImageCandidates, thresholdForConfidence } from "./policy";
 import type { VenueEnrichmentBatchResult, VenueEnrichmentResult } from "./types";
+import { applyStoredWikidataCandidate, selectSingleSourceCandidate, type StoredWikidataCandidate } from "./source-application";
 
 type Venue = {
   id: string; name: string; name_en: string | null; address: string | null; prefecture: string | null; city: string | null;
@@ -74,7 +75,7 @@ async function saveMatchCandidates(db: SupabaseClient, venueId: string, candidat
     venue_id: venueId, provider: "wikidata", external_id: candidate.id, label_ja: candidate.labelJa, label_en: candidate.labelEn,
     description: candidate.description, official_url: candidate.officialUrl, latitude: candidate.latitude, longitude: candidate.longitude,
     image_file_title: candidate.imageFileTitle, confidence: candidate.confidence, match_reasons: candidate.reasons,
-    status: protectedStatuses.get(candidate.id) || candidate.suggestedStatus, raw_payload: candidate.raw, last_seen_at: now,
+    status: protectedStatuses.get(candidate.id) || "candidate", raw_payload: candidate.raw, last_seen_at: now,
   }));
   const { error } = await db.from("venue_external_match_candidates").upsert(rows, { onConflict: "venue_id,provider,external_id" });
   if (error) throw error;
@@ -190,21 +191,15 @@ async function buildCandidateDiagnostics(
 }
 
 async function applyMatchedEntity(db: SupabaseClient, ids: Record<string, string>, venue: Venue, candidate: ScoredWikidataCandidate, candidates: ScoredWikidataCandidate[], statuses: Map<string, string>, humanSelected = false): Promise<VenueEnrichmentResult> {
-  await saveSourceRecord(db, ids.wikidata, venue.id, candidate.id, `https://www.wikidata.org/wiki/${candidate.id}`, candidate.raw);
-  const updates: Record<string, unknown> = {
-    wikidata_match_status: "matched",
-    wikidata_match_confidence: candidate.confidence,
-    wikidata_match_reason: `${humanSelected ? "human selected; " : ""}${candidate.reasons.join("; ")}`,
-    enriched_at: new Date().toISOString(),
-  };
-  if (!venue.name_en && candidate.labelEn) updates.name_en = candidate.labelEn;
-  if (!venue.official_url && candidate.officialUrl) updates.official_url = candidate.officialUrl;
-  const diagnostics = await buildCandidateDiagnostics(db, ids, venue, candidates, statuses);
-  Object.assign(updates, diagnostics.updates);
-  const { error } = await db.from("venues").update(updates).eq("id", venue.id);
+  const { data: stored, error: storedError } = await db.from("venue_external_match_candidates").select("*").eq("venue_id", venue.id).eq("provider", "wikidata").eq("external_id", candidate.id).single();
+  if (storedError || !stored) throw storedError || new Error("Stored Wikidata candidate not found");
+  const application = await applyStoredWikidataCandidate(db, venue.id, stored as StoredWikidataCandidate, humanSelected ? "human selected source candidate" : "single source candidate auto-applied");
+  const { data: refreshed, error: refreshedError } = await db.from("venues").select("*").eq("id", venue.id).single();
+  if (refreshedError || !refreshed) throw refreshedError || new Error("Venue could not be refreshed");
+  const diagnostics = await buildCandidateDiagnostics(db, ids, refreshed as Venue, candidates, statuses);
+  const { error } = await db.from("venues").update(diagnostics.updates).eq("id", venue.id);
   if (error) throw error;
-  await db.from("venue_external_match_candidates").update({ status: "matched" }).eq("venue_id", venue.id).eq("provider", "wikidata").eq("external_id", candidate.id);
-  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: false, coordinateSource: null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: diagnostics.imageCandidateAdded, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: true };
+  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: application.applied.includes("latitude") && application.applied.includes("longitude"), coordinateSource: application.applied.includes("latitude") ? "wikidata" : null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: diagnostics.imageCandidateAdded, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: true };
 }
 
 export async function enrichVenue(venueId: string, options: { forceWikidataId?: string } = {}, db: SupabaseClient = createSupabaseAdminClient()): Promise<VenueEnrichmentResult> {
@@ -231,8 +226,9 @@ export async function enrichVenue(venueId: string, options: { forceWikidataId?: 
   const candidates = rankWikidataCandidates(venue, rawCandidates);
   const candidateStatuses = await saveMatchCandidates(db, venue.id, candidates);
   const top = candidates[0];
-  if (top && (requestedWikidataId || top.suggestedStatus === "matched")) return applyMatchedEntity(db, ids, venue, top, candidates, candidateStatuses, Boolean(options.forceWikidataId));
-  const matchStatus = top ? (top.suggestedStatus === "candidate" ? "candidate" : "needs_review") : "unmatched";
+  const automatic = requestedWikidataId ? top : selectSingleSourceCandidate(candidates.map((candidate) => ({ ...candidate, status: candidateStatuses.get(candidate.id) || "candidate" })));
+  if (automatic) return applyMatchedEntity(db, ids, venue, automatic, candidates, candidateStatuses, Boolean(options.forceWikidataId));
+  const matchStatus = top ? "candidate" : "unmatched";
   const updates: Record<string, unknown> = { wikidata_match_status: matchStatus, wikidata_match_confidence: top?.confidence ?? null, wikidata_match_reason: top?.reasons.join("; ") || null, enriched_at: new Date().toISOString() };
   const diagnostics = await buildCandidateDiagnostics(db, ids, venue, candidates, candidateStatuses);
   Object.assign(updates, diagnostics.updates);

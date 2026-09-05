@@ -42,14 +42,14 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
     await request(`/api/admin/venues/${venue.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) });
   }
   async function enrich() { await request(`/api/admin/venues/${venue.id}/enrich`, { method: "POST" }); }
-  async function match(candidate: VenueMatchCandidateRow, action: "adopt" | "reject" | "create_new") {
-    await request(`/api/admin/venues/${venue.id}/matches/${candidate.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
-  }
-  async function decideCoordinate(action: "adopt" | "reject") {
-    await request(`/api/admin/venues/${venue.id}/coordinate-candidate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+  async function selectSourceCandidate(candidate: VenueMatchCandidateRow) {
+    await request(`/api/admin/venues/${venue.id}/matches/${candidate.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "select" }) });
   }
   async function review(candidate: SourceImageCandidateRow, updates: { review_status?: "accepted" | "rejected"; rights_status?: "rejected" | "needs_review" | "approved" }) {
     await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
+  }
+  async function setPrimaryImage(candidate: SourceImageCandidateRow) {
+    await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" });
   }
   async function upload(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: new FormData(event.currentTarget) }); }
   async function remove(asset: MediaAssetRow) {
@@ -58,7 +58,10 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
   }
 
   const candidates = (venue.venue_external_match_candidates || []).sort((a, b) => b.confidence - a.confidence);
-  const matchedWikidataId = candidates.find((candidate) => candidate.status === "matched")?.external_id || null;
+  const linkedWikidataSource = (venue.source_records || []).find((source) => (Array.isArray(source.data_sources) ? source.data_sources : source.data_sources ? [source.data_sources] : []).some((item) => item.key === "wikidata"));
+  const matchedWikidataId = linkedWikidataSource?.external_id || candidates.find((candidate) => candidate.status === "matched")?.external_id || null;
+  const unresolvedCandidates = candidates.filter((candidate) => candidate.status === "candidate");
+  const requiresSourceSelection = !matchedWikidataId && unresolvedCandidates.length > 1;
   const imageCandidates = (venue.source_records || []).flatMap((source) => source.source_image_candidates || []);
   const activeImageCandidates = imageCandidates.filter((candidate) => candidate.is_active);
   const showResearchPrompt = activeImageCandidates.length === 0 || activeImageCandidates.every((candidate) => candidate.review_status === "rejected");
@@ -66,6 +69,10 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
     ? [venue.coordinate_candidate_latitude, venue.coordinate_candidate_longitude]
     : venue.latitude != null && venue.longitude != null ? [venue.latitude, venue.longitude] : null;
   const googleMapsUrl = mapCoordinates ? `https://www.google.com/maps?q=${mapCoordinates[0]},${mapCoordinates[1]}` : null;
+  const officialCrawls = [...(venue.official_venue_crawl_results || [])].sort((a, b) => b.crawled_at.localeCompare(a.crawled_at));
+  const latestOfficialCrawl = officialCrawls[0];
+  const aiSources = (venue.venue_field_sources || []).filter((source) => source.generated_by_ai).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const sourceBMissing = ["address", "postal_code", "opening_hours_text", "closed_days_text", "access_text", "description"].filter((field) => !String(venue[field as keyof VenueRow] || "").trim());
 
   return <>
     {(view === "all" || view === "data") && <div className="actions"><button className="button secondary" disabled={busy} onClick={enrich}>Enrich（外部データで補完）</button></div>}
@@ -87,20 +94,22 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
       {googleMapsUrl && <a className="button secondary" href={googleMapsUrl} target="_blank" rel="noreferrer">Google Mapsで確認 ↗</a>}
       <h2>Image Status（画像状態）</h2><p>Approved / Uploaded: {(venue.media_assets || []).length}件 · Candidate: {activeImageCandidates.length}件</p>
       <h2>API Match Status（API照合状態）</h2><p><span className={`status ${venue.wikidata_match_status}`}>{displayStatus(venue.wikidata_match_status)}</span> · {venue.best_wikidata_candidate_qid || "QID未設定"}</p>
+      <h2>Official Website Status（Source B）</h2><p>{latestOfficialCrawl ? <><span className="status">{latestOfficialCrawl.crawl_status}</span> · Latest {new Date(latestOfficialCrawl.crawled_at).toLocaleString("ja-JP")}</> : "未Crawl"}</p><p className="muted">Source B不足Field: {sourceBMissing.join(" / ") || "なし"}</p>
     </section>}
 
-    {(view === "all" || view === "edit") && <section><h2>Coordinate Candidate（座標候補）</h2>
+    {(view === "all" || view === "data") && <section><h2>Coordinate Source Diagnostics（座標出典診断）</h2>
       {venue.coordinate_candidate_latitude != null && venue.coordinate_candidate_longitude != null ? <article className="card">
         <p><span className="status">{venue.coordinate_status}</span> <strong>{venue.coordinate_candidate_source}</strong></p>
         <div className="license-summary"><span>QID</span><strong>{venue.coordinate_candidate_qid || "-"}</strong><span>Latitude（緯度）</span><strong>{venue.coordinate_candidate_latitude}</strong><span>Longitude（経度）</span><strong>{venue.coordinate_candidate_longitude}</strong><span>Confidence（信頼度）</span><strong>{venue.coordinate_candidate_confidence ?? "-"}</strong><span>Found Threshold（発見時閾値）</span><strong>{venue.coordinate_candidate_threshold ?? "-"}</strong><span>Geoloniaとの距離</span><strong>{venue.coordinate_candidate_distance_m != null ? `${Math.round(venue.coordinate_candidate_distance_m)} m` : "比較なし"}</strong></div>
         <p className="muted">{venue.coordinate_candidate_reason || "理由なし"}</p>
         {venue.geolonia_candidate_latitude != null && <p className="muted">Geolonia候補: {venue.geolonia_candidate_latitude}, {venue.geolonia_candidate_longitude} / {venue.geolonia_candidate_precision || "-"}</p>}
-        <div className="actions">{googleMapsUrl && <a className="button secondary" href={googleMapsUrl} target="_blank" rel="noreferrer">Google Mapsで確認 ↗</a>}<button className="button" disabled={busy || venue.coordinate_status === "approved"} onClick={() => decideCoordinate("adopt")}>座標Candidateを採用</button><button className="button danger" disabled={busy} onClick={() => decideCoordinate("reject")}>座標Candidateを却下</button></div>
+        <div className="actions">{googleMapsUrl && <a className="button secondary" href={googleMapsUrl} target="_blank" rel="noreferrer">Google Mapsで確認 ↗</a>}</div>
       </article> : <p className="muted">閾値内に座標を持つ候補はありません。</p>}
     </section>}
 
-    {(view === "all" || view === "data") && <section><h2>Wikidata Entity Match（エンティティ照合）</h2><p className="muted">Current: {matchedWikidataId || "未採用"} / {displayStatus(venue.wikidata_match_status)} / {venue.wikidata_match_confidence ?? "-"}<br/>{venue.wikidata_match_reason || "-"}</p>
-      <div className="media-grid">{candidates.map((candidate) => { const importerCandidate = Boolean((candidate.raw_payload as { normalized?: unknown } | undefined)?.normalized); return <article className="card" key={candidate.id}><strong>{candidate.label_ja || candidate.label_en || candidate.external_id}</strong><p><span className={`status ${candidate.status}`}>{candidate.status}</span></p><p className="muted">{candidate.external_id} · Confidence {candidate.confidence}<br/>{candidate.description || "-"}<br/>{candidate.match_reasons.join(" / ")}</p><div className="license-summary"><span>Name EN</span><strong>{candidate.label_en || "なし"}</strong><span>Address</span><strong>{String((candidate.raw_payload as { normalized?: { address?: string } } | undefined)?.normalized?.address || "Source rawを確認")}</strong><span>座標</span><strong>{candidate.latitude != null && candidate.longitude != null ? `${candidate.latitude}, ${candidate.longitude}` : "なし"}</strong><span>P18</span><strong>{candidate.image_file_title || "なし"}</strong><span>Official URL</span><strong>{candidate.official_url || "なし"}</strong></div><div className="actions"><button className="button" disabled={busy || candidate.status === "matched"} onClick={() => match(candidate, "adopt")}>同じVenue → Link</button>{importerCandidate && <button className="button secondary" disabled={busy || candidate.status === "matched"} onClick={() => match(candidate, "create_new")}>別Venue → Create New</button>}<button className="button danger" disabled={busy} onClick={() => match(candidate, "reject")}>Ignore</button></div></article>; })}</div>
+    {(view === "all" || view === "data") && <section><h2>Wikidata Source Identity（Source識別子）</h2><p className="muted">Current: {matchedWikidataId || "未設定"} / {displayStatus(venue.wikidata_match_status)} / Confidence {venue.wikidata_match_confidence ?? "-"}<br/>{venue.wikidata_match_reason || "-"}</p>
+      {requiresSourceSelection && <div className="notice"><strong>Source Candidate Selectionが必要です。</strong> 複数候補から同一施設を1件選択してください。Field単位の採用判断は不要です。</div>}
+      <div className="media-grid">{candidates.map((candidate) => <article className="card" key={candidate.id}><strong>{candidate.label_ja || candidate.label_en || candidate.external_id}</strong><p><span className={`status ${candidate.status}`}>{candidate.status}</span></p><p className="muted">{candidate.external_id} · Confidence {candidate.confidence}<br/>{candidate.description || "-"}<br/>{candidate.match_reasons.join(" / ")}</p><div className="license-summary"><span>Name EN</span><strong>{candidate.label_en || "なし"}</strong><span>Address</span><strong>{String((candidate.raw_payload as { normalized?: { address?: string } } | undefined)?.normalized?.address || "Source rawを確認")}</strong><span>座標</span><strong>{candidate.latitude != null && candidate.longitude != null ? `${candidate.latitude}, ${candidate.longitude}` : "なし"}</strong><span>P18</span><strong>{candidate.image_file_title || "なし"}</strong><span>Official URL</span><strong>{candidate.official_url || "なし"}</strong></div>{requiresSourceSelection && candidate.status === "candidate" && <div className="actions"><button className="button" disabled={busy} onClick={() => selectSourceCandidate(candidate)}>このSource Candidateを選択</button></div>}</article>)}</div>
       {!candidates.length && <p className="muted">Entity候補はありません。</p>}
     </section>}
 
@@ -113,11 +122,16 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
         <details><summary>Reported license / source metadata</summary><p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}</p></details>
         <div className="actions"><a className="button secondary" href={candidate.source_url || candidate.image_url} target="_blank" rel="noreferrer">Commons / Source</a>{candidate.license_url && <a className="button secondary" href={candidate.license_url} target="_blank" rel="noreferrer">License原文</a>}</div>
         <h3>画像候補の判断</h3><div className="actions"><button className="button secondary" disabled={busy} onClick={() => review(candidate, { review_status: "accepted" })}>候補として残す</button><button className="button danger" disabled={busy} onClick={() => review(candidate, { review_status: "rejected" })}>候補から除外</button></div>
-        <h3>ライセンス判断</h3><div className="actions"><button className="button danger" disabled={busy} onClick={() => review(candidate, { rights_status: "rejected" })}>明確に不可</button><button className="button secondary" disabled={busy} onClick={() => review(candidate, { rights_status: "needs_review" })}>記載なし・不明</button><button className="button" disabled={busy} onClick={() => review(candidate, { rights_status: "approved" })}>明確に利用可能</button></div>
+        <h3>Primary画像</h3><div className="actions"><button className="button" disabled={busy || candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active} onClick={() => setPrimaryImage(candidate)}>この画像を設定</button></div>
+        {candidate.rights_status === "rejected" && <p className="muted">明確に利用不可と記録された候補は設定できません。</p>}
       </article>)}</div>{!imageCandidates.length && <p className="muted">画像候補はありません。</p>}
     </section>}
 
     {(view === "all" || view === "data") && <section><h2>Search Diagnostics（検索診断）</h2><div className="media-grid"><Trace title="Coordinate Search（座標探索）" rows={venue.coordinate_search_trace || []}/><Trace title={`Image Search（画像探索） / ${venue.image_search_status}`} rows={venue.image_search_trace || []}/></div></section>}
+
+    {(view === "all" || view === "data") && <section><h2>Official Website Crawl + AI Enrichment（Source B）</h2>{latestOfficialCrawl ? <div className="card"><p><strong>Latest crawl:</strong> {new Date(latestOfficialCrawl.crawled_at).toLocaleString("ja-JP")} · <span className="status">{latestOfficialCrawl.crawl_status}</span></p><p>{latestOfficialCrawl.crawl_source_url ? <a href={latestOfficialCrawl.crawl_source_url} target="_blank" rel="noreferrer">Crawl source ↗</a> : "Source URLなし"}</p><div className="table-wrap"><table><thead><tr><th>Field</th><th>Extracted value</th><th>Source</th></tr></thead><tbody>{Object.entries(latestOfficialCrawl.extracted_values || {}).map(([field, value]) => <tr key={field}><td>{field}</td><td>{String(value || "—")}</td><td>{latestOfficialCrawl.field_source_urls?.[field] ? <a href={latestOfficialCrawl.field_source_urls[field]} target="_blank" rel="noreferrer">Open ↗</a> : "—"}</td></tr>)}</tbody></table></div>{latestOfficialCrawl.description_source_text && <details><summary>Description source text</summary><p>{latestOfficialCrawl.description_source_text}</p></details>}{latestOfficialCrawl.notes && <p className="muted">{latestOfficialCrawl.notes}</p>}<details><summary>Recent crawl history（{officialCrawls.length}件）</summary><ul>{officialCrawls.slice(0, 10).map((crawl) => <li key={crawl.id}>{new Date(crawl.crawled_at).toLocaleString("ja-JP")} · {crawl.crawl_status}</li>)}</ul></details></div> : <p className="muted">公式サイトCrawl履歴はありません。一覧の「公式サイト情報取得」から実行できます。</p>}
+      <div className="card"><h3>AI Enrichment</h3><p><strong>AI structured:</strong> {aiSources.length ? "Yes" : "No"}</p>{aiSources.length ? <div className="table-wrap"><table><thead><tr><th>Field</th><th>Source</th><th>Confidence</th><th>Date</th><th>Notes</th></tr></thead><tbody>{aiSources.map((source) => <tr key={source.id}><td>{source.field_name}</td><td>{source.source_url ? <a href={source.source_url} target="_blank" rel="noreferrer">Official source ↗</a> : source.source}</td><td>{source.ai_confidence || "—"}</td><td>{new Date(source.created_at).toLocaleString("ja-JP")}</td><td>{source.transformation_notes || "—"}</td></tr>)}</tbody></table></div> : <p className="muted">AI構造化CSVをConfirmした履歴はありません。</p>}</div>
+    </section>}
 
     {showResearchPrompt && (view === "all" || view === "data") && <section className="card"><h2>施設画像調査</h2><p className="muted">自動候補がない、または全候補が却下された場合にのみ使用します。</p><textarea readOnly value={prompt} style={{ minHeight: 300 }}/><div className="actions"><button className="button secondary" onClick={() => navigator.clipboard.writeText(prompt).then(() => setMessage("Promptをコピーしました"))}>施設画像調査Promptをコピー</button></div></section>}
 

@@ -121,6 +121,15 @@ Use local files for:
 
 Within the prototype, `prototype/design-guide.html` is the source of truth for the **current prototype Global Design Rules**. It may still be exploratory and does not by itself promote a rule into an approved product specification.
 
+### External-source AI transformation
+
+- AI is never the content source. Preserve the actual source type and field-level source URL; CSV is only transport.
+- For Venue Source B, Codex may structure only text and metadata captured by the Official Website Crawler. Do not add web search, third-party data, general knowledge, or guesses.
+- Preserve existing values. Fill blanks by default; record conflicts or ambiguity instead of overwriting.
+- Source priority is `Manual > Official Website > Trusted API > Wikidata`.
+- Mark AI-transformed fields with `generated_by_ai=true` in provenance while keeping `source=official_website`.
+- LOCAL runs use only the sample size needed for a decision. Do not run full AI enrichment, production crawling, or scheduled synchronization without explicit approval.
+
 ### Prototype status
 
 `prototype/` is intentionally experimental.
@@ -502,6 +511,23 @@ Do not turn an idea into a Requirement automatically.
 - When a capability becomes a Requirement, preserve its supporting evidence and link relevant Decisions.
 
 Prototype existence alone is not sufficient reason to create a Requirement.
+
+---
+
+## Master Data Source Policy
+
+For canonical Master fields, use the default priority `Manual > Official Website > Trusted API > Wikidata`.
+
+CSV is a transport rather than a trust level. A CSV produced from a known source must declare that source (for example, Source B exports use `source_type = official_website`). An undeclared generic CSV must not automatically displace an attributable source.
+
+- Save directly stated values from a reliable source at the explicit import confirmation boundary; do not add a separate field-by-field accept/reject step.
+- Require human judgment only when equally credible candidates cannot be resolved uniquely or when an explicit higher-priority override is requested.
+- Never let enrichment overwrite Manual provenance automatically.
+- Preserve field provenance, source URL, value snapshot, timestamp, AI-generation flag, and current/history state even when field-level review is unnecessary.
+- Use content-wide Publish / Unpublish as the final release control.
+- Official Website Source B must remain `Crawl → CSV Download → CSV Preview → Confirm → DB`; the crawler must never update Venue Master directly.
+- Source B must stay on the official domain, honor robots.txt, and use bounded pages, response size, timeout, retry, delay, and concurrency.
+- Description source text is evidence, not Muuzee copy. AI-assisted description text must be explicitly marked and must not be presented as a source quotation.
 
 ---
 

@@ -38,7 +38,7 @@ Discoveryは`P31/P279*`とQ17で絞り、P576があるEntityを除外する。li
 | P281 | `postal_code` | 明示値のみ |
 | P625 | coordinates | Newまたは空欄Existingだけ。source=wikidata |
 | P856 | `official_url` | 空欄だけ補完 |
-| P18 | image candidate | Commons metadata取得後もNeeds Review |
+| P18 | image candidate | Commons metadataとrights情報を保存し、Primary画像選択は別操作 |
 | P373 | raw payload | Commons category。canonical列は増やさない |
 | P1619 / P571 | `inception_year` | official opening優先、なければinception |
 | P3025 | `opening_hours_text` | string明示時のみ |
@@ -59,17 +59,18 @@ Wikidata sourceの`external_id = QID`を一意キーとし、raw + discovery cla
 
 - QID link済み + checksum同一 → Unchanged。Venue更新をskip
 - QID link済み + checksum変更 → Changed。空欄だけ補完
-- QID未登録 + confidence 0.85以上 → Existing VenueへLink
-- QID未登録 + confidence 0.60以上0.85未満 → Duplicateを作らずNeeds Review
-- 有力なExisting matchなし → New VenueをDraft作成
+- Existing VenueにWikidata候補が1件 → confidenceによらずSource Aとして自動適用
+- Existing Venueに候補が複数 → Duplicateを作らずSource Candidate Selection
+- 候補なし → Existing Venueは変更しない
+- Source A discoveryで既存候補がない独立Entity → New VenueをDraft作成
 
-Admin詳細でName / Name EN / Address / Official URL / Coordinates / P18 / Confidence / Reasonsを比較し、Link、Create New、Ignoreを人が選ぶ。
+Admin詳細でName / Name EN / Address / Official URL / Coordinates / P18 / Confidence / Reasonsを診断できる。人の操作は複数identity候補からCanonical Sourceを1件選ぶ場合だけで、Field単位の採用操作はない。
 
 ## Field priority and provenance
 
-既存値は自動上書きしない。ManualまたはApproved provenanceは値が空でも保護する。空欄へ保存した値は`venue_field_sources.source=wikidata`、`review_status=unreviewed`とする。異なるSource値は非current provenance候補として残す。
+Source Priorityは`Manual > Official Website > Trusted API > Wikidata`。空欄、またはcurrent provenanceがWikidataのFieldはSource Aで保存・更新する。Manual / Official Website / Trusted APIは上書きしない。反映値は`venue_field_sources.source=wikidata`、`is_current=true`として追跡し、低優先度の異なる値はHistoryに残す。`review_status`は互換・履歴metadataでありData適用Gateではない。
 
-New VenueのWikidata座標は`coordinate_source=wikidata`で保存する。Existing Venueでは両座標が空のときだけ補完する。
+単一Source CandidateのWikidata座標は、より上位Sourceの座標がなければ`coordinate_source=wikidata`で自動保存する。
 
 ## P18 image and rights
 
@@ -79,11 +80,11 @@ New VenueのWikidata座標は`coordinate_source=wikidata`で保存する。Exist
 
 `API Import → Wikidata`から件数指定Importまたは全件同期を実行する。Full Syncは事前COUNTを成功条件にせず、museum rootとart gallery rootを別々にQID文字列順で巡回する。各rootで直前QIDをcursorとして次の100件を取得し、100件未満のpageを終端とする。root間の重複QIDは同じrun内で除外する。この方式は総件数不明のまま開始でき、大量OFFSETと集約Queryを避けられる。
 
-各Discovery pageは取得直後に詳細取得・正規化・保存まで完了させてから次へ進む。Adminは最新の`import_runs.metrics`をpollingし、Processed / Fetched / New / Linked Existing / Updated / Unchanged / Needs Review / Image Candidate Added / Errors、page数、retry数、現在root / cursorを表示する。正確なpercentageや事前総件数は表示しない。
+各Discovery pageは取得直後に詳細取得・正規化・保存まで完了させてから次へ進む。Adminは最新の`import_runs.metrics`をpollingし、Processed / Fetched / New / Linked Existing / Updated / Unchanged / Source Selection / Image Candidate Added / Errors、page数、retry数、現在root / cursorを表示する。正確なpercentageや事前総件数は表示しない。
 
-Full Syncは全QIDをscanし、New / Changed / Unchanged / Needs Reviewを集計する。同じQID、source record、image candidateはupsertされる。Sourceから見えなくなったVenueを自動Delete、Archive、Unpublishしない。
+Full Syncは全QIDをscanし、New / Changed / Unchanged / Source Selectionを集計する。同じQID、source record、image candidateはupsertされる。Sourceから見えなくなったVenueを自動Delete、Archive、Unpublishしない。
 
-`import_runs.operation_type=wikidata_venue_import`へ標準件数と、linked / needs review / image candidate / completeness before-afterを`metrics`で保存する。途中失敗は`partial`または`failed`であり`completed`にしない。
+`import_runs.operation_type=wikidata_venue_import`へ標準件数と、linked / source selection / image candidate / completeness before-afterを`metrics`で保存する。途中失敗は`partial`または`failed`であり`completed`にしない。
 
 ## Rate-limit protection
 
@@ -108,7 +109,7 @@ Venue totalは178→301、平均Completenessは17%→29%。QID source record 125
 
 ## Source A operational report
 
-全件同期後の再現可能な診断は`supabase/snippets/wikidata_venue_source_a_report.sql`を使用する。Venue総数、type、全field coverage、現行6項目のCompleteness、P18 / Commons候補 / rights / approved image、reported license、Needs Review理由、Source-A-created Venueと既存VenueのPotential Duplicateを読み取り専用で出力する。Duplicateは自動Mergeしない。
+全件同期後の再現可能な診断は`supabase/snippets/wikidata_venue_source_a_report.sql`を使用する。Venue総数、type、全field coverage、現行6項目のCompleteness、P18 / Commons候補 / rights / approved image、reported license、Source Candidate理由、Source-A-created Venueと既存VenueのPotential Duplicateを読み取り専用で出力する。Duplicateは自動Mergeしない。
 
 ### Full Sync result — 2026-09-05 LOCAL
 
@@ -121,18 +122,18 @@ Venue totalは178→301、平均Completenessは17%→29%。QID source record 125
 | Linked Existing | 3 |
 | Updated | 5 |
 | Unchanged | 123 |
-| Needs Review | 156 Venues / 178 candidate rows |
+| Legacy unresolved candidates | 156 Venues / 178 candidate rows |
 | Image Candidate Added in this run | 3,119 |
 | Retry / Error | 0 / 0 |
 | Elapsed | 51m 30s |
 
 Venueは301→4,980（Published 1 / Draft 4,979）、現行Completenessは29%→38%。Discovery 4,970件と処理4,963件の差7件は、詳細取得後にVenueへ正規化できなかったEntityであり、API Errorではない。
 
-Source-A-created Venueと既存Venueの間で、exact name / name_en / official domain / address / approximately 500m coordinatesを使った事後診断による新規重複pairは0件。Importerが作成を止めたNeeds Reviewは156 Venue・178候補あり、自動Mergeせず人が判断する。1 Venueへ複数QIDがlinkされた対象は3件（上石津郷土資料館、旭川市博物館、札幌大学埋蔵文化財展示室）で、Wikidata側identityの手動確認が必要。
+Source-A-created Venueと既存Venueの間で、exact name / name_en / official domain / address / approximately 500m coordinatesを使った事後診断による新規重複pairは0件。この旧runで未適用だった候補は今回のSource Application Policyで再分類する。1 Venueへ複数QIDがlinkされた対象はSource Candidate Selectionが必要で、自動Mergeしない。
 
 P18は3,171 Venue source recordsあり、Commons candidate 3,171件を3,170 Venueへ保存した（1 Venueは複数QID由来）。全candidateがRights未確認で、Approved Imageは0。画像権利は自動承認しない。
 
-Source Aの全件投入機構は、安定したJapan museum / gallery seed sourceとして一旦完了扱いにできる。ただしSource A単独で運営用Venue Masterが完成した意味ではない。Needs Reviewと複数QIDを解消し、Source Bで営業時間、休館日、アクセス、住所階層、説明、rights-cleared imageを補う必要がある。
+Source Aの全件投入機構は、安定したJapan museum / gallery seed sourceとして一旦完了扱いにできる。ただしSource A単独で運営用Venue Masterが完成した意味ではない。複数QIDだけを選択し、Source Bで営業時間、休館日、アクセス、住所階層、説明、rights-cleared imageを補う必要がある。
 
 ## Known limitations
 

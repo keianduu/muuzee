@@ -21,10 +21,10 @@ describe("Wikidata Venue importer decisions", () => {
     expect(classifyWikidataVenueMatch(0.4)).toBe("none");
   });
 
-  it("protects populated, manual, and approved fields", () => {
-    expect(isProtectedVenueField("manual value", null)).toBe(true);
+  it("uses source priority instead of treating every populated field as protected", () => {
+    expect(isProtectedVenueField("unattributed value", null)).toBe(false);
     expect(isProtectedVenueField(null, { source: "manual", review_status: "unreviewed" })).toBe(true);
-    expect(isProtectedVenueField(null, { source: "other", review_status: "approved" })).toBe(true);
+    expect(isProtectedVenueField(null, { source: "official_website", review_status: "applied" })).toBe(true);
     expect(isProtectedVenueField(null, { source: "wikidata", review_status: "unreviewed" })).toBe(false);
   });
 

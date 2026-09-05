@@ -60,6 +60,9 @@ export const STATUS_LABELS: Record<string, string> = {
   matched: "Linked（紐付け済み）",
   missing: "Missing（未設定）",
   manual: "Manual（手動）",
+  applied: "Applied（優先度により反映）",
+  official_website: "Official Website（公式サイト）",
+  trusted_api: "Trusted API（信頼済API）",
 };
 
 export function displayStatus(value: unknown) {

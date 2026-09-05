@@ -16,7 +16,7 @@ export async function MasterIndexPage({ entity, searchParams }: { entity: Master
   const query = new URLSearchParams(params); query.delete("page"); query.delete("pageSize"); query.delete("selected");
   const config = MASTER_CONFIGS[entity];
   return <>
-    <div className="page-head"><div><p className="eyebrow">Master Admin v1</p><h1>{config.label}s</h1><p className="muted">正規マスターデータ · 公開前に人の確認が必要です</p></div></div>
+    <div className="page-head"><div><p className="eyebrow">Master Admin v1</p><h1>{config.label}s</h1><p className="muted">正規マスターデータ · Content全体を公開状態で最終管理します</p></div></div>
     {!result.configured && <div className="notice">Supabase環境変数が未設定です。</div>}
     {result.error && <div className="error">{result.error}</div>}
     <MasterFilter entity={entity} params={params}/>

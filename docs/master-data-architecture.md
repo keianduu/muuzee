@@ -4,7 +4,7 @@ Status: Draft. This document is the technical Source of Truth for the current ma
 
 ## Venue Source A
 
-Venue Master Source AはWikidata。Japanのmuseum / art gallery系QIDをDiscoveryし、QIDをstable external IDとして差分同期する。Full Syncは事前COUNTに依存せず、root別・QID順のcursor paginationで最後のpageまで逐次保存する。既存Venueとの曖昧一致は重複作成せずHuman Reviewへ送り、新規VenueはDraftから開始する。詳細は[`docs/integrations/wikidata-venue-import.md`](./integrations/wikidata-venue-import.md)を参照。
+Venue Master Source AはWikidata。Japanのmuseum / art gallery系QIDをDiscoveryし、QIDをstable external IDとして差分同期する。単一のidentity candidateはconfidenceをGateにせず既存Venueへ適用し、複数候補だけSource Candidate Selectionへ送る。新規VenueはDraftから開始する。詳細は[`docs/integrations/wikidata-venue-import.md`](./integrations/wikidata-venue-import.md)と[`docs/master-data/source-application-policy.md`](./master-data/source-application-policy.md)を参照。
 
 ## 1. Core masters
 
@@ -36,7 +36,7 @@ External IDs, names, or URLs must never replace a Muuzee UUID primary key. A sou
 
 Deleting a master sets the source owner to null instead of deleting the raw audit record. Provider values such as the original venue or artist string remain in the raw payload and matching tables for audit and rematching. They are not canonical display values.
 
-Venue Wikidata identity and human match state remain in `venue_external_match_candidates`. The duplicated `venues.wikidata_id` shortcut was removed.
+Venue Wikidata identity candidates and match diagnostics remain in `venue_external_match_candidates`. `candidate` means identity selection is unresolved; `needs_review` is no longer an application gate. The duplicated `venues.wikidata_id` shortcut was removed.
 
 ## 4. Master ID rule
 
@@ -49,7 +49,7 @@ External record
   → render by joining the master
 ```
 
-For example, a source venue name resolves to `exhibition_occurrences.venue_id`; an artist name resolves to `exhibition_artists.artist_id`. Low-confidence matching must remain reviewable rather than being forced.
+For example, a source venue name resolves to `exhibition_occurrences.venue_id`; an artist name resolves to `exhibition_artists.artist_id`. For Venue Source A, candidate count—not confidence—is the identity gate: one candidate is applied, multiple candidates require selection, and zero candidates leave the Master unchanged.
 
 ## 5. Field-level enrichment
 
@@ -60,30 +60,29 @@ The provenance tables are deliberately separate to preserve foreign-key integrit
 - `work_field_sources`
 - `exhibition_field_sources`
 
-Each records `field_name`, human-readable `source`, optional `source_url` and `source_record_id`, a JSON `value_snapshot`, `generated_by_ai`, `review_status`, `is_current`, and timestamps. A partial unique index allows at most one current provenance row for each master field.
+Each records `field_name`, human-readable `source`, optional `source_url` and `source_record_id`, a JSON `value_snapshot`, `generated_by_ai`, optional AI confidence / transformation notes, `review_status`, `is_current`, and timestamps. A partial unique index allows at most one current provenance row for each master field. AIはSourceではなく、公式サイト等のSourceを構造化するTransformationとして記録する。
 
-These tables record where a value came from; they do not silently overwrite a manual or approved master value. Application code that performs future enrichment must explicitly choose when a candidate becomes current.
+These tables record where a value came from. Reliable source values become current at an explicit import boundary according to system priority; they do not require a separate field-level accept/reject action. `review_status` remains compatibility/history metadata and does not control product use. Manual values remain protected. Multiple identity candidates stay unresolved for human selection.
 
 ## 6. AI and CSV fallback
 
-Master Admin v1 implements CSV export, Preview, conflict detection, explicit Confirm, and field-level `csv_import` provenance. AI enrichment remains unimplemented. The supported sequence is:
+Master Admin v1 implements CSV export, Preview, conflict detection, explicit Confirm, and field-level provenance. AI API enrichment remains unimplemented. The supported sequence is:
 
 ```text
 Detect missing fields
   → export/research using CSV or AI
   → Preview and classify New / Update / Unchanged / Invalid
-  → stop Manual / Approved conflicts for explicit human confirmation
-  → import as unreviewed provenance
+  → stop higher-priority and ambiguous conflicts for explicit human confirmation
+  → apply reliable fields using source priority
   → mark generated_by_ai when applicable
-  → human review
-  → update master and current provenance explicitly
+  → update master and current provenance
 ```
 
 AI-generated values must never be presented as verified facts merely because they exist in a provenance table.
 
-## 7. Human review and override priority
+## 7. Source priority, ambiguity, and publication
 
-Human-approved values, manual coordinates, image rights judgments, credits, and usage notes take priority over automatic enrichment. Re-enrichment must preserve those decisions. Publication status remains the lightweight existing sequence `draft → ready → published → archived`; this change does not introduce a workflow engine.
+The default field priority is `Manual > Official Website > Trusted API > Wikidata`. CSV is a transport rather than a source rank; an attributable CSV must declare its real source, while an undeclared generic CSV does not override sourced values automatically. Field-level accept/reject review is not the normal workflow. Human judgment is required when multiple candidates cannot be uniquely resolved, or when an operator explicitly chooses to override a higher-priority value. Re-enrichment must preserve manual decisions. Publication status remains the final content-wide control using `draft → ready → published → archived`.
 
 `media_assets` serves all four masters through explicit `exhibition_id`, `venue_id`, `artist_id`, and `work_id` foreign keys. Exactly one owner is required, preventing orphan or ambiguous assets. Raw reported license, license URL, author, and usage terms are stored separately from Muuzee’s three-way rights classification:
 
@@ -105,7 +104,7 @@ Source A
   → manual review and final approval
 ```
 
-Source order is field-specific. Manual overrides must not be overwritten by scheduled enrichment.
+Source B is the bounded Official Website Crawler documented in [`docs/integrations/official-venue-crawler.md`](./integrations/official-venue-crawler.md). Source order follows the priority above unless a field has a documented exception. Manual overrides must not be overwritten by enrichment.
 
 ## 9. Difference from daily exhibition sync
 
@@ -126,7 +125,7 @@ Master enrichment and daily exhibition sync must not be combined into one job. T
 
 Current scope includes schema, validation SQL, the existing Art Commons / Exhibition / Venue workflows, and Master Admin v1 shared CRUD / CSV / publication / deletion-safety interfaces.
 
-Future scope includes real Artist/Work source adapters and matching, AI-assisted research, authenticated remote environments, deployment, scheduling, and remote-environment Full Sync. Venue currently has Wikidata Source A Import and the existing Venue Enrichment adapter; both remain local-only and human-review-first.
+Future scope includes real Artist/Work source adapters and matching, AI-assisted research, authenticated remote environments, deployment, scheduling, Source C, and remote-environment Full Sync. Venue currently has Wikidata Source A and Official Website Source B. Source B is local-only and always stops at a CSV artifact before explicit Preview / Confirm.
 
 ## Validation and reproducibility
 

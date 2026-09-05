@@ -5,7 +5,7 @@ import type { ScoredWikidataCandidate } from "@/lib/wikidata/types";
 const candidate = (id: string, confidence: number, imageFileTitle: string | null): ScoredWikidataCandidate => ({
   id, confidence, imageFileTitle, labelJa: id, labelEn: null, aliases: [], description: null,
   officialUrl: null, latitude: null, longitude: null, countryId: "Q17", raw: {}, reasons: [],
-  suggestedStatus: confidence >= 0.85 ? "matched" : confidence >= 0.6 ? "candidate" : "needs_review",
+  suggestedStatus: confidence >= 0.85 ? "matched" : "candidate",
 });
 
 describe("unconfirmed Wikidata image candidates", () => {

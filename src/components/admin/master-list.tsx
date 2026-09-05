@@ -10,12 +10,16 @@ import type { CsvPreviewRow } from "@/lib/admin/master-csv";
 import { MASTER_CONFIGS, type MasterEntity } from "@/lib/admin/master-config";
 import { displayStatus } from "@/lib/admin/master-labels";
 import { MASTER_IMPORTERS } from "@/lib/admin/master-importers";
+import { VENUE_AI_ENRICHMENT_PROMPT } from "@/lib/admin/venue-ai-enrichment-prompt";
 import type { MasterListResult } from "@/lib/admin/master-repository";
 import { mergeUniqueRows, pageQuery, selectedQuery } from "@/lib/admin/master-list-state";
+import { VenueCanonicalReview } from "./venue-canonical-review";
 
 type ListRow = MasterListResult["rows"][number];
 type Preview = { rows: CsvPreviewRow[]; summary: { total: number; new: number; update: number; unchanged: number; invalid: number; conflicts: number } };
-type WikidataSummary = { processed: number; fetched: number; discoveryPages: number; retryCount: number; newVenues: number; linkedExisting: number; updated: number; unchanged: number; needsReview: number; imageCandidatesAdded: number; errors: unknown[]; before: { total: number; averageCompleteness: number }; after: { total: number; averageCompleteness: number } };
+type WikidataSummary = { processed: number; fetched: number; discoveryPages: number; retryCount: number; newVenues: number; linkedExisting: number; updated: number; unchanged: number; sourceSelectionRequired: number; imageCandidatesAdded: number; errors: unknown[]; before: { total: number; averageCompleteness: number }; after: { total: number; averageCompleteness: number } };
+type OfficialCrawlRow = { venue_id: string; name: string; crawl_status: string; address: string; postal_code: string; opening_hours_text: string; closed_days_text: string; access_text: string; description_source_text: string; notes: string };
+type OfficialCrawlResult = { runId: string; rows: OfficialCrawlRow[]; summary: { requested: number; processed: number; success: number; partial: number; blocked: number; failed: number; coverage: Record<string, number> } };
 
 function relationLabel(value: unknown, relation: string, key: string) {
   const list = (value || []) as Array<Record<string, unknown>>;
@@ -37,7 +41,11 @@ function rowsFor(entity: MasterEntity, rows: ListRow[]) {
         const values = Array.isArray(source.data_sources) ? source.data_sources : source.data_sources ? [source.data_sources] : [];
         return values.map((value) => value.key).filter(Boolean);
       }))].join(" / ") || "未設定",
-      ((row.venue_external_match_candidates || []) as Array<{ status?: string }>).some((item) => item.status === "needs_review" || item.status === "candidate") ? "Needs Review" : ((row.venue_external_match_candidates || []) as Array<{ status?: string }>).some((item) => item.status === "matched") ? "Linked" : "未設定",
+      ((row.source_records || []) as Array<{ data_sources?: { key?: string } | Array<{ key?: string }> }>).some((source) => (Array.isArray(source.data_sources) ? source.data_sources : source.data_sources ? [source.data_sources] : []).some((item) => item.key === "wikidata"))
+        ? "Linked"
+        : ((row.venue_external_match_candidates || []) as Array<{ status?: string }>).filter((item) => item.status === "candidate").length > 1
+          ? `Source selection (${((row.venue_external_match_candidates || []) as Array<{ status?: string }>).filter((item) => item.status === "candidate").length})`
+          : "No source link",
       `${((row.exhibition_occurrences || []) as unknown[]).length} exhibitions / ${((row.collection_holdings || []) as unknown[]).length} works`],
   }));
   if (entity === "artists") return rows.map((row) => ({
@@ -78,10 +86,26 @@ export function MasterList({ entity, result, queryString }: { entity: MasterEnti
   const [csvText, setCsvText] = useState("");
   const [wikidataCount, setWikidataCount] = useState(20);
   const [wikidataSummary, setWikidataSummary] = useState<WikidataSummary | null>(null);
+  const [officialCount, setOfficialCount] = useState(5);
+  const [officialMissingField, setOfficialMissingField] = useState("");
+  const [officialResult, setOfficialResult] = useState<OfficialCrawlResult | null>(null);
   const displayRows = useMemo(() => rowsFor(entity, rows), [entity, rows]);
   const hasMore = rows.length < result.total;
 
   useEffect(() => { setRows(latestInitialRows.current); setPage(1); setLoadError(""); }, [queryString]);
+
+  useEffect(() => {
+    const reloadList = async () => {
+      try {
+        const response = await fetch(`/api/admin/masters/${entity}?${pageQuery(queryString, 1)}`, { cache: "no-store" });
+        const body = await response.json() as MasterListResult;
+        if (!response.ok || body.error) throw new Error(body.error || "一覧の更新に失敗しました。");
+        setRows(body.rows); setPage(1); setLoadError("");
+      } catch (error) { setLoadError(error instanceof Error ? error.message : "一覧の更新に失敗しました。"); }
+    };
+    window.addEventListener("muuzee:master-updated", reloadList);
+    return () => window.removeEventListener("muuzee:master-updated", reloadList);
+  }, [entity, queryString]);
 
   useEffect(() => {
     const target = sentinel.current;
@@ -139,9 +163,8 @@ export function MasterList({ entity, result, queryString }: { entity: MasterEnti
   async function executeCsv() {
     if (!preview) return;
     if (preview.summary.invalid) { setMessage("Invalid行を修正してから再度Previewしてください。"); return; }
-    const allowConflicts = preview.summary.conflicts > 0 && window.confirm(`${preview.summary.conflicts}件のManual / Approved値との競合があります。明示的に上書きしますか？`);
-    if (preview.summary.conflicts && !allowConflicts) { setMessage("競合値は上書きしていません。"); return; }
-    if (!window.confirm(`New ${preview.summary.new} / Update ${preview.summary.update} をImportしますか？`)) return;
+    const allowConflicts = false;
+    if (!window.confirm(`New ${preview.summary.new} / Update ${preview.summary.update} をImportしますか？${preview.summary.conflicts ? `\n${preview.summary.conflicts}件の高優先度Fieldは保護し、それ以外を反映します。` : ""}`)) return;
     const body = await jsonRequest(`/api/admin/masters/${entity}/csv/execute`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csv: csvText, allowConflicts }) });
     if (body) { setPreview(null); setCsvText(""); }
   }
@@ -169,10 +192,31 @@ export function MasterList({ entity, result, queryString }: { entity: MasterEnti
     }
   }
 
+  async function officialCrawl(mode: "selected" | "filtered" | "count") {
+    if (entity !== "venues") return;
+    if (mode === "selected" && !selected.length) { setMessage("対象Venueを選択してください。"); return; }
+    const filters = Object.fromEntries([...new URLSearchParams(queryString).entries()].filter(([key]) => key !== "page" && key !== "selected"));
+    const body = await jsonRequest("/api/admin/venues/crawl/official", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, ids: mode === "selected" ? selected : undefined, limit: officialCount, missingField: officialMissingField, filters }),
+    });
+    if (body) {
+      setOfficialResult(body as OfficialCrawlResult);
+      setMessage("公式サイトの取得が完了しました。Masterはまだ変更されていません。CSVをDownloadし、必要なら編集後にCSV Previewへ進んでください。");
+    }
+  }
+
+  function openCsvImport() {
+    const menu = document.getElementById("master-csv-menu") as HTMLDetailsElement | null;
+    if (!menu) return;
+    menu.open = true;
+    menu.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   return <>
     <div className="master-action-bar">
       <Link className="button" href={`/admin/${entity}/new`}>Manual Input（手動追加）</Link>
-      <details className="action-menu"><summary className="button secondary">CSV（入出力）</summary><div className="action-popover">
+      <details className="action-menu" id="master-csv-menu"><summary className="button secondary">CSV（入出力）</summary><div className="action-popover">
         <strong>CSV Export / Import（書出・取込）</strong>
         <a href={`/api/admin/masters/${entity}/csv?mode=all`}>全件Download（ダウンロード）</a>
         <a href={`/api/admin/masters/${entity}/csv?mode=template`}>Template CSV（ひな型）</a>
@@ -183,17 +227,33 @@ export function MasterList({ entity, result, queryString }: { entity: MasterEnti
         {MASTER_IMPORTERS[entity].map((importer) => <div key={importer.key}><p>{importer.label}</p><small className="muted">{importer.description}</small>{importer.key === "wikidata-venue-import" && <label className="field"><span>Count（1–500）</span><input type="number" min="1" max="500" value={wikidataCount} onChange={(event) => setWikidataCount(Math.max(1, Math.min(500, Number(event.target.value) || 1)))}/></label>}<div className="actions"><button className="button secondary" disabled={busy || !importer.sampleAvailable} onClick={() => sampleImport(importer.key === "wikidata-venue-import" ? wikidataCount : 5, importer.key)}>{importer.key === "wikidata-venue-import" ? "Import" : "Sample 5"}</button><button className="button secondary" disabled={busy || !importer.fullSyncAvailable} onClick={importer.key === "wikidata-venue-import" ? fullWikidataSync : undefined}>{importer.fullSyncAvailable ? "Wikidata 全件同期" : "Full Sync（未実装）"}</button></div></div>)}
         {!MASTER_IMPORTERS[entity].length && <p className="muted">利用可能な外部データソースは未接続です。架空のImportは実行しません。</p>}
       </div></details>
+      {entity === "venues" && <details className="action-menu"><summary className="button secondary">公式サイト情報取得</summary><div className="action-popover official-crawl-menu">
+        <strong>Official Website Crawler（Source B）</strong>
+        <small className="muted">公式URLと同じdomain内を最大6ページ確認し、結果をCSV化します。この操作だけではMasterを更新しません。</small>
+        <label className="field"><span>不足Fieldを優先</span><select value={officialMissingField} onChange={(event) => setOfficialMissingField(event.target.value)}>
+          <option value="">指定なし</option><option value="address">Address</option><option value="postal_code">Postal code</option><option value="opening_hours_text">Opening hours</option><option value="closed_days_text">Closed days</option><option value="access_text">Access</option><option value="description">Description source</option>
+        </select></label>
+        <label className="field"><span>Count（1–50 / local test）</span><input type="number" min="1" max="50" value={officialCount} onChange={(event) => setOfficialCount(Math.max(1, Math.min(50, Number(event.target.value) || 1)))}/></label>
+        <div className="actions"><button className="button secondary" disabled={busy || !selected.length} onClick={() => officialCrawl("selected")}>選択中をCrawl</button><button className="button secondary" disabled={busy} onClick={() => officialCrawl("filtered")}>現在のFilterから{officialCount}件</button></div>
+      </div></details>}
       <span className="action-spacer"/><button className="button secondary" disabled={busy || !selected.length} onClick={() => bulk("publish")}>選択をPublish（公開）</button><button className="button secondary" disabled={busy || !selected.length} onClick={() => bulk("unpublish")}>選択をUnpublish（非公開）</button>
     </div>
 
+    {entity === "venues" && <VenueCanonicalReview/>}
+
+    {officialResult && <section className="card csv-preview"><h2>Official Website Crawl Result</h2><p className="muted">Run ID: {officialResult.runId}。この結果は未反映です。CSV Preview / Confirm後にのみMasterへ保存されます。</p><div className="preview-counts">
+      <span className="status">Processed: {officialResult.summary.processed}</span><span className="status approved">Success: {officialResult.summary.success}</span><span className="status">Partial: {officialResult.summary.partial}</span><span className="status rejected">Blocked: {officialResult.summary.blocked}</span><span className="status rejected">Failed: {officialResult.summary.failed}</span>
+      {Object.entries(officialResult.summary.coverage).map(([key, value]) => <span className="status" key={key}>{key}: {value}</span>)}
+    </div><div className="table-wrap"><table><thead><tr><th>Venue</th><th>Status</th><th>Address</th><th>Hours</th><th>Closed</th><th>Access</th><th>Description source</th><th>Notes</th></tr></thead><tbody>{officialResult.rows.map((row) => <tr key={row.venue_id}><td><strong>{row.name}</strong></td><td><span className="status">{row.crawl_status}</span></td><td>{row.address || row.postal_code || "—"}</td><td>{row.opening_hours_text || "—"}</td><td>{row.closed_days_text || "—"}</td><td>{row.access_text || "—"}</td><td>{row.description_source_text || "—"}</td><td>{row.notes || "—"}</td></tr>)}</tbody></table></div><div className="actions"><a className="button" href={`/api/admin/venues/crawl/official/${officialResult.runId}/csv`}>Crawler CSV Download</a><a className="button" href={`/api/admin/venues/crawl/official/${officialResult.runId}/ai-csv`}>AI補完用CSV Download</a><button className="button secondary" onClick={() => navigator.clipboard.writeText(VENUE_AI_ENRICHMENT_PROMPT).then(() => setMessage("AI補完Promptをコピーしました。"))}>AI補完Promptをコピー</button><button className="button secondary" onClick={openCsvImport}>Structured CSVをImport</button><button className="button secondary" onClick={() => setOfficialResult(null)}>Close</button></div></section>}
+
     {preview && <section className="card csv-preview"><h2>CSV Preview</h2><div className="preview-counts">
       {Object.entries(preview.summary).map(([key, value]) => <span className={`status ${key === "invalid" || key === "conflicts" ? "rejected" : key === "new" ? "approved" : ""}`} key={key}>{key}: {value}</span>)}
-    </div><div className="table-wrap"><table><thead><tr><th>Line</th><th>Record</th><th>Classification</th><th>Changed fields</th><th>Conflict / Error</th></tr></thead><tbody>{preview.rows.map((row) => <tr key={row.line}><td>{row.line}</td><td>{row.label}</td><td><span className={`status ${row.status === "invalid" ? "rejected" : row.status === "new" ? "approved" : ""}`}>{row.status}</span></td><td>{row.changedFields.join("、") || "なし"}</td><td>{[...row.conflicts.map((field) => `${field}: Manual/Approved`), ...row.errors].join(" / ") || "なし"}</td></tr>)}</tbody></table></div><div className="actions"><button className="button" disabled={busy || preview.summary.invalid > 0} onClick={executeCsv}>Confirm Import</button><button className="button secondary" onClick={() => { setPreview(null); setCsvText(""); }}>Cancel</button></div></section>}
+    </div><div className="table-wrap"><table><thead><tr><th>Line</th><th>Record</th><th>Classification</th><th>Before → After</th><th>Conflict / Error</th></tr></thead><tbody>{preview.rows.map((row) => <tr key={row.line}><td>{row.line}</td><td>{row.label}</td><td><span className={`status ${row.status === "invalid" ? "rejected" : row.status === "new" ? "approved" : ""}`}>{row.status}</span></td><td>{row.changes.map((change) => `${change.field}: ${String(change.before ?? "—")} → ${String(change.after ?? "—")}`).join(" / ") || "なし"}</td><td>{[...row.conflicts.map((field) => `${field}: higher-priority source`), ...row.errors].join(" / ") || "なし"}</td></tr>)}</tbody></table></div><div className="actions"><button className="button" disabled={busy || preview.summary.invalid > 0} onClick={executeCsv}>Confirm Import</button><button className="button secondary" onClick={() => { setPreview(null); setCsvText(""); }}>Cancel</button></div></section>}
 
     {wikidataSummary && <section className="card"><h2>Wikidata Import Summary</h2><div className="preview-counts">{[
       ["Processed", wikidataSummary.processed], ["Fetched", wikidataSummary.fetched], ["Pages", wikidataSummary.discoveryPages], ["Retries", wikidataSummary.retryCount],
       ["New Venue", wikidataSummary.newVenues], ["Linked Existing", wikidataSummary.linkedExisting],
-      ["Updated", wikidataSummary.updated], ["Unchanged", wikidataSummary.unchanged], ["Needs Review", wikidataSummary.needsReview],
+      ["Updated", wikidataSummary.updated], ["Unchanged", wikidataSummary.unchanged], ["Source Selection", wikidataSummary.sourceSelectionRequired],
       ["Image Candidate Added", wikidataSummary.imageCandidatesAdded], ["Errors", wikidataSummary.errors.length],
     ].map(([label, value]) => <span className="status" key={String(label)}>{label}: {String(value)}</span>)}</div><p className="muted">Venue: {wikidataSummary.before.total} → {wikidataSummary.after.total} / Average completeness: {wikidataSummary.before.averageCompleteness}% → {wikidataSummary.after.averageCompleteness}%</p></section>}
 

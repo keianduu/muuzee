@@ -39,7 +39,7 @@ export type MasterListResult = {
 };
 
 const selectByEntity: Record<MasterEntity, string> = {
-  venues: "*, media_assets(*), venue_field_sources(*), venue_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_venue_id_fkey(*, data_sources(name,key), source_image_candidates(*)), venue_external_match_candidates(*), exhibition_occurrences(id,start_date,end_date,exhibition_id,exhibitions(id,title)), collection_holdings(id,work_id,works(id,title))",
+  venues: "*, media_assets(*), venue_field_sources(*), official_venue_crawl_results(*), venue_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_venue_id_fkey(*, data_sources(name,key), source_image_candidates(*)), venue_external_match_candidates(*), exhibition_occurrences(id,start_date,end_date,exhibition_id,exhibitions(id,title)), collection_holdings(id,work_id,works(id,title))",
   artists: "*, media_assets(*), artist_field_sources(*), artist_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_artist_id_fkey(*, data_sources(name,key), source_image_candidates(*)), exhibition_artists(id,exhibition_id,exhibitions(id,title)), work_artists(id,work_id,role,works(id,title))",
   works: "*, media_assets(*), work_field_sources(*), work_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_work_id_fkey(*, data_sources(name,key), source_image_candidates(*)), work_artists(id,artist_id,role,artists(id,name)), collection_holdings(id,venue_id,holding_type,inventory_number,venues(id,name))",
 };
@@ -129,10 +129,49 @@ async function filteredIdsByRelation(entity: MasterEntity, options: MasterListOp
     allowed = intersect(allowed, ((data || []) as unknown as Array<Record<string, unknown>>).map((row) => String(row[config.ownerKey])));
   }
   if (entity === "venues" && options.match) {
-    const statuses = options.match === "review" ? ["candidate", "needs_review"] : [options.match];
-    const { data, error } = await db.from("venue_external_match_candidates").select("venue_id").eq("provider", "wikidata").in("status", statuses);
-    if (error) throw error;
-    allowed = intersect(allowed, (data || []).map((row) => row.venue_id));
+    const { data: wikidataSource, error: wikidataSourceError } = await db.from("data_sources").select("id").eq("key", "wikidata").maybeSingle();
+    if (wikidataSourceError) throw wikidataSourceError;
+    const linkedVenueIds = new Set<string>();
+    if (wikidataSource?.id) {
+      for (let offset = 0; ; offset += 1000) {
+        const { data: sourceLinks, error: sourceLinksError } = await db.from("source_records").select("venue_id").eq("data_source_id", wikidataSource.id).not("venue_id", "is", null).range(offset, offset + 999);
+        if (sourceLinksError) throw sourceLinksError;
+        for (const row of sourceLinks || []) if (row.venue_id) linkedVenueIds.add(row.venue_id);
+        if ((sourceLinks || []).length < 1000) break;
+      }
+    }
+    if (options.match === "unmatched") {
+      const masters: Array<{ id: string }> = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data: masterRows, error: masterError } = await db.from("venues").select("id").is("merged_into_venue_id", null).range(offset, offset + 999);
+        if (masterError) throw masterError;
+        masters.push(...(masterRows || []));
+        if ((masterRows || []).length < 1000) break;
+      }
+      const withCandidate = new Set<string>();
+      for (let offset = 0; ; offset += 1000) {
+        const { data: candidateRows, error: candidateError } = await db.from("venue_external_match_candidates").select("venue_id").eq("provider", "wikidata").neq("status", "rejected").range(offset, offset + 999);
+        if (candidateError) throw candidateError;
+        for (const row of candidateRows || []) withCandidate.add(row.venue_id);
+        if ((candidateRows || []).length < 1000) break;
+      }
+      allowed = intersect(allowed, masters.map((row) => row.id).filter((id) => !linkedVenueIds.has(id) && !withCandidate.has(id)));
+      return allowed;
+    }
+    const statuses = options.match === "selection" ? ["candidate"] : [options.match];
+    const data: Array<{ venue_id: string; status: string }> = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data: candidateRows, error } = await db.from("venue_external_match_candidates").select("venue_id,status").eq("provider", "wikidata").in("status", statuses).range(offset, offset + 999);
+      if (error) throw error;
+      data.push(...(candidateRows || []));
+      if ((candidateRows || []).length < 1000) break;
+    }
+    const counts = new Map<string, number>();
+    for (const row of data) counts.set(row.venue_id, (counts.get(row.venue_id) || 0) + 1);
+    const ids = options.match === "selection"
+      ? [...counts].filter(([id, count]) => count > 1 && !linkedVenueIds.has(id)).map(([id]) => id)
+      : data.map((row) => row.venue_id);
+    allowed = intersect(allowed, ids);
   }
   return allowed;
 }
@@ -145,11 +184,14 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
   try {
     const db = createSupabaseAdminClient();
     const config = MASTER_CONFIGS[entity];
-    const { count: allTotal, error: allTotalError } = await db.from(entity).select("id", { count: "exact", head: true });
+    let allTotalQuery = db.from(entity).select("id", { count: "exact", head: true });
+    if (entity === "venues") allTotalQuery = allTotalQuery.is("merged_into_venue_id", null);
+    const { count: allTotal, error: allTotalError } = await allTotalQuery;
     if (allTotalError) throw allTotalError;
     const allowed = await filteredIdsByRelation(entity, options);
     if (allowed && allowed.length === 0) return fallback;
     let query = db.from(entity).select(listSelectByEntity[entity], { count: "exact" });
+    if (entity === "venues") query = query.is("merged_into_venue_id", null);
     if (allowed) query = query.in("id", [...allowed]);
     if (options.status) query = query.eq("publication_status", options.status);
     if (entity === "venues" && options.type) query = query.eq("venue_type", options.type);
@@ -194,15 +236,27 @@ async function uniqueSlug(entity: MasterEntity, label: string) {
   return data ? `${base}-${randomUUID().slice(0, 8)}` : base;
 }
 
-async function recordProvenance(entity: MasterEntity, id: string, values: MasterValues, source: "manual" | "csv_import", approved: boolean) {
+type ProvenanceContext = {
+  source: "manual" | "csv_import" | "official_website" | "trusted_api" | "wikidata";
+  fieldSourceUrls?: Record<string, string>;
+  generatedByAiFields?: string[];
+  aiConfidenceByField?: Record<string, "high" | "medium" | "low">;
+  aiNotes?: string;
+};
+
+async function recordProvenance(entity: MasterEntity, id: string, values: MasterValues, context: ProvenanceContext) {
   const db = createSupabaseAdminClient();
   const config = MASTER_CONFIGS[entity];
   for (const [field, value] of Object.entries(values)) {
     const { error: clearError } = await db.from(config.provenanceTable).update({ is_current: false }).eq(config.ownerKey, id).eq("field_name", field).eq("is_current", true);
     if (clearError) throw clearError;
     const { error } = await db.from(config.provenanceTable).insert({
-      [config.ownerKey]: id, field_name: field, source, value_snapshot: value,
-      generated_by_ai: false, review_status: approved ? "approved" : "unreviewed", is_current: true,
+      [config.ownerKey]: id, field_name: field, source: context.source,
+      source_url: context.fieldSourceUrls?.[field] || null, value_snapshot: value,
+      generated_by_ai: context.generatedByAiFields?.includes(field) || false,
+      ai_confidence: context.aiConfidenceByField?.[field] || null,
+      transformation_notes: context.generatedByAiFields?.includes(field) ? context.aiNotes || null : null,
+      review_status: context.source === "manual" ? "approved" : "applied", is_current: true,
     });
     if (error) throw error;
   }
@@ -220,7 +274,7 @@ function entitySpecificValues(entity: MasterEntity, values: MasterValues) {
   return next;
 }
 
-export async function createMaster(entity: MasterEntity, input: Record<string, unknown>, source: "manual" | "csv_import" = "manual") {
+export async function createMaster(entity: MasterEntity, input: Record<string, unknown>, context: ProvenanceContext | "manual" | "csv_import" = "manual") {
   const db = createSupabaseAdminClient();
   const config = MASTER_CONFIGS[entity];
   const values = normalizeMasterValues(entity, input);
@@ -228,21 +282,22 @@ export async function createMaster(entity: MasterEntity, input: Record<string, u
   const slug = await uniqueSlug(entity, String(values[config.titleKey]));
   const { data, error } = await db.from(entity).insert({ ...entitySpecificValues(entity, values), slug }).select("id").single();
   if (error) throw error;
-  await recordProvenance(entity, data.id, values, source, source === "manual");
+  await recordProvenance(entity, data.id, values, typeof context === "string" ? { source: context } : context);
   return data.id as string;
 }
 
-export async function updateMaster(entity: MasterEntity, id: string, input: Record<string, unknown>, source: "manual" | "csv_import" = "manual") {
+export async function updateMaster(entity: MasterEntity, id: string, input: Record<string, unknown>, context: ProvenanceContext | "manual" | "csv_import" = "manual") {
   const db = createSupabaseAdminClient();
   const { data: current, error: currentError } = await db.from(entity).select("*").eq("id", id).single();
   if (currentError || !current) throw currentError || new Error("Masterが見つかりません。");
-  const values = normalizeMasterValues(entity, input);
+  const resolvedContext = typeof context === "string" ? { source: context } : context;
+  const values = normalizeMasterValues(entity, input, { partial: resolvedContext.source === "official_website" });
   delete values.publication_status;
   const changed = Object.fromEntries(Object.entries(values).filter(([key, value]) => !valuesEqual((current as Record<string, unknown>)[key], value))) as MasterValues;
   if (!Object.keys(changed).length) return [];
   const { error } = await db.from(entity).update(entitySpecificValues(entity, changed)).eq("id", id);
   if (error) throw error;
-  await recordProvenance(entity, id, changed, source, source === "manual");
+  await recordProvenance(entity, id, changed, resolvedContext);
   return Object.keys(changed);
 }
 
@@ -256,7 +311,7 @@ export async function getCsvPreview(entity: MasterEntity, csv: string) {
   if (ids.length) {
     const [masterResult, sourceResult] = await Promise.all([
       db.from(entity).select("*").in("id", ids),
-      db.from(config.provenanceTable).select(`${config.ownerKey},field_name,source,review_status,is_current`).in(config.ownerKey, ids).eq("is_current", true),
+      db.from(config.provenanceTable).select(`${config.ownerKey},field_name,source,source_url,review_status,is_current`).in(config.ownerKey, ids).eq("is_current", true),
     ]);
     if (masterResult.error) throw masterResult.error;
     if (sourceResult.error) throw sourceResult.error;
@@ -264,7 +319,7 @@ export async function getCsvPreview(entity: MasterEntity, csv: string) {
     for (const row of sourceResult.data || []) {
       const owner = String((row as Record<string, unknown>)[config.ownerKey]);
       const list = provenance.get(owner) || [];
-      list.push(row as { field_name: string; source: string; review_status: string; is_current: boolean });
+      list.push(row as { field_name: string; source: string; source_url?: string | null; review_status: string; is_current: boolean });
       provenance.set(owner, list);
     }
   }
@@ -278,9 +333,17 @@ export async function executeCsvImport(entity: MasterEntity, rows: CsvPreviewRow
     try {
       if (row.status === "invalid") { result.invalid += 1; continue; }
       if (row.status === "unchanged") { result.unchanged += 1; continue; }
-      if (row.conflicts.length && !allowConflicts) { result.conflicts += row.conflicts.length; continue; }
-      if (row.status === "new") { await createMaster(entity, row.values, "csv_import"); result.created += 1; }
-      else if (row.id) { await updateMaster(entity, row.id, row.values, "csv_import"); result.updated += 1; }
+      const safeValues = !allowConflicts && row.conflicts.length
+        ? Object.fromEntries(Object.entries(row.values).filter(([field]) => !row.conflicts.includes(field)))
+        : row.values;
+      if (row.conflicts.length && !allowConflicts) result.conflicts += row.conflicts.length;
+      if (!Object.keys(safeValues).length) { result.unchanged += 1; continue; }
+      const context: ProvenanceContext = { source: row.sourceType as ProvenanceContext["source"], fieldSourceUrls: row.fieldSourceUrls, generatedByAiFields: row.generatedByAiFields, aiConfidenceByField: row.aiConfidenceByField, aiNotes: row.aiNotes };
+      if (row.status === "new") { await createMaster(entity, safeValues, context); result.created += 1; }
+      else if (row.id) {
+        const changed = await updateMaster(entity, row.id, safeValues, context);
+        if (changed.length) result.updated += 1; else result.unchanged += 1;
+      }
     } catch (error) { result.errors.push(`Line ${row.line}: ${error instanceof Error ? error.message : "Import failed"}`); }
   }
   return result;
