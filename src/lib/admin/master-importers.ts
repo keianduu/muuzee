@@ -40,6 +40,9 @@ export const MASTER_IMPORTERS: Record<MasterEntity, MasterImporter[]> = {
       description: "既存Venueの候補探索を少量実行します。座標・画像候補は人の確認前に採用されません。",
     },
   ],
-  artists: [],
+  artists: [{
+    key: "wikidata-artist-import", label: "Wikidata", entity: "artists", sampleAvailable: true, fullSyncAvailable: true,
+    description: "Global Visual ArtistをQIDで同期します。新規はDraft、曖昧なidentity候補だけ選択対象になります。",
+  }],
   works: [],
 };

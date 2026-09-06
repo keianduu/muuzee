@@ -8,6 +8,8 @@ export type WikidataVenueCandidate = {
   latitude: number | null;
   longitude: number | null;
   imageFileTitle: string | null;
+  commonsCategory: string | null;
+  wikipediaArticleTitle: string | null;
   countryId: string | null;
   raw: unknown;
 };

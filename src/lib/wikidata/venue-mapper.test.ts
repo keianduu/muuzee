@@ -9,7 +9,7 @@ function stringValue(value: string) { return { mainsnak: { datavalue: { value } 
 const candidate: WikidataVenueCandidate = {
   id: "Q123", labelJa: "テスト美術館", labelEn: "Test Art Museum", aliases: ["テスト館"],
   description: "日本の美術館", officialUrl: "https://museum.example", latitude: 35, longitude: 139,
-  imageFileTitle: "Museum.jpg", countryId: "Q17",
+  imageFileTitle: "Museum.jpg", commonsCategory: "Test Art Museum", wikipediaArticleTitle: "テスト美術館", countryId: "Q17",
   raw: { claims: {
     P31: [entityValue("Q207694")], P131: [entityValue("Q1490")], P281: [stringValue("100-0001")],
     P373: [stringValue("Test museum")], P6375: [{ mainsnak: { datavalue: { value: { text: "東京都テスト区1-1", language: "ja" } } } }],

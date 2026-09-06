@@ -24,6 +24,7 @@ export type CurrentProvenance = { field_name: string; source: string; source_url
 export const SOURCE_PRIORITY: Record<string, number> = {
   manual: 400,
   official_website: 300,
+  wikipedia: 150,
   trusted_api: 200,
   // CSV is a transport, not evidence of source authority. Source B exports
   // declare official_website explicitly; undeclared CSV stays lowest.

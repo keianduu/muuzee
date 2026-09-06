@@ -71,6 +71,13 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .detail-navigation { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .master-filter { display: grid; grid-template-columns: repeat(auto-fit,minmax(138px,1fr)); align-items: end; gap: 12px; margin: 18px 0; padding: 16px; background: white; border: 1px solid var(--line); border-radius: 12px; }
 .master-action-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
+.venue-quality-dashboard { margin: 20px 0; }
+.quality-tier-grid { display: grid; grid-template-columns: repeat(5,minmax(130px,1fr)); gap: 10px; margin: 16px 0 22px; }
+.quality-tier { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, #fff); }
+.tier-badge { display: inline-flex; width: fit-content; min-width: 28px; justify-content: center; padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; background: #ece9e2; font-weight: 800; }
+.tier-a { background: #262522; color: white; }.tier-b { background: #d26f45; color: white; }.tier-c { background: #e8b68c; }.tier-d { background: #dad6ce; }.tier-e { background: #f1efe9; }
+.quality-queue { padding-left: 24px; }.quality-queue button { appearance: none; border: 0; background: transparent; padding: 7px 0; text-align: left; cursor: pointer; }
+@media (max-width: 900px) { .quality-tier-grid { grid-template-columns: repeat(2,minmax(130px,1fr)); } }
 .action-spacer { flex: 1 1 24px; }
 .action-menu { position: relative; }
 .action-menu summary { list-style: none; cursor: pointer; }

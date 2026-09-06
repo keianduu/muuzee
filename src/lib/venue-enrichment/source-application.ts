@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mapWikidataVenue } from "@/lib/wikidata/venue-mapper";
 import type { WikidataVenue } from "@/lib/wikidata/venue-import-types";
+import { imageDiscoveryStatus, saveVenueImageDiscovery } from "./image-discovery";
 
 export type StoredWikidataCandidate = {
   id: string;
@@ -21,9 +22,10 @@ export type StoredWikidataCandidate = {
 
 export const SOURCE_PRIORITY: Record<string, number> = {
   wikidata: 1,
-  trusted_api: 2,
-  official_website: 3,
-  manual: 4,
+  wikipedia: 2,
+  trusted_api: 3,
+  official_website: 4,
+  manual: 5,
 };
 
 export function selectSingleSourceCandidate<T extends { status: string }>(candidates: T[]) {
@@ -53,6 +55,8 @@ function candidateVenue(candidate: StoredWikidataCandidate): WikidataVenue {
     latitude: candidate.latitude == null ? null : Number(candidate.latitude),
     longitude: candidate.longitude == null ? null : Number(candidate.longitude),
     imageFileTitle: candidate.image_file_title,
+    commonsCategory: typeof payload?.normalized?.commonsCategory === "string" ? payload.normalized.commonsCategory : null,
+    wikipediaArticleTitle: null,
     countryId: country,
     raw,
   }, []);
@@ -159,7 +163,20 @@ export async function applyStoredWikidataCandidate(db: SupabaseClient, venueId: 
   const { error: candidateError } = await db.from("venue_external_match_candidates").update({ status: "matched" }).eq("id", candidate.id);
   if (candidateError) throw candidateError;
   await db.from("venue_external_match_candidates").update({ status: "candidate" }).eq("venue_id", venueId).eq("provider", "wikidata").neq("id", candidate.id).neq("status", "rejected");
-  return { venueId, qid: normalized.qid, applied, protectedFields };
+  let imageDiscovery: Awaited<ReturnType<typeof saveVenueImageDiscovery>> = { qid: normalized.qid, files: [], trace: [], saved: [], added: 0 };
+  try {
+    imageDiscovery = await saveVenueImageDiscovery(db, { venueId, qid: normalized.qid, venueName: normalized.name, venueNameEn: normalized.nameEn });
+    const { data: primary } = await db.from("media_assets").select("id").eq("venue_id", venueId).eq("is_primary", true).limit(1);
+    await db.from("venues").update({
+      image_search_status: primary?.length ? "approved_image_exists" : imageDiscoveryStatus(imageDiscovery.files),
+      image_search_trace: imageDiscovery.trace,
+      image_candidate_found_qid: imageDiscovery.files.length ? normalized.qid : null,
+      image_candidate_found_reason: imageDiscovery.files.map((item) => `${item.discoverySource}: ${item.fileTitle}`).join("; ") || null,
+    }).eq("id", venueId);
+  } catch (error) {
+    await db.from("venues").update({ image_search_trace: [{ source: "image_discovery", error: error instanceof Error ? error.message : "Image discovery failed" }] }).eq("id", venueId);
+  }
+  return { venueId, qid: normalized.qid, applied, protectedFields, imageDiscovery };
 }
 
 export async function classifyExhibitionVenueCandidates(db: SupabaseClient) {

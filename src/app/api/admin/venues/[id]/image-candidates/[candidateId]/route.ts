@@ -27,14 +27,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (error) throw error;
     if (!data) throw new Error("Candidate not found");
     if (updates.review_status) {
-      const { data: remaining, error: remainingError } = await db.from("source_image_candidates").select("review_status,is_active").in("source_record_id", sourceIds);
+      const { data: remaining, error: remainingError } = await db.from("source_image_candidates").select("review_status,is_active,discovery_source").in("source_record_id", sourceIds);
       if (remainingError) throw remainingError;
       const active = (remaining || []).filter((item) => item.is_active);
-      const imageSearchStatus = active.some((item) => item.review_status === "accepted")
-        ? "image_candidate_kept"
-        : active.some((item) => item.review_status === "unreviewed")
-          ? "image_candidate_found"
-          : active.length ? "image_candidate_rejected" : "no_image_candidate";
+      const imageSearchStatus = active.length && active.every((item) => item.review_status === "rejected") ? "image_candidate_rejected"
+        : active.some((item) => item.discovery_source === "wikidata_p18") ? "p18_found"
+          : active.some((item) => item.discovery_source === "commons_category") ? "commons_candidate_found"
+            : active.some((item) => item.discovery_source === "wikipedia_article") ? "wikipedia_candidate_found"
+              : active.some((item) => item.review_status === "accepted") ? "image_candidate_kept"
+                : active.some((item) => item.review_status === "unreviewed") ? "image_candidate_found" : "no_image_found";
       const { error: venueError } = await db.from("venues").update({ image_search_status: imageSearchStatus }).eq("id", id);
       if (venueError) throw venueError;
     }

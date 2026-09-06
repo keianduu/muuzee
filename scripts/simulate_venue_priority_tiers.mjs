@@ -27,6 +27,10 @@ from (
     v.opening_hours_text,
     v.closed_days_text,
     v.access_text,
+    v.auto_priority_tier,
+    v.manual_priority_tier,
+    v.effective_priority_tier,
+    v.tier_reason as persisted_tier_reason,
     coalesce(activity.total_exhibition_count, 0) as total_exhibition_count,
     coalesce(activity.past_12m_exhibition_count, 0) as past_12m_exhibition_count,
     coalesce(activity.active_now_exhibition_count, 0) as active_now_exhibition_count,
@@ -177,8 +181,8 @@ const rows = readRows().map((row) => {
   const calculated = { ...row, art_relevance_candidate: relevance.value, art_relevance_reason: relevance.reason };
   calculated.auto_a_candidate = isAutoA(calculated);
   calculated.manual_a_review_candidate = manualA(calculated);
-  calculated.auto_tier_candidate = tierFor(calculated, RECOMMENDED_SCENARIO);
-  calculated.tier_reason = tierReason(calculated, calculated.auto_tier_candidate);
+  calculated.auto_tier_candidate = calculated.effective_priority_tier || tierFor(calculated, RECOMMENDED_SCENARIO);
+  calculated.tier_reason = calculated.persisted_tier_reason || tierReason(calculated, calculated.auto_tier_candidate);
   calculated.completeness = completeness(calculated);
   return calculated;
 });

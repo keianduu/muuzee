@@ -18,6 +18,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ enti
       source: query.get("source") || undefined,
       match: query.get("match") || undefined,
       completeness: query.get("completeness") || undefined,
+      tier: query.get("tier") || undefined,
+      nationality: query.get("nationality") || undefined,
       page: Number(query.get("page")),
       pageSize: Number(query.get("pageSize")),
     });

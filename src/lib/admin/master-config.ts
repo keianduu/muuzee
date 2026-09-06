@@ -92,10 +92,9 @@ export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {
     ],
     completeness: [
       { key: "name", label: "Name" },
-      { key: "life", label: "Birth / Death", test: (row) => Boolean(row.birth_date || row.birth_year || row.death_date || row.death_year) },
-      { key: "country", label: "Country", test: (row) => Boolean(row.nationality_country_code || row.birth_country_code) },
-      { key: "description", label: "Description" }, { key: "style_summary", label: "Style" },
-      { key: "image", label: "Image", test: (row) => Boolean((row.media_assets as Array<{ is_primary?: boolean }> | undefined)?.some((item) => item.is_primary)) },
+      { key: "name_en", label: "Name EN" },
+      { key: "nationality", label: "Nationality", test: (row) => Boolean(row.nationality_country_code) },
+      { key: "image", label: "Primary Image", test: (row) => Boolean((row.media_assets as Array<{ is_primary?: boolean }> | undefined)?.some((item) => item.is_primary)) },
     ],
   },
   works: {

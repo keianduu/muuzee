@@ -12,11 +12,15 @@ Venue / Artist / Work一覧の行全体を選択すると、右側からDetail D
 
 ## URL deep link and compatibility
 
-選択状態は`/admin/{entity}?selected={id}`で保持する。再読み込みと直接共有で同じDrawerを復元する。Close時は`selected`だけを削除し、Search / Filterは保持する。一覧からOpenした場合はBrowser Backで直前の一覧URLへ戻る。従来の`/admin/{entity}/[id]`は削除せず、List + `selected`へRedirectする。Keyword、Publication、Image、Completeness、Source、Venue Type / Active / Coordinates / Wikidata MatchのFilterを維持する。
+選択状態は`/admin/{entity}?selected={id}`で保持する。再読み込みと直接共有で同じDrawerを復元する。Close時は`selected`だけを削除し、Search / Filterは保持する。一覧からOpenした場合はBrowser Backで直前の一覧URLへ戻る。従来の`/admin/{entity}/[id]`は削除せず、List + `selected`へRedirectする。Keyword、Publication、Image、Completeness、Source、Venue Type / Active / Coordinates / Wikidata MatchのFilterを維持する。ArtistはTier All / A / B / C / A+B、Publication All / Published / Unpublished、Image、Nationality missing、Core Quality、Sourceを併用できる。DataタブにはWikidata QID / raw classification、Wikipedia、画像探索経路・Reported licenseを表示し、Getty / APJはCoverage Testだけであることを明示する。
+
+## Priority Tier and Data Quality
+
+Venue一覧は実効Tier Badgeを表示し、A→B→C→D→E→未分類で並ぶ。Tier Filterは`?tier=A` / `?tier=A-C`として保存し、Drawer開閉後も維持する。上部Dashboardで各Tierの件数・平均Completeness・Draft Target達成/未達、A〜Cの不足FieldとImage状態を表示する。Data Quality QueueはA→B→C、Completeness低い順。
 
 ## Infinite Scroll
 
-初回50件、以後50件ずつAPIから追加取得する。全MasterをBrowserへ一括取得しない。Server側は`title/name ASC, id ASC`のstable sortとoffset rangeを維持し、Client側でもID重複を除外する。上部にFilter後のTotalと全件数、現在の表示数を示し、下端にLoading / 完了 / Error + Retryを表示する。Filter変更時は一覧とpageをresetする。
+初回50件、以後50件ずつAPIから追加取得する。VenueのServer側順序は`Tier rank, Completeness ASC, name ASC, id ASC`、Artist / Workは`title/name ASC, id ASC`。Client側でもID重複を除外する。上部にFilter後のTotalと全件数、現在の表示数を示し、下端にLoading / 完了 / Error + Retryを表示する。Filter変更時は一覧とpageをresetする。
 
 ## Status / Edit / Data IA
 

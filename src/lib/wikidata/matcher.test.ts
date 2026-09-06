@@ -5,7 +5,7 @@ import type { WikidataVenueCandidate } from "./types";
 const candidate = (overrides: Partial<WikidataVenueCandidate> = {}): WikidataVenueCandidate => ({
   id: "Q1", labelJa: "国立新美術館", labelEn: "The National Art Center, Tokyo", aliases: [],
   description: "東京都港区にある日本の美術館", officialUrl: "https://www.nact.jp/", latitude: 35.665,
-  longitude: 139.726, imageFileTitle: "National Art Center.jpg", countryId: "Q17", raw: {}, ...overrides,
+  longitude: 139.726, imageFileTitle: "National Art Center.jpg", commonsCategory: null, wikipediaArticleTitle: null, countryId: "Q17", raw: {}, ...overrides,
 });
 
 describe("Wikidata venue matcher", () => {

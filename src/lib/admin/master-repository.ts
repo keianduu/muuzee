@@ -5,6 +5,8 @@ import { calculateCompleteness } from "./master-completeness";
 import { buildCsvPreview, parseCsv, summarizeCsvPreview, type CsvPreviewRow } from "./master-csv";
 import { MASTER_CONFIGS, type MasterEntity, type MasterStatus } from "./master-config";
 import { normalizeMasterValues, valuesEqual, type MasterValues } from "./master-validation";
+import { compareVenueQuality, effectiveVenueTier, tiersForFilter, VENUE_PRIORITY_TIERS, VENUE_TIER_TARGETS, venueQuality, type VenuePriorityTier } from "./venue-priority";
+import { ARTIST_PRIORITY_TIERS, artistQuality, compareArtistQuality, effectiveArtistTier, tiersForArtistFilter, type ArtistPriorityTier } from "./artist-priority";
 
 export type MasterRecord = Record<string, unknown> & {
   id: string;
@@ -23,6 +25,8 @@ export type MasterListOptions = {
   source?: string;
   match?: string;
   completeness?: string;
+  tier?: string;
+  nationality?: string;
   page?: number;
   pageSize?: number;
 };
@@ -36,6 +40,26 @@ export type MasterListResult = {
   totalPages: number;
   configured: boolean;
   error: string | null;
+  qualityDashboard?: VenueQualityDashboard | ArtistQualityDashboard;
+};
+
+export type VenueQualityDashboard = {
+  kind: "venue";
+  tiers: Array<{ tier: VenuePriorityTier; count: number; averageCompleteness: number; target: number; met: number; unmet: number }>;
+  selected: { label: string; count: number; averageCompleteness: number };
+  priorityTotal: number;
+  priorityTargetUnmet: number;
+  multipleQidCandidates: number;
+  missing: Record<"address" | "postalCode" | "coordinates" | "officialUrl" | "openingHours" | "closedDays" | "access" | "description" | "imageCandidate" | "primaryImage" | "approvedImage", number>;
+  images: { candidatePresent: number; primary: number; rightsUnknown: number; approved: number; none: number; multipleCandidates: number };
+  queue: Array<{ id: string; name: string; tier: VenuePriorityTier; completeness: number; missing: string[] }>;
+};
+
+export type ArtistQualityDashboard = {
+  kind: "artist";
+  tiers: Array<{ tier: ArtistPriorityTier; count: number; averageCompleteness: number; complete: number; incomplete: number }>;
+  selected: { label: string; count: number; averageCompleteness: number };
+  missing: Record<"name" | "nameEn" | "nationality" | "primaryImage", number>;
 };
 
 const selectByEntity: Record<MasterEntity, string> = {
@@ -45,8 +69,8 @@ const selectByEntity: Record<MasterEntity, string> = {
 };
 
 const listSelectByEntity: Record<MasterEntity, string> = {
-  venues: "*, media_assets(*), source_records!source_records_venue_id_fkey(id,external_id,data_sources(name,key)), venue_external_match_candidates(id,status,provider,external_id), exhibition_occurrences(id), collection_holdings(id)",
-  artists: "*, media_assets(*), exhibition_artists(id), work_artists(id)",
+  venues: "*, media_assets(*), source_records!source_records_venue_id_fkey(id,external_id,data_sources(name,key),source_image_candidates(*)), venue_external_match_candidates(id,status,provider,external_id), exhibition_occurrences(id), collection_holdings(id)",
+  artists: "*, media_assets(*), source_records!source_records_artist_id_fkey(id,external_id,raw_payload,data_sources(name,key),source_image_candidates(*)), artist_external_match_candidates(id,status,provider,external_id), exhibition_artists(id), work_artists(id)",
   works: "*, media_assets(*), work_artists(id,artist_id,artists(id,name)), collection_holdings(id,venue_id,venues(id,name))",
 };
 
@@ -128,6 +152,10 @@ async function filteredIdsByRelation(entity: MasterEntity, options: MasterListOp
     if (error) throw error;
     allowed = intersect(allowed, ((data || []) as unknown as Array<Record<string, unknown>>).map((row) => String(row[config.ownerKey])));
   }
+  if (entity === "artists" && options.nationality === "missing") {
+    const { data, error } = await db.from("artists").select("id").is("nationality_country_code", null);
+    if (error) throw error; allowed = intersect(allowed, (data || []).map((row) => row.id));
+  }
   if (entity === "venues" && options.match) {
     const { data: wikidataSource, error: wikidataSourceError } = await db.from("data_sources").select("id").eq("key", "wikidata").maybeSingle();
     if (wikidataSourceError) throw wikidataSourceError;
@@ -176,6 +204,96 @@ async function filteredIdsByRelation(entity: MasterEntity, options: MasterListOp
   return allowed;
 }
 
+async function allVenueQualityRows() {
+  const db = createSupabaseAdminClient();
+  const rows: MasterRecord[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db.from("venues").select("id,slug,name,venue_type,is_active,publication_status,updated_at,auto_priority_tier,manual_priority_tier,effective_priority_tier,address,postal_code,latitude,longitude,official_url,description,opening_hours_text,closed_days_text,access_text,media_assets(id,is_primary,rights_status),source_records!source_records_venue_id_fkey(id,data_sources(key),source_image_candidates(id,is_active)),venue_external_match_candidates(id,status)").is("merged_into_venue_id", null).range(offset, offset + 999);
+    if (error) throw error;
+    rows.push(...asRecords(data));
+    if ((data || []).length < 1000) break;
+  }
+  return rows;
+}
+
+async function allArtistQualityRows() {
+  const db = createSupabaseAdminClient();
+  const rows: MasterRecord[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db.from("artists").select("id,slug,name,name_en,nationality_country_code,publication_status,updated_at,auto_priority_tier,manual_priority_tier,effective_priority_tier,media_assets(id,is_primary,rights_status),source_records!source_records_artist_id_fkey(id,source_image_candidates(id,is_active,review_status,rights_status))").range(offset, offset + 999);
+    if (error) throw error;
+    rows.push(...asRecords(data));
+    if ((data || []).length < 1000) break;
+  }
+  return rows;
+}
+
+function average(values: number[]) {
+  return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+}
+
+function dashboardFor(rows: MasterRecord[], tierFilter?: string): VenueQualityDashboard {
+  const priorityRows = rows.filter((row) => ["A", "B", "C"].includes(effectiveVenueTier(row) || ""));
+  const selectedTiers = tiersForFilter(tierFilter);
+  const selectedRows = selectedTiers ? rows.filter((row) => selectedTiers.includes(effectiveVenueTier(row)!)) : rows;
+  const missingKeys = ["address", "postalCode", "coordinates", "officialUrl", "openingHours", "closedDays", "access", "description", "imageCandidate", "primaryImage", "approvedImage"] as const;
+  const missing = Object.fromEntries(missingKeys.map((key) => [key, priorityRows.filter((row) => venueQuality(row).missing[key]).length])) as VenueQualityDashboard["missing"];
+  const queue = priorityRows
+    .filter((row) => {
+      const tier = effectiveVenueTier(row)!;
+      return venueQuality(row).completeness.percent < VENUE_TIER_TARGETS[tier];
+    })
+    .sort(compareVenueQuality)
+    .slice(0, 20)
+    .map((row) => {
+      const quality = venueQuality(row);
+      return { id: row.id, name: String(row.name), tier: effectiveVenueTier(row)!, completeness: quality.completeness.percent, missing: quality.completeness.items.filter((item) => !item.met).map((item) => item.label) };
+    });
+  return {
+    kind: "venue",
+    tiers: VENUE_PRIORITY_TIERS.map((tier) => {
+      const tierRows = rows.filter((row) => effectiveVenueTier(row) === tier);
+      const target = VENUE_TIER_TARGETS[tier];
+      const met = tierRows.filter((row) => venueQuality(row).completeness.percent >= target).length;
+      return { tier, count: tierRows.length, averageCompleteness: average(tierRows.map((row) => venueQuality(row).completeness.percent)), target, met, unmet: tierRows.length - met };
+    }),
+    selected: { label: tierFilter || "All", count: selectedRows.length, averageCompleteness: average(selectedRows.map((row) => venueQuality(row).completeness.percent)) },
+    priorityTotal: priorityRows.length,
+    priorityTargetUnmet: priorityRows.filter((row) => venueQuality(row).completeness.percent < VENUE_TIER_TARGETS[effectiveVenueTier(row)!]).length,
+    multipleQidCandidates: rows.filter((row) => {
+      const hasLinkedWikidata = ((row.source_records || []) as Array<{ data_sources?: { key?: string } }>).some((source) => source.data_sources?.key === "wikidata");
+      const candidateCount = ((row.venue_external_match_candidates || []) as Array<{ status?: string }>).filter((candidate) => candidate.status === "candidate").length;
+      return !hasLinkedWikidata && candidateCount > 1;
+    }).length,
+    missing,
+    images: {
+      candidatePresent: priorityRows.filter((row) => venueQuality(row).candidateCount > 0).length,
+      primary: priorityRows.filter((row) => Boolean(venueQuality(row).primary)).length,
+      rightsUnknown: priorityRows.filter((row) => venueQuality(row).rightsNeedsReview).length,
+      approved: priorityRows.filter((row) => venueQuality(row).approvedPrimary).length,
+      none: priorityRows.filter((row) => !venueQuality(row).primary && venueQuality(row).candidateCount === 0).length,
+      multipleCandidates: priorityRows.filter((row) => !venueQuality(row).primary && venueQuality(row).candidateCount > 1).length,
+    },
+    queue,
+  };
+}
+
+function artistDashboardFor(rows: MasterRecord[], tierFilter?: string): ArtistQualityDashboard {
+  const selectedTiers = tiersForArtistFilter(tierFilter);
+  const selectedRows = selectedTiers ? rows.filter((row) => selectedTiers.includes(effectiveArtistTier(row)!)) : rows;
+  const missingKeys = ["name", "nameEn", "nationality", "primaryImage"] as const;
+  return {
+    kind: "artist",
+    tiers: ARTIST_PRIORITY_TIERS.map((tier) => {
+      const tierRows = rows.filter((row) => effectiveArtistTier(row) === tier);
+      const complete = tierRows.filter((row) => artistQuality(row).completeness.met === 4).length;
+      return { tier, count: tierRows.length, averageCompleteness: average(tierRows.map((row) => artistQuality(row).completeness.percent)), complete, incomplete: tierRows.length - complete };
+    }),
+    selected: { label: tierFilter || "All", count: selectedRows.length, averageCompleteness: average(selectedRows.map((row) => artistQuality(row).completeness.percent)) },
+    missing: Object.fromEntries(missingKeys.map((key) => [key, selectedRows.filter((row) => artistQuality(row).missing[key]).length])) as ArtistQualityDashboard["missing"],
+  };
+}
+
 export async function listMasters(entity: MasterEntity, options: MasterListOptions = {}): Promise<MasterListResult> {
   const pageSize = [20, 50, 100].includes(Number(options.pageSize)) ? Number(options.pageSize) : 20;
   const page = Math.max(1, Number(options.page) || 1);
@@ -190,14 +308,66 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
     if (allTotalError) throw allTotalError;
     const allowed = await filteredIdsByRelation(entity, options);
     if (allowed && allowed.length === 0) return fallback;
+    if (entity === "venues") {
+      const qualityRows = await allVenueQualityRows();
+      const allowedSet = allowed ? new Set(allowed) : null;
+      const tiers = tiersForFilter(options.tier);
+      const threshold = options.completeness ? Number(options.completeness) : null;
+      const filtered = qualityRows.filter((row) => {
+        if (allowedSet && !allowedSet.has(row.id)) return false;
+        if (options.status === "unpublished" && row.publication_status === "published") return false;
+        if (options.status && options.status !== "unpublished" && row.publication_status !== options.status) return false;
+        if (options.type && row.venue_type !== options.type) return false;
+        if (options.active && Boolean(row.is_active) !== (options.active === "true")) return false;
+        if (tiers && !tiers.includes(effectiveVenueTier(row)!)) return false;
+        if (options.coordinates === "missing" && row.latitude != null && row.longitude != null) return false;
+        if (options.coordinates === "present" && (row.latitude == null || row.longitude == null)) return false;
+        if (options.image === "present" && !venueQuality(row).primary) return false;
+        if (options.image === "missing" && venueQuality(row).primary) return false;
+        if (threshold != null && venueQuality(row).completeness.percent >= threshold) return false;
+        return true;
+      }).sort(compareVenueQuality);
+      const total = filtered.length;
+      const pageIds = filtered.slice((page - 1) * pageSize, page * pageSize).map((row) => row.id);
+      let rows: MasterListResult["rows"] = [];
+      if (pageIds.length) {
+        const { data, error } = await db.from("venues").select(listSelectByEntity.venues).in("id", pageIds);
+        if (error) throw error;
+        const order = new Map(pageIds.map((id, index) => [id, index]));
+        const signedRows = await signPrimaryImages(asRecords(data).sort((a, b) => order.get(a.id)! - order.get(b.id)!));
+        rows = signedRows.map((row) => ({ ...row, completeness: calculateCompleteness("venues", row) }));
+      }
+      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null, qualityDashboard: dashboardFor(qualityRows, options.tier) };
+    }
+    if (entity === "artists") {
+      const qualityRows = await allArtistQualityRows();
+      const allowedSet = allowed ? new Set(allowed) : null;
+      const tiers = tiersForArtistFilter(options.tier);
+      const threshold = options.completeness ? Number(options.completeness) : null;
+      const filtered = qualityRows.filter((row) => {
+        if (allowedSet && !allowedSet.has(row.id)) return false;
+        if (options.status === "unpublished" && row.publication_status === "published") return false;
+        if (options.status && options.status !== "unpublished" && row.publication_status !== options.status) return false;
+        if (tiers && !tiers.includes(effectiveArtistTier(row)!)) return false;
+        if (threshold != null && artistQuality(row).completeness.percent >= threshold) return false;
+        return true;
+      }).sort(compareArtistQuality);
+      const total = filtered.length;
+      const pageIds = filtered.slice((page - 1) * pageSize, page * pageSize).map((row) => row.id);
+      let rows: MasterListResult["rows"] = [];
+      if (pageIds.length) {
+        const { data, error } = await db.from("artists").select(listSelectByEntity.artists).in("id", pageIds);
+        if (error) throw error;
+        const order = new Map(pageIds.map((id, index) => [id, index]));
+        const signedRows = await signPrimaryImages(asRecords(data).sort((a, b) => order.get(a.id)! - order.get(b.id)!));
+        rows = signedRows.map((row) => ({ ...row, completeness: calculateCompleteness("artists", row) }));
+      }
+      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null, qualityDashboard: artistDashboardFor(qualityRows, options.tier) };
+    }
     let query = db.from(entity).select(listSelectByEntity[entity], { count: "exact" });
-    if (entity === "venues") query = query.is("merged_into_venue_id", null);
     if (allowed) query = query.in("id", [...allowed]);
-    if (options.status) query = query.eq("publication_status", options.status);
-    if (entity === "venues" && options.type) query = query.eq("venue_type", options.type);
-    if (entity === "venues" && options.active) query = query.eq("is_active", options.active === "true");
-    if (entity === "venues" && options.coordinates === "missing") query = query.or("latitude.is.null,longitude.is.null");
-    if (entity === "venues" && options.coordinates === "present") query = query.not("latitude", "is", null).not("longitude", "is", null);
+    if (options.status === "unpublished") query = query.neq("publication_status", "published");
+    else if (options.status) query = query.eq("publication_status", options.status);
     query = query.order(config.titleKey, { ascending: true }).order("id", { ascending: true });
     const shouldFilterCompleteness = Boolean(options.completeness);
     if (!shouldFilterCompleteness) query = query.range((page - 1) * pageSize, page * pageSize - 1);
@@ -237,7 +407,7 @@ async function uniqueSlug(entity: MasterEntity, label: string) {
 }
 
 type ProvenanceContext = {
-  source: "manual" | "csv_import" | "official_website" | "trusted_api" | "wikidata";
+  source: "manual" | "csv_import" | "official_website" | "trusted_api" | "wikipedia" | "wikidata";
   fieldSourceUrls?: Record<string, string>;
   generatedByAiFields?: string[];
   aiConfidenceByField?: Record<string, "high" | "medium" | "low">;

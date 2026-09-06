@@ -1,0 +1,5 @@
+import { revalidatePath } from "next/cache";
+import { NextResponse } from "next/server";
+import { isMasterEntity } from "@/lib/admin/master-config";
+import { setMasterPrimaryFromCandidate } from "@/lib/admin/master-primary-image";
+export async function POST(request: Request, { params }: { params: Promise<{ entity: string; id: string; candidateId: string }> }) { try { const { entity, id, candidateId } = await params; if (!isMasterEntity(entity)) throw new Error("Unknown entity"); const body = await request.json().catch(() => ({})); const result = await setMasterPrimaryFromCandidate(entity, id, candidateId, { replaceExisting: Boolean(body.replaceExisting) }); revalidatePath(`/admin/${entity}`); revalidatePath(`/admin/${entity}/${id}`); return NextResponse.json({ ...result, message: result.changed ? "Primary画像を設定しました。Rightsは未承認のままです。" : "既存Primaryを維持しました。" }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Primary image failed" }, { status: 400 }); } }

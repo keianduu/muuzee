@@ -140,9 +140,9 @@ AUTO A: 46件。Manual Review: 140件。
 
 | Tier | Venue | Average | Median | Target | Target未達 |
 | --- | --- | --- | --- | --- | --- |
-| A | 46 | 52.3% | 50.0% | 100% | 46 |
-| B | 19 | 43.2% | 50.0% | 83% | 19 |
-| C | 108 | 47.6% | 50.0% | 67% | 65 |
+| A | 46 | 61.0% | 67.0% | 100% | 46 |
+| B | 19 | 50.9% | 50.0% | 83% | 16 |
+| C | 108 | 53.0% | 67.0% | 67% | 53 |
 | D | 1037 | 38.7% | 33.0% | 50% | 585 |
 | E | 3770 | 38.8% | 33.0% | 17% | 0 |
 
@@ -150,21 +150,21 @@ AUTO A: 46件。Manual Review: 140件。
 
 | Tier | Name EN | Address | Postal | Coordinates | Official URL | Image candidate | Approved image | Description | Hours | Closed | Access |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A | 4 | 29 | 17 | 6 | 4 | 27 | 46 | 5 | 46 | 46 | 46 |
+| A | 4 | 29 | 17 | 6 | 4 | 22 | 46 | 5 | 46 | 46 | 46 |
 | B | 6 | 15 | 8 | 6 | 6 | 10 | 19 | 6 | 19 | 19 | 19 |
-| C | 29 | 65 | 56 | 31 | 29 | 71 | 108 | 30 | 108 | 108 | 108 |
+| C | 29 | 65 | 56 | 31 | 29 | 71 | 106 | 30 | 108 | 108 | 108 |
 | D | 77 | 547 | 585 | 152 | 195 | 366 | 1037 | 1036 | 1037 | 1037 | 1037 |
 | E | 421 | 1822 | 2704 | 691 | 630 | 1272 | 3769 | 3767 | 3770 | 3770 | 3770 |
 
 ## 12. Human Workload
 
 - A〜C合計: 173 Venue
-- Tier target未達: 130 Venue
+- Tier target未達: 115 Venue
 - Official URLがあり、直ちにSource B Crawl可能: 134 Venue
 - Official URL不足でSource B Crawl前にURL調査が必要: 39 Venue
 - Description不足: 41 Venue
-- Approved image不足: 173 Venue
-- 初期に人間が触る可能性がある最大集合はTarget未達の130 Venue。Fieldごとの件数は重複するため合算しない。
+- Approved image不足: 171 Venue
+- 初期に人間が触る可能性がある最大集合はTarget未達の115 Venue。Fieldごとの件数は重複するため合算しない。
 - A Manual Review候補140件のうちA〜Cとの重複は28件。A〜C整備とA候補判定を合わせたdistinct Venueは285件。
 
 ## 13. Recommended Threshold
@@ -202,4 +202,16 @@ Closed DaysとAccess等は現行Completeness外なので、Tier別必須Field po
 - 明示的なArt/Non-art文字列を高精度優先で使っており、名称・descriptionが曖昧なVenueはunverifiedへ寄せた。
 - 公的区分、施設規模、有名度、来館者数の正規データがないためAUTO Aは意図的に狭い。
 - Image candidateは利用可能性ではなく候補の存在、Approved imageはPrimaryかつrights approvedを数えた。
-- TierとArt relevanceはSimulationでありDBへ保存していない。
+- Art relevanceは引き続きSimulation上の候補。Priority Tierは同じ判定ロジックを`auto_priority_tier`へ保存し、`manual_priority_tier`がある場合は`effective_priority_tier`で優先するDraft運用を実装済み。
+
+## 18. Post-enrichment snapshot — 2026-09-06
+
+Wikipedia住所FallbackのLOCAL適用後のA〜Cスナップショット。Tier算出ルール自体は変更していない。
+
+| Tier | Venue | Address filled | Address coverage | Average completeness | Median | Target未達 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A | 46 | 42 | 91.3% | 72.0% | 83% | 46 |
+| B | 19 | 13 | 68.4% | 58.8% | 67% | 13 |
+| C | 108 | 77 | 71.3% | 58.3% | 67% | 33 |
+
+A〜C合計の住所は132 / 173（76.3%）、Completeness平均61.9%、中央値67%。Official Website CrawlerはOfficial URLあり134件を処理可能で、住所不足に限ると6件が直接Crawl可能。今後のQueueはTier A→B→C、各Tier内でTarget未達→Opening Hours→Closed Days→Access→Description→Addressの順とする。

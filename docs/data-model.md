@@ -7,7 +7,7 @@ Status: Draft for the Master Data Architecture; the existing Admin v0 publicatio
 - `venues.inception_year`: 明示されたopening / inception year。field provenance必須。
 - QIDは`source_records.external_id`で一意管理し、Muuzee内部PKはUUIDを維持する。
 - Raw claims / classは`source_records.raw_payload`、曖昧な同一Venue候補は`venue_external_match_candidates`、field単位の採用・競合は`venue_field_sources`へ保持する。
-- P18は`source_image_candidates`でRights未判定候補として保持し、Primaryへ自動昇格しない。
+- Venue / Artist画像は確定Wikidata QIDからP18、Wikipedia Article、Commons Category等を探索し、`source_image_candidates`でRights情報と取得経路を保持する。既存Primaryは維持し、PrimaryなしでusableなP18があればCandidate総数に関係なくPreferred Representative Imageとして自動Primary化する。P18がなくusable Candidateが1件だけの場合も自動Primary化し、複数件なら人が選択する。
 
 ## Canonical entities
 
@@ -31,9 +31,10 @@ Status: Draft for the Master Data Architecture; the existing Admin v0 publicatio
 | `data_sources` | External provider and terms metadata |
 | `source_records` | Unique external record ID, latest raw payload, and optional explicit master owner |
 | `venue_field_sources`, `artist_field_sources`, `work_field_sources`, `exhibition_field_sources` | Field-level provenance and review history |
-| `source_image_candidates` | External image references and raw rights metadata awaiting review |
+| `source_image_candidates` | External image references, discovery route, and raw rights metadata awaiting review |
 | `official_venue_crawl_results` | Immutable-per-run Source B extraction output, ambiguity, visited URLs, and field evidence before CSV confirmation |
 | `venue_external_match_candidates` | Ranked Wikidata candidates, confidence, threshold evidence, and human state |
+| `artist_external_match_candidates` | Ambiguous Artist identity candidates keyed by Artist and Wikidata QID |
 | `media_assets` | Storage-backed, human-reviewed images owned by exactly one master |
 | `import_runs` | Import/enrichment execution counts, errors, metrics, and timing |
 
@@ -70,13 +71,17 @@ Art Commons re-import uses the source record’s `exhibition_id` plus checksum. 
 
 Publication state is `draft → ready → published → archived`. Existing Exhibition Admin server-side checks still require a title, occurrence/venue, dates, and an approved Primary asset before publish.
 
-Images live in the private `exhibition-images` Supabase Storage bucket, never in Git. Source URL, credit, and usage notes remain optional. Reported license metadata is retained separately from Muuzee’s `approved`, `rejected`, or `needs_review` classification. Only an explicit Admin action can approve rights or promote a candidate to a Storage-backed asset.
+Images live in the private `exhibition-images` Supabase Storage bucket, never in Git. Source URL, credit, and usage notes remain optional. Reported license metadata is retained separately from Muuzee’s `approved`, `rejected`, or `needs_review` classification. Primary selection never approves rights. An Admin action is always required to approve rights; only the shared P18-first / single-fallback policy may promote a usable candidate to a Storage-backed Primary automatically.
 
 ## Venue enrichment
 
 Venue enrichment retains ranked Wikidata candidates and a single actionable coordinate candidate, optional Geolonia comparison, P18 candidates, and search traces. The adopted Wikidata ID is the `matched` row in `venue_external_match_candidates`; it is not duplicated on `venues`. Raw Wikidata, Commons, and Geolonia payloads remain in `source_records`.
 
 See `docs/master-data-architecture.md` for ownership, enrichment, and update-frequency rules.
+
+## Artist Source A
+
+Wikidata Artist Importerは既存`artists`、`source_records`、`artist_field_sources`、`source_image_candidates`、`media_assets`を再利用する。新規の`artist_external_match_candidates`は一意に決められないIdentity候補だけを保持し、Artist本体の重複Schemaを作らない。詳細は[`docs/integrations/wikidata-artist-import.md`](./integrations/wikidata-artist-import.md)を参照。
 
 ## Master Admin v1 application rules
 

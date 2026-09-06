@@ -38,7 +38,7 @@ Discoveryは`P31/P279*`とQ17で絞り、P576があるEntityを除外する。li
 | P281 | `postal_code` | 明示値のみ |
 | P625 | coordinates | Newまたは空欄Existingだけ。source=wikidata |
 | P856 | `official_url` | 空欄だけ補完 |
-| P18 | image candidate | Commons metadataとrights情報を保存し、Primary画像選択は別操作 |
+| P18 | preferred representative image candidate | Commons metadataとrights情報を保存。既存Primaryがなければ共通Policyで自動Primary化するが、Rights承認は別操作 |
 | P373 | raw payload | Commons category。canonical列は増やさない |
 | P1619 / P571 | `inception_year` | official opening優先、なければinception |
 | P3025 | `opening_hours_text` | string明示時のみ |

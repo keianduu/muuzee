@@ -53,7 +53,7 @@ export function mapWikidataVenue(
     longitude: candidate.longitude,
     officialUrl: candidate.officialUrl,
     imageFileTitle: candidate.imageFileTitle,
-    commonsCategory: firstString(candidate.raw, "P373"),
+    commonsCategory: candidate.commonsCategory || firstString(candidate.raw, "P373"),
     inceptionYear: yearFromTime(candidate.raw, "P1619") ?? yearFromTime(candidate.raw, "P571"),
     openingHours: firstString(candidate.raw, "P3025"),
     description: candidate.description,

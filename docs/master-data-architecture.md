@@ -82,7 +82,7 @@ AI-generated values must never be presented as verified facts merely because the
 
 ## 7. Source priority, ambiguity, and publication
 
-The default field priority is `Manual > Official Website > Trusted API > Wikidata`. CSV is a transport rather than a source rank; an attributable CSV must declare its real source, while an undeclared generic CSV does not override sourced values automatically. Field-level accept/reject review is not the normal workflow. Human judgment is required when multiple candidates cannot be uniquely resolved, or when an operator explicitly chooses to override a higher-priority value. Re-enrichment must preserve manual decisions. Publication status remains the final content-wide control using `draft → ready → published → archived`.
+The default field priority is `Manual > Official Website > Trusted API > Wikidata`. Venue Address has a documented fallback exception: `Manual > Official Website > Wikipedia > Wikidata` while retaining Trusted API's existing authority. CSV is a transport rather than a source rank; an attributable CSV must declare its real source, while an undeclared generic CSV does not override sourced values automatically. Field-level accept/reject review is not the normal workflow. Human judgment is required when multiple candidates cannot be uniquely resolved, or when an operator explicitly chooses to override a higher-priority value. Re-enrichment must preserve manual decisions. Publication status remains the final content-wide control using `draft → ready → published → archived`.
 
 `media_assets` serves all four masters through explicit `exhibition_id`, `venue_id`, `artist_id`, and `work_id` foreign keys. Exactly one owner is required, preventing orphan or ambiguous assets. Raw reported license, license URL, author, and usage terms are stored separately from Muuzee’s three-way rights classification:
 
@@ -90,21 +90,24 @@ The default field priority is `Manual > Official Website > Trusted API > Wikidat
 - `rejected`: 明確に不可
 - `needs_review`: 記載なし・不明
 
-An external image candidate always begins as `needs_review` and never becomes a publication asset automatically.
+An external image candidate keeps its reported rights and begins without an automatic Muuzee approval. Venue and Artist use one shared Primary policy: preserve an existing Primary; otherwise select a usable Wikidata P18 as the Preferred Representative Image even when alternatives exist; without P18, select only an exactly-one usable fallback; leave multiple non-P18 candidates to human selection. Inactive or rejected candidates are excluded. Copying to Storage and selecting Primary never changes `rights_status` or approves rights.
+
+Venue Priority Tier uses `auto_priority_tier`, optional `manual_priority_tier`, and generated `effective_priority_tier = coalesce(manual, auto)`. The Draft calculation is centralized in `refresh_venue_priority_tiers`; Tier and data completeness never publish content by themselves.
 
 ## 8. Master update frequency
 
 Venue, Artist, and Work use a low-frequency, multi-source enrichment process:
 
 ```text
-Source A
-  → fill missing fields from Source B
+Wikidata Source A
+  → Wikipedia Address fallback
+  → fill remaining fields from Official Website Source B
   → fill remaining fields from Source C
   → AI / CSV candidates
   → manual review and final approval
 ```
 
-Source B is the bounded Official Website Crawler documented in [`docs/integrations/official-venue-crawler.md`](./integrations/official-venue-crawler.md). Source order follows the priority above unless a field has a documented exception. Manual overrides must not be overwritten by enrichment.
+Wikipedia Address fallback is documented in [`docs/integrations/wikipedia-venue-enrichment.md`](./integrations/wikipedia-venue-enrichment.md). Source B is the bounded Official Website Crawler documented in [`docs/integrations/official-venue-crawler.md`](./integrations/official-venue-crawler.md). Address is an MVP completeness field; Postal Code is optional. Description remains `Official Website → AI` and Wikipedia article prose is not copied. Manual overrides must not be overwritten by enrichment.
 
 ## 9. Difference from daily exhibition sync
 
@@ -125,7 +128,7 @@ Master enrichment and daily exhibition sync must not be combined into one job. T
 
 Current scope includes schema, validation SQL, the existing Art Commons / Exhibition / Venue workflows, and Master Admin v1 shared CRUD / CSV / publication / deletion-safety interfaces.
 
-Future scope includes real Artist/Work source adapters and matching, AI-assisted research, authenticated remote environments, deployment, scheduling, Source C, and remote-environment Full Sync. Venue currently has Wikidata Source A and Official Website Source B. Source B is local-only and always stops at a CSV artifact before explicit Preview / Confirm.
+Artist has a Draft Wikidata Source A importer, explicit Wikipedia Infobox fallback, Exhibition Artist mention audit, canonical matching, and A/B/C priority tiers. Getty ULAN / APJ DAJ remain Research-only and are not DB sources. Work source adapters, AI-assisted research, authenticated remote environments, deployment, scheduling, Source C, and remote-environment Full Sync remain future scope. Venue currently has Wikidata Source A and Official Website Source B. Source B is local-only and always stops at a CSV artifact before explicit Preview / Confirm. Artist Source Aは[`docs/integrations/wikidata-artist-import.md`](./integrations/wikidata-artist-import.md)、Artist品質運用は[`docs/master-data/artist-data-quality-operations.md`](./master-data/artist-data-quality-operations.md)、Venue品質運用は[`docs/master-data/venue-data-quality-operations.md`](./master-data/venue-data-quality-operations.md)を参照。
 
 ## Validation and reproducibility
 

@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { geocodeWithGeolonia } from "@/lib/geolonia/client";
-import { getCommonsImageMetadata } from "@/lib/wikimedia-commons/client";
 import { getWikidataEntities, searchWikidataVenues } from "@/lib/wikidata/client";
 import { rankWikidataCandidates } from "@/lib/wikidata/matcher";
 import type { ScoredWikidataCandidate } from "@/lib/wikidata/types";
@@ -10,12 +9,14 @@ import { processVenueEnrichmentItems } from "./batch";
 import { CANDIDATE_MIN_THRESHOLD, distanceMeters, ENTITY_AUTO_MATCH_THRESHOLD, findCoordinateCandidate, findImageCandidates, thresholdForConfidence } from "./policy";
 import type { VenueEnrichmentBatchResult, VenueEnrichmentResult } from "./types";
 import { applyStoredWikidataCandidate, selectSingleSourceCandidate, type StoredWikidataCandidate } from "./source-application";
+import { discoverVenueImageFiles, imageDiscoveryStatus, saveVenueImageDiscovery } from "./image-discovery";
 
 type Venue = {
   id: string; name: string; name_en: string | null; address: string | null; prefecture: string | null; city: string | null;
   official_url: string | null; latitude: number | null; longitude: number | null; coordinate_source: string | null;
   coordinate_status: string; coordinate_candidate_qid: string | null;
   wikidata_match_status: string;
+  best_wikidata_candidate_qid: string | null;
 };
 
 export function canApplyAutomaticCoordinates(venue: Pick<Venue, "latitude" | "longitude" | "coordinate_source">) {
@@ -82,31 +83,7 @@ async function saveMatchCandidates(db: SupabaseClient, venueId: string, candidat
   return new Map(rows.map((row) => [row.external_id, row.status]));
 }
 
-async function saveCommonsCandidate(db: SupabaseClient, ids: Record<string, string>, venueId: string, candidate: ScoredWikidataCandidate, foundThreshold: number) {
-  if (!candidate.imageFileTitle) return false;
-  const fileTitle = candidate.imageFileTitle;
-  const metadata = await getCommonsImageMetadata(fileTitle);
-  if (!metadata) return false;
-  const sourceRecordId = await saveSourceRecord(db, ids.wikimedia_commons, venueId, `${candidate.id}:${metadata.fileTitle}`, metadata.sourceUrl, metadata.raw);
-  const { data: existing, error: existingError } = await db.from("source_image_candidates").select("id,review_status,rights_status").eq("source_record_id", sourceRecordId).eq("provider", "wikimedia_commons").eq("stable_identifier", metadata.fileTitle).maybeSingle();
-  if (existingError) throw existingError;
-  const { error } = await db.from("source_image_candidates").upsert({
-    source_record_id: sourceRecordId, image_url: metadata.imageUrl, thumbnail_url: metadata.thumbnailUrl,
-    provider: "wikimedia_commons", stable_identifier: metadata.fileTitle, source_url: metadata.sourceUrl,
-    author: metadata.author, credit: metadata.credit, license_short_name: metadata.licenseShortName,
-    license_url: metadata.licenseUrl, usage_terms: metadata.usageTerms,
-    candidate_entity_id: candidate.id, candidate_entity_label: candidate.labelJa || candidate.labelEn,
-    candidate_match_confidence: candidate.confidence, candidate_match_threshold: foundThreshold,
-    candidate_kind: foundThreshold >= ENTITY_AUTO_MATCH_THRESHOLD ? "probable" : "reference",
-    contents_rights_type: metadata.licenseShortName, contents_access: metadata.usageTerms,
-    review_status: existing?.review_status || "unreviewed", rights_status: existing?.rights_status || "needs_review",
-    is_active: true, last_seen_at: new Date().toISOString(),
-  }, { onConflict: "source_record_id,provider,stable_identifier" });
-  if (error) throw error;
-  return !existing;
-}
-
-async function imageDecisionStatus(db: SupabaseClient, venueId: string, fallback: "no_entity_candidate" | "no_image_candidate") {
+async function imageDecisionStatus(db: SupabaseClient, venueId: string, fallback: "qid_missing" | "no_image_found") {
   const [{ data: sources, error: sourceError }, { data: assets, error: assetError }] = await Promise.all([
     db.from("source_records").select("id").eq("venue_id", venueId),
     db.from("media_assets").select("id").eq("venue_id", venueId).eq("rights_status", "approved"),
@@ -116,12 +93,14 @@ async function imageDecisionStatus(db: SupabaseClient, venueId: string, fallback
   if (assets?.length) return "approved_image_exists" as const;
   const sourceRecordIds = (sources || []).map((source) => source.id);
   if (!sourceRecordIds.length) return fallback;
-  const { data: imageCandidates, error } = await db.from("source_image_candidates").select("review_status,is_active").in("source_record_id", sourceRecordIds);
+  const { data: imageCandidates, error } = await db.from("source_image_candidates").select("review_status,is_active,discovery_source").in("source_record_id", sourceRecordIds);
   if (error) throw error;
   const active = (imageCandidates || []).filter((candidate) => candidate.is_active);
+  if (active.length && active.every((candidate) => candidate.review_status === "rejected")) return "image_candidate_rejected" as const;
+  const discovered = active.map((candidate) => ({ discoverySource: candidate.discovery_source, fileTitle: "", score: 0 })).filter((candidate) => candidate.discoverySource) as Parameters<typeof imageDiscoveryStatus>[0];
+  if (discovered.length) return imageDiscoveryStatus(discovered);
   if (active.some((candidate) => candidate.review_status === "accepted")) return "image_candidate_kept" as const;
   if (active.some((candidate) => candidate.review_status === "unreviewed")) return "image_candidate_found" as const;
-  if (active.length && active.every((candidate) => candidate.review_status === "rejected")) return "image_candidate_rejected" as const;
   return fallback;
 }
 
@@ -136,19 +115,14 @@ async function buildCandidateDiagnostics(
   const coordinate = findCoordinateCandidate(candidates, statuses);
   const geolonia = await getGeoloniaFallback(db, ids, venue);
   const imageSearch = findImageCandidates(candidates, statuses);
-  let imageCandidateAdded = false;
-  if (imageSearch.foundThreshold != null) {
-    for (const candidate of imageSearch.candidates) {
-      if (await saveCommonsCandidate(db, ids, venue.id, candidate, imageSearch.foundThreshold)) imageCandidateAdded = true;
-    }
-  }
+  const imageCandidateAdded = false;
   const updates: Record<string, unknown> = {
     best_wikidata_candidate_qid: top?.id || null,
     coordinate_search_trace: candidates
       .filter((candidate) => candidate.confidence >= CANDIDATE_MIN_THRESHOLD && statuses.get(candidate.id) !== "rejected")
       .map((candidate) => ({ qid: candidate.id, confidence: candidate.confidence, threshold: thresholdForConfidence(candidate.confidence), coordinatesPresent: candidate.latitude != null && candidate.longitude != null, selected: candidate.id === coordinate?.candidate.id })),
     image_search_trace: imageSearch.trace,
-    image_search_status: await imageDecisionStatus(db, venue.id, candidates.length ? "no_image_candidate" : "no_entity_candidate"),
+    image_search_status: await imageDecisionStatus(db, venue.id, candidates.length ? "no_image_found" : "qid_missing"),
     image_candidate_found_threshold: imageSearch.foundThreshold,
     image_candidate_found_confidence: imageSearch.candidates[0]?.confidence ?? null,
     image_candidate_found_qid: imageSearch.candidates[0]?.id ?? null,
@@ -197,9 +171,12 @@ async function applyMatchedEntity(db: SupabaseClient, ids: Record<string, string
   const { data: refreshed, error: refreshedError } = await db.from("venues").select("*").eq("id", venue.id).single();
   if (refreshedError || !refreshed) throw refreshedError || new Error("Venue could not be refreshed");
   const diagnostics = await buildCandidateDiagnostics(db, ids, refreshed as Venue, candidates, statuses);
+  diagnostics.updates.image_search_trace = application.imageDiscovery.trace;
+  diagnostics.updates.image_candidate_found_qid = application.imageDiscovery.files.length ? candidate.id : null;
+  diagnostics.updates.image_candidate_found_reason = application.imageDiscovery.files.map((item) => `${item.discoverySource}: ${item.fileTitle}`).join("; ") || null;
   const { error } = await db.from("venues").update(diagnostics.updates).eq("id", venue.id);
   if (error) throw error;
-  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: application.applied.includes("latitude") && application.applied.includes("longitude"), coordinateSource: application.applied.includes("latitude") ? "wikidata" : null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: diagnostics.imageCandidateAdded, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: true };
+  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: application.applied.includes("latitude") && application.applied.includes("longitude"), coordinateSource: application.applied.includes("latitude") ? "wikidata" : null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: application.imageDiscovery.added > 0, imageCandidateFound: application.imageDiscovery.saved.length > 0, imageFoundAtRelaxedThreshold: false, entityCandidateFound: true };
 }
 
 export async function enrichVenue(venueId: string, options: { forceWikidataId?: string } = {}, db: SupabaseClient = createSupabaseAdminClient()): Promise<VenueEnrichmentResult> {
@@ -207,7 +184,7 @@ export async function enrichVenue(venueId: string, options: { forceWikidataId?: 
   if (error || !data) throw error || new Error("Venue not found");
   const venue = data as Venue;
   const ids = await sourceIds(db);
-  let preservedWikidataId: string | null = null;
+  let preservedWikidataId: string | null = /^Q\d+$/.test(venue.best_wikidata_candidate_qid || "") ? venue.best_wikidata_candidate_qid : null;
   if (venue.wikidata_match_status === "matched") {
     const { data: matchedCandidate, error: matchedCandidateError } = await db
       .from("venue_external_match_candidates")
@@ -219,7 +196,11 @@ export async function enrichVenue(venueId: string, options: { forceWikidataId?: 
       .limit(1)
       .maybeSingle();
     if (matchedCandidateError) throw matchedCandidateError;
-    preservedWikidataId = matchedCandidate?.external_id || null;
+    preservedWikidataId = matchedCandidate?.external_id || preservedWikidataId;
+    if (!preservedWikidataId) {
+      const { data: wikidataSource } = await db.from("source_records").select("external_id,data_sources!inner(key)").eq("venue_id", venue.id).eq("data_sources.key", "wikidata").limit(1).maybeSingle();
+      preservedWikidataId = wikidataSource && /^Q\d+$/.test(wikidataSource.external_id || "") ? wikidataSource.external_id : null;
+    }
   }
   const requestedWikidataId = options.forceWikidataId || preservedWikidataId;
   const rawCandidates = requestedWikidataId ? await getWikidataEntities([requestedWikidataId]) : await searchWikidataVenues(venue.name);
@@ -249,4 +230,49 @@ export async function enrichVenueBatch(limit = 20, db: SupabaseClient = createSu
   const status = result.errors.length ? (result.processed > result.errors.length ? "partial" : "failed") : "completed";
   await db.from("import_runs").update({ status, fetched_count: result.processed, updated_count: result.matched, error_count: result.errors.length, errors: result.errors, metrics: result, finished_at: new Date().toISOString() }).eq("id", result.runId);
   return result;
+}
+
+export async function searchPriorityVenueImages(options: number | { limit?: number; dryRun?: boolean; venueIds?: string[] } = 20, db: SupabaseClient = createSupabaseAdminClient()) {
+  const normalizedOptions = typeof options === "number" ? { limit: options, dryRun: false, venueIds: [] as string[] } : { limit: options.limit || 20, dryRun: Boolean(options.dryRun), venueIds: options.venueIds || [] };
+  const safeLimit = Math.max(1, Math.min(200, Math.floor(normalizedOptions.limit)));
+  const { data, error } = await db.from("venues")
+    .select("id,name,name_en,best_wikidata_candidate_qid,image_search_status,effective_priority_tier,source_records!source_records_venue_id_fkey(id,external_id,data_sources(key),source_image_candidates(id,is_active))")
+    .in("effective_priority_tier", ["A", "B", "C"])
+    .is("merged_into_venue_id", null)
+    .order("effective_priority_tier")
+    .order("name");
+  if (error) throw error;
+  const targets = (data || []).filter((venue) => {
+    if (normalizedOptions.venueIds.length && !normalizedOptions.venueIds.includes(venue.id)) return false;
+    if (!normalizedOptions.venueIds.length && ["qid_missing", "no_image_found"].includes(venue.image_search_status)) return false;
+    const sources = (venue.source_records || []) as Array<{ source_image_candidates?: Array<{ is_active?: boolean }> }>;
+    return !sources.some((source) => (source.source_image_candidates || []).some((candidate) => candidate.is_active !== false));
+  }).slice(0, safeLimit);
+  const errors: Array<{ venueId: string; message: string }> = [];
+  let candidateFound = 0;
+  let noCandidate = 0;
+  const coverage = { wikidataP18: 0, commonsCategory: 0, wikipediaArticle: 0, uniqueCandidates: 0 };
+  for (const venue of targets) {
+    try {
+      const sources = (venue.source_records || []) as Array<{ external_id?: string; data_sources?: { key?: string } | Array<{ key?: string }> }>;
+      const sourceQid = sources.find((source) => (Array.isArray(source.data_sources) ? source.data_sources : [source.data_sources]).some((item) => item?.key === "wikidata") && /^Q\d+$/.test(source.external_id || ""))?.external_id;
+      const qid = /^Q\d+$/.test(venue.best_wikidata_candidate_qid || "") ? venue.best_wikidata_candidate_qid : sourceQid;
+      if (!qid) { noCandidate += 1; if (!normalizedOptions.dryRun) await db.from("venues").update({ image_search_status: "qid_missing", image_search_trace: [] }).eq("id", venue.id); continue; }
+      const result = normalizedOptions.dryRun
+        ? await discoverVenueImageFiles({ qid, venueName: venue.name, venueNameEn: venue.name_en })
+        : await saveVenueImageDiscovery(db, { venueId: venue.id, qid, venueName: venue.name, venueNameEn: venue.name_en });
+      if (result.files.length) candidateFound += 1; else noCandidate += 1;
+      if (result.files.some((item) => item.discoverySource === "wikidata_p18")) coverage.wikidataP18 += 1;
+      if (result.files.some((item) => item.discoverySource === "commons_category")) coverage.commonsCategory += 1;
+      if (result.files.some((item) => item.discoverySource === "wikipedia_article")) coverage.wikipediaArticle += 1;
+      coverage.uniqueCandidates += result.files.length;
+      if (!normalizedOptions.dryRun) {
+        const { data: primary } = await db.from("media_assets").select("id").eq("venue_id", venue.id).eq("is_primary", true).limit(1);
+        await db.from("venues").update({ image_search_status: primary?.length ? "approved_image_exists" : imageDiscoveryStatus(result.files), image_search_trace: result.trace, image_candidate_found_qid: result.files.length ? qid : null, image_candidate_found_reason: result.files.map((item) => `${item.discoverySource}: ${item.fileTitle}`).join("; ") || null }).eq("id", venue.id);
+      }
+    } catch (caught) {
+      errors.push({ venueId: venue.id, message: caught instanceof Error ? caught.message : "Image search failed" });
+    }
+  }
+  return { dryRun: normalizedOptions.dryRun, processed: targets.length, candidateFound, noCandidate, coverage, errors, message: normalizedOptions.dryRun ? "A〜Cの画像候補Coverage Dry Runが完了しました。" : "A〜Cの画像候補検索が完了しました。" };
 }

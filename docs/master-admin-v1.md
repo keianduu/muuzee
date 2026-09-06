@@ -29,7 +29,7 @@ The three masters use shared configuration and services rather than copied CRUD 
 - `master-importers.ts`: explicit registry of real external source adapters and their supported modes.
 - Shared list, filter, editor, navigation, CSV, publication, and relation UI components.
 
-The browser receives the first 50 list rows, then requests the next 50 as the infinite-scroll sentinel approaches the viewport. Filters, search resolution, count, stable sort, and each bounded page run on the server. A Drawer fetches only the selected record's detail. CSV export deliberately bypasses screen pagination and reads the complete master in bounded server batches.
+The browser receives the first 50 list rows, then requests the next 50 as the infinite-scroll sentinel approaches the viewport. Filters, search resolution, count, stable sort, and each bounded page run on the server. Venueは実効Tier A→E→未分類、同Tier内はCompleteness低→名称→UUIDで安定Sortする。A〜E / A〜C FilterはURL stateとして保持する。A Drawer fetches only the selected record's detail. CSV export deliberately bypasses screen pagination and reads the complete master in bounded server batches.
 
 ## 3. Manual Input
 
@@ -71,7 +71,7 @@ Previous provenance is retained as history with `is_current = false`. CSV never 
 
 ## 4.1 Official Website Source B
 
-`/admin/venues`の`公式サイト情報取得`は、選択Venueまたは現在のFilterから最大50件を対象に、同一domain・robots.txt準拠・最大6ページのbounded crawlを実行する。結果はMasterへ直接保存せず、Crawl Result → CSV Download → CSV Preview → Confirmを必須とする。最新Crawlと履歴、抽出値、Field Source URLはVenue DrawerのDataタブで確認できる。詳細は[`docs/integrations/official-venue-crawler.md`](./integrations/official-venue-crawler.md)を参照。
+`/admin/venues`の`公式サイト情報取得`は、選択Venue、現在のFilter、Tier A、A+B、A〜Cから最大50件を対象に、同一domain・robots.txt準拠・最大6ページのbounded crawlを実行する。不足Fieldを指定でき、公式URLなしは対象外としてDashboard集計する。結果はMasterへ直接保存せず、Crawl Result → CSV Download → CSV Preview → Confirmを必須とする。最新Crawlと履歴、抽出値、Field Source URLはVenue DrawerのDataタブで確認できる。詳細は[`docs/integrations/official-venue-crawler.md`](./integrations/official-venue-crawler.md)を参照。
 
 CSV Export supports complete current records and a template. It is not limited by list pagination.
 
@@ -80,7 +80,7 @@ CSV Export supports complete current records and a template. It is not limited b
 External import is represented by the shared `MasterImporter` interface. The UI exposes only registered, real adapters:
 
 - Venue: Wikidata Source Aは件数指定Importと明示的な全件同期、既存Venue起点のVenue Enrichmentはbounded sampleを実行できる。identity候補が複数のときだけ人がSourceを選ぶ。単一座標は自動適用し、画像はPrimary選択とrights確認を分離する。
-- Artist: no source adapter is connected, so the UI says unavailable.
+- Artist: Wikidata Targeted ImportとImage再探索を提供する。Wikipedia EnrichmentとExhibition Artist MatchingはLOCAL用Admin APIとして実装し、Global Full Syncは提供しない。Getty ULAN / APJ DAJはCoverage TestだけでImportしない。
 - Work: no source adapter is connected, so the UI says unavailable.
 
 Artist / WorkのFull Syncは、adapterがdeterministic pagination、update identity、error aggregation、rate limiting、human-review boundaryを実装するまでunavailableのままにする。No sample or Full Sync button generates fictional data.
@@ -92,7 +92,7 @@ Standard future import results use `fetched / created / updated / skipped / sour
 Completeness is calculated dynamically from shared configuration. It is not stored in the database.
 
 - Venue: Name / Address / Coordinates / Description / Primary Image / Opening Hours.
-- Artist: Name / Birth or Death / Country / Description / Style / Primary Image.
+- Artist: Name / Name EN / Nationality / Primary Imageの4項目だけ。Aliases / Life / Classification / Description / StyleはSupplemental。
 - Work: Title / Artist relation / Description / Holding Venue relation / Primary Image.
 
 Lists show a percentage. Detail pages show a checklist. Missing values are displayed as `未設定` or an explicit empty state.
@@ -135,7 +135,9 @@ Artist and Work can upload Storage-backed images with the same three-way rights 
 - `rejected`: 明確に不可
 - `needs_review`: 記載なし・不明
 
-External image references remain Candidates and never become Primary or rights-approved automatically. Detail previews use `object-fit: contain` so the complete image is visible.
+Venue / Artist共通Policyは既存Primaryを維持し、Primaryなし+usable P18なら複数CandidateでもP18を自動Primary化する。P18なし+usable Candidate 1件も自動Primary化し、P18なし+複数Candidateは人が選択する。自動設定後もRightsは元の状態を保持し、Approvedにはしない。Detail previews use `object-fit: contain` so the complete image is visible.
+
+Artistも同じComponentとRuleを利用する。Artist一覧はA/B/C Tier、共通Image Status、4項目Core Quality、Publicationを表示し、A→B→C→未分類、同Tier内はCore Quality不足順で安定Sortする。Drawer DataタブはWikidata / Wikipedia / Provenance / Image discovery diagnosticsを表示し、Getty ULAN / APJ DAJはResearch-onlyと明示する。
 
 Field Provenance displays Manual, CSV, API, and AI transformation history. Source BのAI補完はAdminからCSVと固定Promptを取得し、Codexで構造化したCSVを既存Previewへ戻す。ConfirmしたFieldは`source=official_website`と公式URLを維持し、`generated_by_ai = true`、confidence、notesを記録する。AIはSourceとして扱わず、自動公開しない。
 

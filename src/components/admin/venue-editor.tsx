@@ -1,23 +1,12 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { MediaAssetRow, SourceImageCandidateRow, VenueMatchCandidateRow, VenueRow } from "@/lib/admin/types";
-import { interpretCommonsLicense } from "@/lib/wikimedia-commons/license-profile";
 import { displayStatus } from "@/lib/admin/master-labels";
+import { MasterImageCandidateCard } from "./master-image-candidate";
 
-function LicenseSummary({ candidate }: { candidate: SourceImageCandidateRow }) {
-  const profile = interpretCommonsLicense(candidate.license_short_name);
-  return <div className="license-summary" aria-label="ライセンス条件の整理">
-    <span>ライセンス</span><strong>{profile.license}</strong><span>利用可否</span><strong>{profile.usage}</strong>
-    <span>商用利用</span><strong>{profile.commercialUse}</strong><span>加工・トリミング</span><strong>{profile.modification}</strong>
-    <span>クレジット表記</span><strong>{profile.attribution}</strong><span>同一ライセンス継承</span><strong>{profile.shareAlike}</strong>
-    {!profile.recognized && <><span>判定</span><strong>ライセンス原文を要確認</strong></>}
-  </div>;
-}
 
 function Trace({ title, rows }: { title: string; rows: Array<Record<string, unknown>> }) {
   return <div className="card"><h3>{title}</h3>{rows.length ? <div className="table-wrap"><table><thead><tr><th>Threshold / QID</th><th>Eligible</th><th>Coordinates</th><th>P18</th><th>Selected</th></tr></thead><tbody>{rows.map((row, index) => <tr key={`${title}-${index}`}>
@@ -29,12 +18,21 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  async function request(url: string, init: RequestInit) {
+  async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean } = {}) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch(url, init); const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Request failed");
-      setMessage(body.message || JSON.stringify(body)); router.refresh(); window.dispatchEvent(new CustomEvent("muuzee:master-updated"));
+      setMessage(body.message || JSON.stringify(body));
+      // The drawer refreshes itself (and its list row) through this event. A
+      // router refresh would remount the drawer between the save and refetch,
+      // briefly discarding the selected venue and could leave it blank when a
+      // development chunk was being rebuilt. Standalone detail pages still
+      // need the server-component refresh.
+      if (showBasicForm) router.refresh();
+      window.dispatchEvent(new CustomEvent("muuzee:master-updated", {
+        detail: { entity: "venues", id: venue.id, preserveListOrder: Boolean(options.preserveListOrder) },
+      }));
     } catch (error) { setMessage(error instanceof Error ? error.message : "Request failed"); } finally { setBusy(false); }
   }
   async function save(event: React.FormEvent<HTMLFormElement>) {
@@ -49,7 +47,7 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
     await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
   }
   async function setPrimaryImage(candidate: SourceImageCandidateRow) {
-    await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" });
+    await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" }, { preserveListOrder: true });
   }
   async function upload(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: new FormData(event.currentTarget) }); }
   async function remove(asset: MediaAssetRow) {
@@ -72,6 +70,9 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
   const officialCrawls = [...(venue.official_venue_crawl_results || [])].sort((a, b) => b.crawled_at.localeCompare(a.crawled_at));
   const latestOfficialCrawl = officialCrawls[0];
   const aiSources = (venue.venue_field_sources || []).filter((source) => source.generated_by_ai).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const wikipediaAddressSource = (venue.venue_field_sources || []).find((source) => source.field_name === "address" && source.source === "wikipedia" && source.is_current);
+  const wikipediaSourceRecord = wikipediaAddressSource?.source_record_id ? (venue.source_records || []).find((source) => source.id === wikipediaAddressSource.source_record_id) : null;
+  const wikipediaPayload = wikipediaSourceRecord?.raw_payload as { title?: string; pageId?: number; language?: string; qid?: string } | null | undefined;
   const sourceBMissing = ["address", "postal_code", "opening_hours_text", "closed_days_text", "access_text", "description"].filter((field) => !String(venue[field as keyof VenueRow] || "").trim());
 
   return <>
@@ -113,18 +114,10 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
       {!candidates.length && <p className="muted">Entity候補はありません。</p>}
     </section>}
 
+    {(view === "all" || view === "data") && wikipediaAddressSource && <section className="card"><h2>Wikipedia Address Source</h2><div className="license-summary"><span>Address Source</span><strong>Wikipedia</strong><span>Wikipedia</span><strong>{wikipediaPayload?.title || "記事タイトル未取得"}</strong><span>QID / Page ID</span><strong>{wikipediaPayload?.qid || matchedWikidataId || "-"} / {wikipediaPayload?.pageId ?? "-"}</strong><span>Applied</span><strong>{new Date(wikipediaAddressSource.created_at).toLocaleString("ja-JP")}</strong></div>{wikipediaAddressSource.source_url && <a className="button secondary" href={wikipediaAddressSource.source_url} target="_blank" rel="noreferrer">Source URL ↗</a>}</section>}
+
     {(view === "all" || view === "edit") && <section><h2>Image Candidate（画像候補）</h2><p className="muted">Entity採用前でもP18を参考候補として保持します。候補保持、ライセンス判断、Primary採用は別操作で、自動公開はしません。</p>
-      <div className="media-grid">{imageCandidates.map((candidate) => <article className="card media-card" key={candidate.id}>
-        <img src={candidate.thumbnail_url || candidate.image_url} alt="Venue image candidate"/>
-        <p><span className="status">{candidate.review_status}</span> <span className={`status ${candidate.rights_status}`}>{candidate.rights_status === "approved" ? "明確に利用可能" : candidate.rights_status === "rejected" ? "明確に不可" : "記載なし・不明"}</span></p>
-        <p><strong>{candidate.candidate_entity_label || "Wikidata候補"}</strong><br/><span className="muted">{candidate.candidate_entity_id || "-"} · Match {candidate.candidate_match_confidence ?? "-"} · Found threshold {candidate.candidate_match_threshold ?? "-"} · {candidate.candidate_kind}</span></p>
-        <LicenseSummary candidate={candidate}/>
-        <details><summary>Reported license / source metadata</summary><p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}</p></details>
-        <div className="actions"><a className="button secondary" href={candidate.source_url || candidate.image_url} target="_blank" rel="noreferrer">Commons / Source</a>{candidate.license_url && <a className="button secondary" href={candidate.license_url} target="_blank" rel="noreferrer">License原文</a>}</div>
-        <h3>画像候補の判断</h3><div className="actions"><button className="button secondary" disabled={busy} onClick={() => review(candidate, { review_status: "accepted" })}>候補として残す</button><button className="button danger" disabled={busy} onClick={() => review(candidate, { review_status: "rejected" })}>候補から除外</button></div>
-        <h3>Primary画像</h3><div className="actions"><button className="button" disabled={busy || candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active} onClick={() => setPrimaryImage(candidate)}>この画像を設定</button></div>
-        {candidate.rights_status === "rejected" && <p className="muted">明確に利用不可と記録された候補は設定できません。</p>}
-      </article>)}</div>{!imageCandidates.length && <p className="muted">画像候補はありません。</p>}
+      <div className="media-grid">{imageCandidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={venue.name} busy={busy} onSetPrimary={() => setPrimaryImage(candidate)} onAccept={() => review(candidate, { review_status: "accepted" })} onReject={() => review(candidate, { review_status: "rejected" })}/>)}</div>{!imageCandidates.length && <p className="muted">画像候補はありません。</p>}
     </section>}
 
     {(view === "all" || view === "data") && <section><h2>Search Diagnostics（検索診断）</h2><div className="media-grid"><Trace title="Coordinate Search（座標探索）" rows={venue.coordinate_search_trace || []}/><Trace title={`Image Search（画像探索） / ${venue.image_search_status}`} rows={venue.image_search_trace || []}/></div></section>}

@@ -11,7 +11,7 @@ export async function MasterIndexPage({ entity, searchParams }: { entity: Master
   const params = stringParams(await searchParams);
   const result = await listMasters(entity, {
     q: params.q, status: params.status, type: params.type, active: params.active, image: params.image, coordinates: params.coordinates,
-    source: params.source, match: params.match, completeness: params.completeness, page: 1, pageSize: 50,
+    source: params.source, match: params.match, completeness: params.completeness, tier: params.tier, nationality: params.nationality, page: 1, pageSize: 50,
   });
   const query = new URLSearchParams(params); query.delete("page"); query.delete("pageSize"); query.delete("selected");
   const config = MASTER_CONFIGS[entity];

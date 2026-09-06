@@ -44,7 +44,7 @@ export type VenueRow = {
   geolonia_candidate_longitude: number | null;
   geolonia_candidate_precision: string | null;
   coordinate_search_trace: Array<Record<string, unknown>>;
-  image_search_status: "no_entity_candidate" | "no_image_candidate" | "image_candidate_found" | "image_candidate_kept" | "image_candidate_rejected" | "approved_image_exists";
+  image_search_status: "no_entity_candidate" | "no_image_candidate" | "image_candidate_found" | "image_candidate_kept" | "image_candidate_rejected" | "approved_image_exists" | "qid_missing" | "no_image_found" | "p18_found" | "commons_candidate_found" | "wikipedia_candidate_found";
   image_candidate_found_threshold: number | null;
   image_candidate_found_confidence: number | null;
   image_candidate_found_qid: string | null;
@@ -71,6 +71,7 @@ export type VenueFieldSourceRow = {
   review_status: string;
   is_current: boolean;
   created_at: string;
+  source_record_id?: string | null;
 };
 
 export type OfficialVenueCrawlResultRow = {
@@ -157,7 +158,8 @@ export type SourceImageCandidateRow = {
   candidate_entity_label: string | null;
   candidate_match_confidence: number | null;
   candidate_match_threshold: number | null;
-  candidate_kind: "reference" | "probable";
+  candidate_kind: string;
+  discovery_source: "wikidata_p18" | "commons_category" | "wikipedia_article" | null;
   contents_rights_type: string | null;
   contents_access: string | null;
   review_status: string;

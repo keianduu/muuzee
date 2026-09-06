@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { calculateCompleteness } from "@/lib/admin/master-completeness";
 import { slugify } from "@/lib/admin/slug";
-import { getCommonsImageMetadata } from "@/lib/wikimedia-commons/client";
 import { getWikidataEntities } from "./client";
 import { scoreWikidataCandidate } from "./matcher";
 import type { ScoredWikidataCandidate, WikidataVenueCandidate } from "./types";
@@ -12,9 +11,9 @@ import { mapWikidataVenue } from "./venue-mapper";
 import { WIKIDATA_VENUE_CLASSES } from "./venue-type-mapper";
 import type { WikidataVenue, WikidataVenueImportSummary } from "./venue-import-types";
 import { shouldApplySourceField } from "@/lib/venue-enrichment/source-application";
+import { saveVenueImageDiscovery } from "@/lib/venue-enrichment/image-discovery";
 
 const DATA_SOURCE_KEY = "wikidata";
-const COMMONS_SOURCE_KEY = "wikimedia_commons";
 const AUTO_MATCH = 0.85;
 const POSSIBLE_MATCH = 0.6;
 const DETAIL_BATCH_SIZE = 50;
@@ -48,10 +47,10 @@ export function wikidataImportRunStatus(fetched: number, errorCount: number) {
 }
 
 async function sourceIds(db: SupabaseClient) {
-  const { data, error } = await db.from("data_sources").select("id,key").in("key", [DATA_SOURCE_KEY, COMMONS_SOURCE_KEY]);
+  const { data, error } = await db.from("data_sources").select("id,key").eq("key", DATA_SOURCE_KEY);
   if (error) throw error;
   const values = Object.fromEntries((data || []).map((row) => [row.key, row.id])) as Record<string, string>;
-  if (!values[DATA_SOURCE_KEY] || !values[COMMONS_SOURCE_KEY]) throw new Error("Wikidata / Commons data source is missing. Apply local migrations first.");
+  if (!values[DATA_SOURCE_KEY]) throw new Error("Wikidata data source is missing. Apply local migrations first.");
   return values;
 }
 
@@ -214,6 +213,7 @@ function asScoredCandidate(venue: WikidataVenue, confidence = 1, reasons: string
     id: venue.qid, labelJa: venue.name, labelEn: venue.nameEn, aliases: venue.aliases, description: venue.description,
     officialUrl: venue.officialUrl, latitude: venue.latitude, longitude: venue.longitude,
     imageFileTitle: venue.imageFileTitle, countryId: "Q17", raw: sourceEnvelope(venue), confidence, reasons,
+    commonsCategory: venue.commonsCategory, wikipediaArticleTitle: null,
     suggestedStatus: confidence >= AUTO_MATCH ? "matched" : "candidate",
   };
 }
@@ -229,33 +229,6 @@ async function saveMatchCandidate(db: SupabaseClient, venueId: string, venue: Wi
   }, { onConflict: "venue_id,provider,external_id" });
   if (error) throw error;
   return preserved as "matched" | "candidate" | "rejected";
-}
-
-async function addCommonsCandidate(db: SupabaseClient, commonsSourceId: string, venueId: string, venue: WikidataVenue) {
-  if (!venue.imageFileTitle) return false;
-  const metadata = await getCommonsImageMetadata(venue.imageFileTitle);
-  if (!metadata) return false;
-  const externalId = `venue:${venueId}:${venue.qid}:${metadata.fileTitle}`;
-  const checksum = wikidataVenueChecksum(metadata.raw);
-  const { data: source, error } = await db.from("source_records").upsert({
-    data_source_id: commonsSourceId, external_id: externalId, venue_id: venueId, source_url: metadata.sourceUrl,
-    raw_payload: metadata.raw, checksum, fetched_at: new Date().toISOString(),
-  }, { onConflict: "data_source_id,external_id" }).select("id").single();
-  if (error || !source) throw error || new Error("Commons source record could not be saved");
-  const { data: prior, error: priorError } = await db.from("source_image_candidates").select("id,review_status,rights_status").eq("source_record_id", source.id).eq("provider", "wikimedia_commons").eq("stable_identifier", metadata.fileTitle).maybeSingle();
-  if (priorError) throw priorError;
-  const { error: imageError } = await db.from("source_image_candidates").upsert({
-    source_record_id: source.id, image_url: metadata.imageUrl, thumbnail_url: metadata.thumbnailUrl,
-    provider: "wikimedia_commons", stable_identifier: metadata.fileTitle, source_url: metadata.sourceUrl,
-    author: metadata.author, credit: metadata.credit, license_short_name: metadata.licenseShortName,
-    license_url: metadata.licenseUrl, usage_terms: metadata.usageTerms, candidate_entity_id: venue.qid,
-    candidate_entity_label: venue.name, candidate_match_confidence: 1, candidate_match_threshold: 1,
-    candidate_kind: "probable", contents_rights_type: metadata.licenseShortName, contents_access: metadata.usageTerms,
-    review_status: prior?.review_status || "unreviewed", rights_status: prior?.rights_status || "needs_review",
-    is_active: true, last_seen_at: new Date().toISOString(),
-  }, { onConflict: "source_record_id,provider,stable_identifier" });
-  if (imageError) throw imageError;
-  return !prior;
 }
 
 async function allExistingVenues(db: SupabaseClient) {
@@ -343,7 +316,8 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
         }
         const { error: linkError } = await db.from("source_records").update({ venue_id: target.id }).eq("id", stored.id); if (linkError) throw linkError;
         if (!created && await fillExistingVenue(db, target, venue, stored.id, matchMetadata)) result.updated += 1;
-        if (await addCommonsCandidate(db, ids[COMMONS_SOURCE_KEY], target.id, venue)) result.imageCandidatesAdded += 1;
+        const imageDiscovery = await saveVenueImageDiscovery(db, { venueId: target.id, qid: venue.qid, venueName: venue.name, venueNameEn: venue.nameEn });
+        result.imageCandidatesAdded += imageDiscovery.added;
       } catch (error) {
         result.errors.push({ qid: venue.qid, message: error instanceof Error ? error.message : "Venue import failed" });
       }

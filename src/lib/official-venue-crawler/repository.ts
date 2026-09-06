@@ -5,6 +5,7 @@ import type { CrawlVenueInput, OfficialCrawlResult, OfficialCrawlSummary } from 
 
 export type OfficialCrawlRequest = {
   mode: "selected" | "filtered" | "count";
+  target?: "selected" | "filtered" | "A" | "A-B" | "A-C";
   ids?: string[];
   limit?: number;
   missingField?: "address" | "postal_code" | "opening_hours_text" | "closed_days_text" | "access_text" | "description" | "";
@@ -41,8 +42,9 @@ async function targetsFor(request: OfficialCrawlRequest): Promise<CrawlVenueInpu
     if (result.error) throw result.error;
     rows = result.data || [];
   } else {
+    const targetTier = request.target && !["selected", "filtered"].includes(request.target) ? request.target : undefined;
     for (let page = 1; ; page += 1) {
-      const result = await listMasters("venues", { ...(request.filters || {}), page, pageSize: 100 });
+      const result = await listMasters("venues", { ...(request.filters || {}), tier: targetTier || request.filters?.tier, page, pageSize: 100 });
       if (result.error) throw new Error(result.error);
       rows.push(...result.rows);
       const eligible = rows.filter((row) => String(row.official_url || "").trim() && (!request.missingField || !String(row[request.missingField] || "").trim()));
