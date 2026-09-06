@@ -24,6 +24,7 @@ Status: Draft for the Master Data Architecture; the existing Admin v0 publicatio
 | `collection_holdings` | Venue × Work holdings and inventory evidence |
 | `work_presentations` | Work × Venueの常設/企画・現在展示状態。明示された場合のみ |
 | `work_import_candidates` | Targeted sourceの代表作品候補、Artist/Venue照合、採用済みWork ID |
+| `venue_search_keys` | active canonical Venueのname / name_en / alias / official URLをDB側でexact検索する索引キー |
 
 ## Classification, source, and media tables
 
@@ -93,5 +94,7 @@ Master Admin v1 does not add derived database columns. Completeness is calculate
 Work–Artist and Work–Venue Holding edits write `work_artists` and `collection_holdings`。展示状態は独立した`work_presentations`へ書き、HoldingからDisplayを推測しない。Artist and Venue related-content sections are derived from those relations rather than duplicated onto master rows. See `docs/master-admin-v1.md` for the CRUD, CSV, publication, and delete-safety behavior.
 
 Candidate adoptionは`adopt_work_candidate` DB functionで原子的に実行する。外部IDを優先し、補助的に正規化Title + Artist + Holding Venue + Yearを照合する。Work、relation、provenance、Candidate statusの途中状態を残さず、同一Candidateの再実行は冪等である。
+
+`work_import_candidates.venue_candidate_ids / venue_match_method / venue_match_reason`はShared Venue Resolverの監査結果を保持する。`matched_venue_id`が設定されてもCandidateのWork Master採用状態は変えない。
 
 Work titleは`title_ja` / `title_en` / `title_original` / `original_language`へ分離し、既存`title`は後方互換のLegacy fieldとして維持する。日本語表示は`title_ja → title_original → title_en → title`、英語表示は`title_en → title_original → title_ja → title`でfallbackする。いずれか1つが存在すればTitle Coreを満たす。既存SHŪZŌ CandidateはSource payloadが明示していた日本語Titleだけを`title_ja`へbackfillし、原題と言語は推測しない。Localized titleの更新も`Manual > Official Website > Trusted API > Wikidata > AI`のfield provenance priorityに従い、より高い優先順位のcurrent値を保護する。

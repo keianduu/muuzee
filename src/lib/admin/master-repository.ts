@@ -9,6 +9,7 @@ import { compareVenueQuality, effectiveVenueTier, tiersForFilter, VENUE_PRIORITY
 import { ARTIST_PRIORITY_TIERS, artistQuality, compareArtistQuality, effectiveArtistTier, tiersForArtistFilter, type ArtistPriorityTier } from "./artist-priority";
 import { normalizeIdentity } from "@/lib/work-collection/mapping";
 import { hasWorkTitle } from "@/lib/work-title";
+import { resolveVenue } from "@/lib/venue-resolution/shared";
 
 export type MasterRecord = Record<string, unknown> & {
   id: string;
@@ -554,9 +555,9 @@ export async function executeCsvImport(entity: MasterEntity, rows: CsvPreviewRow
           if (matches.length !== 1) throw new Error(`Artist name must resolve uniquely: ${relation.artistName}`); artistId = matches[0].id;
         }
         if (!venueId && relation.venueName) {
-          const { data, error } = await db.from("venues").select("id,name,name_en,aliases").is("merged_into_venue_id", null); if (error) throw error;
-          const needle = normalizeIdentity(relation.venueName); const matches = (data || []).filter((item) => [item.name, item.name_en, ...(item.aliases || [])].filter(Boolean).some((value) => normalizeIdentity(String(value)) === needle));
-          if (matches.length !== 1) throw new Error(`Venue name must resolve uniquely: ${relation.venueName}`); venueId = matches[0].id;
+          const resolution = await resolveVenue(db, { sourceName: relation.venueName });
+          if (resolution.status !== "resolved" || !resolution.venueId) throw new Error(`Venue name must resolve uniquely: ${relation.venueName} (${resolution.reason})`);
+          venueId = resolution.venueId;
         }
         if (artistId) {
           const { error } = await db.from("work_artists").upsert({ work_id: masterId, artist_id: artistId, source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() }, { onConflict: "work_id,artist_id" });

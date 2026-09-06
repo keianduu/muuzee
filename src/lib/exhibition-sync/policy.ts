@@ -1,5 +1,3 @@
-import { normalizeVenueIdentity } from "@/lib/venue-canonicalization/matcher";
-
 export type EventStatus = "upcoming" | "ongoing" | "ended" | "unknown";
 
 export function tokyoDate(now = new Date()) {
@@ -22,15 +20,6 @@ export function deriveEventStatus(startDate: string | null, endDate: string | nu
   if (end < today) return "ended";
   if (start > today) return "upcoming";
   return "ongoing";
-}
-
-export type VenueResolutionCandidate = { id: string; name: string; name_en?: string | null; aliases?: string[] | null; is_active?: boolean; merged_into_venue_id?: string | null };
-export function resolveVenueName(sourceName: string, venues: VenueResolutionCandidate[]) {
-  const needle = normalizeVenueIdentity(sourceName);
-  const candidates = venues.filter((venue) => venue.is_active !== false && !venue.merged_into_venue_id && [venue.name, venue.name_en || "", ...(venue.aliases || [])].some((name) => normalizeVenueIdentity(name) === needle));
-  if (candidates.length === 1) return { status: "resolved" as const, candidates, method: "normalized_exact_name_or_alias", confidence: 1 };
-  if (candidates.length > 1) return { status: "ambiguous" as const, candidates, method: "multiple_normalized_exact_names", confidence: null };
-  return { status: "unresolved" as const, candidates, method: "no_exact_canonical_candidate", confidence: null };
 }
 
 export function sourcePriority(source: string | null | undefined) {

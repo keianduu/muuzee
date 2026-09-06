@@ -91,6 +91,8 @@ Artist / WorkのFull Syncは、adapterがdeterministic pagination、update ident
 
 Standard future import results use `fetched / created / updated / skipped / sourceSelectionRequired / errors`.
 
+`/admin/imports`にはDaily Syncとは分離したTargeted Master Resolutionを表示する。Venue / ArtistのPending・Ambiguous・No Candidate・Failed・Resolved件数、未解決ItemのSource値・Exhibition・候補・External ID・理由を確認でき、Dry Runまたは最大50件のbounded Applyを実行できる。詳細は[`docs/integrations/targeted-master-resolution.md`](./integrations/targeted-master-resolution.md)を参照。
+
 ## 6. Completeness
 
 Completeness is calculated dynamically from shared configuration. It is not stored in the database.

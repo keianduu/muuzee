@@ -6,7 +6,9 @@ import { mapArtCommonsItem } from "@/lib/art-commons/mapper";
 import type { ArtCommonsItem, NormalizedArtCommonsItem } from "@/lib/art-commons/types";
 import { importedSlug } from "@/lib/admin/slug";
 import { extractKnownArtistsFromTitle, extractStructuredArtistMentions, matchArtistMention, normalizeArtistName, type MatchableArtist } from "@/lib/artist-matching/mention";
-import { dailySyncWindow, deriveEventStatus, mayApplySourceField, resolveVenueName, tokyoDate, type VenueResolutionCandidate } from "./policy";
+import { dailySyncWindow, deriveEventStatus, mayApplySourceField, tokyoDate } from "./policy";
+import { resolveVenue, resolveVenues, venueResolutionKey, type VenueResolution } from "@/lib/venue-resolution/shared";
+import { normalizeVenueIdentity } from "@/lib/venue-canonicalization/matcher";
 
 const DATA_SOURCE_KEY = "art_commons_jpsearch";
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,16 +32,10 @@ async function dataSourceId(db: SupabaseClient) {
   return data.id as string;
 }
 
-async function loadVenues(db: SupabaseClient): Promise<VenueResolutionCandidate[]> {
-  const { data, error } = await db.from("venues").select("id,name,name_en,aliases,is_active,merged_into_venue_id");
-  if (error) throw error;
-  return (data || []) as VenueResolutionCandidate[];
-}
-
 async function loadArtists(db: SupabaseClient): Promise<MatchableArtist[]> {
-  const { data, error } = await db.from("artists").select("id,name,name_en,aliases,birth_year");
-  if (error) throw error;
-  return (data || []) as MatchableArtist[];
+  const rows: MatchableArtist[] = [];
+  for (let from = 0;; from += 1000) { const { data, error } = await db.from("artists").select("id,name,name_en,aliases,birth_year").order("id").range(from, from + 999); if (error) throw error; rows.push(...((data || []) as MatchableArtist[])); if ((data || []).length < 1000) break; }
+  return rows;
 }
 
 async function tierSnapshot(db: SupabaseClient, table: "venues" | "artists"): Promise<TierSnapshot> {
@@ -122,24 +118,28 @@ async function writeProvenance(db: SupabaseClient, exhibitionId: string, sourceR
   return applicable;
 }
 
-async function resolveRelations(db: SupabaseClient, exhibitionId: string, sourceRecordId: string, item: NormalizedArtCommonsItem, raw: ArtCommonsItem, venues: VenueResolutionCandidate[], artists: MatchableArtist[], result: DailySyncResult, dryRun: boolean) {
+async function resolveRelations(db: SupabaseClient, exhibitionId: string, sourceRecordId: string, item: NormalizedArtCommonsItem, raw: ArtCommonsItem, artists: MatchableArtist[], result: DailySyncResult, dryRun: boolean, preResolvedVenue?: VenueResolution) {
   const now = new Date().toISOString();
   const { data: occurrence, error: occurrenceError } = await db.from("exhibition_occurrences").select("id,venue_id").eq("exhibition_id", exhibitionId).limit(1).maybeSingle();
   if (occurrenceError) throw occurrenceError;
-  let venueMatch = resolveVenueName(item.venue.name, venues);
-  if (occurrence?.venue_id) {
-    venueMatch = { status: "resolved", candidates: [{ id: occurrence.venue_id, name: item.venue.name }], method: "existing_canonical_relation_protected", confidence: 1 };
-  }
+  const venueMatch = occurrence?.venue_id
+    ? await resolveVenue(db, { sourceName: item.venue.name, existingVenueId: occurrence.venue_id })
+    : preResolvedVenue || await resolveVenue(db, { sourceName: item.venue.name });
   if (venueMatch.status === "resolved") result.venueResolved += 1;
   else if (venueMatch.status === "ambiguous") { result.venueAmbiguous += 1; result.venueTargetedHandoffs += 1; }
   else { result.venueUnresolved += 1; result.venueTargetedHandoffs += 1; }
 
   if (!dryRun) {
-    const matchedVenueId = venueMatch.status === "resolved" ? venueMatch.candidates[0].id : null;
-    const { error } = await db.from("exhibition_venue_mentions").upsert({ exhibition_id: exhibitionId, source_record_id: sourceRecordId, source_venue_name: item.venue.name, normalized_name: item.venue.name.normalize("NFKC").toLowerCase().replace(/[\s・･.,_\-‐‑‒–—―ー()（）「」『』【】\[\]\/]/g, ""), matched_venue_id: matchedVenueId, candidate_venue_ids: venueMatch.candidates.map((candidate) => candidate.id), match_method: venueMatch.method, match_confidence: venueMatch.confidence, match_status: venueMatch.status, resolution_status: venueMatch.status === "resolved" ? "resolved" : venueMatch.status === "ambiguous" ? "ambiguous" : "pending", match_reason: venueMatch.status === "resolved" ? "Single exact canonical candidate or protected existing relation" : venueMatch.status === "ambiguous" ? "Multiple exact canonical candidates; human selection required" : "No exact canonical candidate; targeted resolution pending", is_active: true, last_seen_at: now }, { onConflict: "exhibition_id,normalized_name" });
+    const matchedVenueId = venueMatch.venueId;
+    // Keep the existing mention-ledger identity stable; canonical matching uses
+    // the newer conservative key inside Shared Venue Resolver.
+    const normalizedVenueName = normalizeVenueIdentity(item.venue.name);
+    const { data: priorMention } = await db.from("exhibition_venue_mentions").select("resolution_status").eq("exhibition_id", exhibitionId).eq("normalized_name", normalizedVenueName).maybeSingle();
+    const unresolvedStatus = priorMention && ["ambiguous", "no_candidate", "failed"].includes(priorMention.resolution_status) ? priorMention.resolution_status : "pending";
+    const { error } = await db.from("exhibition_venue_mentions").upsert({ exhibition_id: exhibitionId, source_record_id: sourceRecordId, source_venue_name: item.venue.name, normalized_name: normalizedVenueName, matched_venue_id: matchedVenueId, candidate_venue_ids: venueMatch.candidateIds, match_method: venueMatch.matchMethod, match_confidence: venueMatch.status === "resolved" ? 1 : null, match_status: venueMatch.status, resolution_status: venueMatch.status === "resolved" ? "resolved" : venueMatch.status === "ambiguous" ? "ambiguous" : unresolvedStatus, match_reason: venueMatch.reason, is_active: true, last_seen_at: now }, { onConflict: "exhibition_id,normalized_name" });
     if (error) throw error;
     if (matchedVenueId) {
-      const values = { source_record_id: sourceRecordId, source_venue_name: item.venue.name, start_date: item.occurrence.startDate, end_date: item.occurrence.endDate, opening_hours_text: item.occurrence.openingHoursText, closed_days_text: item.occurrence.closedDaysText, ticket_url: item.occurrence.ticketUrl, match_method: venueMatch.method, match_confidence: venueMatch.confidence, relation_status: "active", last_seen_at: now };
+      const values = { source_record_id: sourceRecordId, source_venue_name: item.venue.name, start_date: item.occurrence.startDate, end_date: item.occurrence.endDate, opening_hours_text: item.occurrence.openingHoursText, closed_days_text: item.occurrence.closedDaysText, ticket_url: item.occurrence.ticketUrl, match_method: venueMatch.matchMethod, match_confidence: 1, relation_status: "active", last_seen_at: now };
       if (occurrence) {
         const { error: updateError } = await db.from("exhibition_occurrences").update(values).eq("id", occurrence.id);
         if (updateError) throw updateError;
@@ -179,7 +179,7 @@ async function resolveRelations(db: SupabaseClient, exhibitionId: string, source
   }
 }
 
-async function applyRecord(db: SupabaseClient, sourceId: string, scanned: Scanned, venues: VenueResolutionCandidate[], artists: MatchableArtist[], result: DailySyncResult) {
+async function applyRecord(db: SupabaseClient, sourceId: string, scanned: Scanned, artists: MatchableArtist[], result: DailySyncResult, preResolvedVenue?: VenueResolution) {
   const now = new Date().toISOString();
   const sourceUrl = scanned.normalized.sourceUrl;
   const values = { data_source_id: sourceId, external_id: scanned.raw.id, source_url: sourceUrl, raw_payload: scanned.raw, checksum: scanned.checksum, source_updated_at: scanned.normalized.sourceUpdatedAt, fetched_at: now, last_seen_at: now, last_changed_at: scanned.classification === "unchanged" ? scanned.existing?.last_changed_at || now : now };
@@ -207,7 +207,7 @@ async function applyRecord(db: SupabaseClient, sourceId: string, scanned: Scanne
   if (scanned.classification === "new") await writeProvenance(db, exhibitionId, stored.id as string, sourceUrl, { title: scanned.normalized.title, title_en: scanned.normalized.titleEn, description: scanned.normalized.description, exhibition_type: scanned.normalized.exhibitionType, official_url: scanned.normalized.officialUrl });
   const { error: linkError } = await db.from("source_records").update({ exhibition_id: exhibitionId }).eq("id", stored.id);
   if (linkError) throw linkError;
-  await resolveRelations(db, exhibitionId, stored.id as string, scanned.normalized, scanned.raw, venues, artists, result, false);
+  await resolveRelations(db, exhibitionId, stored.id as string, scanned.normalized, scanned.raw, artists, result, false, preResolvedVenue);
 }
 
 export async function runExhibitionDailySync(options: DailySyncOptions = {}, db: SupabaseClient = createSupabaseAdminClient()): Promise<DailySyncResult> {
@@ -220,19 +220,20 @@ export async function runExhibitionDailySync(options: DailySyncOptions = {}, db:
     else result.unchangedExhibitions += 1;
     if (deriveEventStatus(record.normalized.occurrence.startDate, record.normalized.occurrence.endDate, tokyoDate()) === "ended") result.ended += 1;
   }
-  const venues = await loadVenues(db);
+  const venueInputs = scanned.records.map((record) => ({ sourceName: record.normalized.venue.name }));
+  const venueResolutions = await resolveVenues(db, venueInputs);
   const artists = await loadArtists(db);
   if (options.dryRun) {
     for (const record of scanned.records) {
       const exhibitionId = record.existing?.exhibition_id;
       if (!exhibitionId) {
-        const match = resolveVenueName(record.normalized.venue.name, venues);
+        const match = venueResolutions.get(venueResolutionKey({ sourceName: record.normalized.venue.name }))!;
         if (match.status === "resolved") { result.venueResolved += 1; result.venueTierChanges += 1; } else if (match.status === "ambiguous") { result.venueAmbiguous += 1; result.venueTargetedHandoffs += 1; } else { result.venueUnresolved += 1; result.venueTargetedHandoffs += 1; }
         const structured = extractStructuredArtistMentions(record.raw);
         const mentions = structured.length ? structured : extractKnownArtistsFromTitle(record.normalized.title, artists);
         result.artistMentions += mentions.length;
         for (const mention of mentions) { const matchArtist = matchArtistMention(mention.name, artists); if (matchArtist.status === "matched") { result.artistResolved += 1; result.artistTierChanges += 1; } else if (matchArtist.status === "ambiguous") { result.artistAmbiguous += 1; result.artistTargetedHandoffs += 1; } else { result.artistUnresolved += 1; result.artistTargetedHandoffs += 1; } }
-      } else await resolveRelations(db, exhibitionId, record.existing!.id, record.normalized, record.raw, venues, artists, result, true);
+      } else await resolveRelations(db, exhibitionId, record.existing!.id, record.normalized, record.raw, artists, result, true, venueResolutions.get(venueResolutionKey({ sourceName: record.normalized.venue.name })));
     }
     return result;
   }
@@ -242,7 +243,7 @@ export async function runExhibitionDailySync(options: DailySyncOptions = {}, db:
   const venueBefore = await tierSnapshot(db, "venues");
   const artistBefore = await tierSnapshot(db, "artists");
   for (const record of scanned.records) {
-    try { await applyRecord(db, sourceId, record, venues, artists, result); }
+    try { await applyRecord(db, sourceId, record, artists, result, venueResolutions.get(venueResolutionKey({ sourceName: record.normalized.venue.name }))); }
     catch (error) { result.errors.push({ externalId: record.raw.id, message: error instanceof Error ? error.message : typeof error === "object" && error && "message" in error ? String(error.message) : "Record apply failed" }); }
   }
   if (options.backfillExisting) {
@@ -254,8 +255,8 @@ export async function runExhibitionDailySync(options: DailySyncOptions = {}, db:
       if (!raw?.id || selectedIds.has(raw.id)) continue;
       if (!hasMinimumImportFields(raw)) continue;
       try {
-        if (row.exhibition_id) await resolveRelations(db, row.exhibition_id as string, row.id as string, mapArtCommonsItem(raw), raw, venues, artists, result, false);
-        else await applyRecord(db, sourceId, { raw, normalized: mapArtCommonsItem(raw), checksum: row.checksum || checksumPayload(raw), existing: row as ExistingSource, classification: "new" }, venues, artists, result);
+        if (row.exhibition_id) await resolveRelations(db, row.exhibition_id as string, row.id as string, mapArtCommonsItem(raw), raw, artists, result, false);
+        else await applyRecord(db, sourceId, { raw, normalized: mapArtCommonsItem(raw), checksum: row.checksum || checksumPayload(raw), existing: row as ExistingSource, classification: "new" }, artists, result);
         result.backfilled += 1;
       }
       catch (error) { result.errors.push({ externalId: raw.id, message: error instanceof Error ? error.message : "Backfill failed" }); }

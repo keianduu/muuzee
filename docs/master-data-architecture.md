@@ -19,6 +19,8 @@ Muuzee has four independent canonical masters. Their internal UUIDs are the only
 
 External IDs, names, or URLs must never replace a Muuzee UUID primary key. A source venue or artist name is matched during import; it is not repeatedly matched at display time.
 
+Venueのcanonical照合はShared Venue Resolverへ集約する。Application側でVenue全件を取得せず、DBの`venue_search_keys`をexact index searchし、`resolved / ambiguous / unresolved`と候補ID・method・reasonを返す。詳細は[`docs/master-data/venue-resolution.md`](./master-data/venue-resolution.md)を参照。
+
 ## 2. Relations
 
 | Relation | Meaning |
@@ -128,6 +130,10 @@ Daily sync
 Master enrichment and daily exhibition sync must not be combined into one job. They have different frequency, failure, load, and review characteristics.
 
 Daily Sync v1は`source_records.last_seen_at / last_changed_at`、`exhibition_venue_mentions`、Artist/Venue relationのlast-seen監査を追加した。Venue文字列からMasterを新規作成せず、単一exact canonical matchだけを接続する。unresolved / ambiguousはTargeted Enrichment handoffとして保持する。詳細は[`docs/integrations/exhibition-daily-sync.md`](./integrations/exhibition-daily-sync.md)。
+
+Venue exact matchはDaily Sync、Work Candidate、Targeted Resolution、Work CSV relation importで同じDB-side Shared Resolverを利用する。これによりMaster件数が1,000件を超えてもApplicationの返却上限で候補を取りこぼさない。
+
+Targeted Master Resolution Worker v1はこのhandoffを別Jobとしてbounded batchで消費する。既存Masterを先に再検索し、安全な単一Wikidata候補だけをTargeted Importした後、DB functionでRelationとresolution statusをatomicに確定する。詳細は[`docs/integrations/targeted-master-resolution.md`](./integrations/targeted-master-resolution.md)。
 
 ## 10. Current and future scope
 

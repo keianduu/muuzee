@@ -28,7 +28,7 @@ Japan Search / Art Commons scan
 
 ## Canonical relations
 
-Venueは既存Occurrenceを最優先で保護し、その次にcanonical Venueのname / name_en / aliasのnormalized exact単一候補だけを接続する。文字列だけからVenueを作らない。0件または複数候補は`exhibition_venue_mentions`へ監査情報と`pending / ambiguous`を保存し、将来のTargeted Venue workerへ渡す。
+Venueは既存Occurrenceを最優先で保護し、その次にShared Venue ResolverでDB側のindexed exact searchを行う。Daily Syncのscan batch内で入力名をdeduplicateし、Venue Master全件をApplicationへ読み込まない。文字列だけからVenueを作らない。0件または複数候補は`exhibition_venue_mentions`へ候補ID・method・reasonと`pending / ambiguous`を保存し、Targeted Venue workerへ渡す。
 
 Artistは構造化Artist field、または既存Artistの完全なname / name_en / aliasがTitleに明示された場合だけを扱う。Description推測、fuzzy/partial nameによるRelation作成、Global Artist Syncは行わない。`exhibition_artist_mentions`が監査とTargeted Artist handoffを保持する。既存`exhibition_artists`はdelete/recreateせず、追加またはlast-seen更新のみ行う。
 
@@ -39,6 +39,8 @@ SourceからMentionが一時的に消えてもRelationを即削除しない。`l
 AdminのDry RunはDB変更なしでNew / Changed / UnchangedとRelation予定を返す。Applyは`operation_type=exhibition_daily_sync`の`import_runs.metrics`へ集計を残す。1 recordの失敗は他recordを止めない。Japan Searchのtimeout、429、5xxはbounded exponential backoffで最大3回試行する。
 
 Productionでは長時間HTTP requestにしない。Scan snapshot ID、checkpoint、batch size、worker retry / dead-letter、排他制御、observabilityを追加し、ScanとApplyを別Jobに分離する。Targeted Venue / Artist enrichmentも別queue consumerにする。
+
+Targeted resolutionのLOCAL v1は[`targeted-master-resolution.md`](./targeted-master-resolution.md)を参照する。Daily Sync本体とは分離し、既存mention ledgerをhandoffとして直接消費する。
 
 ## Publish rule
 

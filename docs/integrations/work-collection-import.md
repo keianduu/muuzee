@@ -45,7 +45,7 @@ Tier A Artist
   → Work + work_artists + collection_holdings
 ```
 
-- ArtistとVenueは既存Muuzee UUIDへ結ぶ。曖昧な候補からMasterを新規作成しない。
+- ArtistとVenueは既存Muuzee UUIDへ結ぶ。VenueはDB-side Shared Venue Resolverで照合し、Master全件をApplicationへ取得しない。曖昧な候補からMasterを新規作成しない。
 - 所蔵がSourceに明記された場合だけ`collection_holdings`へ保存する。
 - `collection_holdings`は所有・寄託等を表し、現在展示中を意味しない。
 - 常設・企画・現在展示中等が明記された場合だけ`work_presentations`へ保存する。
@@ -60,11 +60,12 @@ Tier A Artist
 - PresentationはSourceに明示されたCandidateだけ作成する。Holdingから展示中を推測しない。
 - 同じCandidateを再採用しても同じWorkを返し、Relationを重複作成しない。
 - Candidate再取得時も`imported`と`matched_work_id`を保持する。
+- 未照合Candidateの再照合はVenue relation情報だけを更新し、Workを自動採用しない。候補ID、match method、reasonを監査用に保持する。
 - `work_artists.sort_order`はArtistごとのAdmin表示順を保持する補助値で、代表性の自動判定には使わない。
 
 ## Admin and CSV
 
-`/admin/works`は候補の日本語Title / English Title / Original Title / Artist / Holding Venue / Year / Source / HoldingとDisplayの区別 / Statusを表示し、1件または最大20件を明示的に採用できる。Master一覧はUI localeに応じたfallback Title / Artist / Holding Venue / Year / Publication / Core Qualityを表示する。Artist/Holding不足とPresentationでFilterできる。Work CSVは`title_ja` / `title_en` / `title_original` / `original_language`、Artist、Holding Venue、任意のPresentation列を含み、Import後もfield / relation source URLを保持する。
+`/admin/works`は候補の日本語Title / English Title / Original Title / Artist / Holding Venue / Year / Source / HoldingとDisplayの区別 / Statusを表示し、1件または最大20件を明示的に採用できる。採用できないCandidateには、作品名がない、アーティスト情報と紐づいていない、所蔵先情報がない、所蔵先と会場情報を紐づけられていない、一致する会場候補が複数ある、採用済みの該当理由をテーブル上で表示する。Master一覧はUI localeに応じたfallback Title / Artist / Holding Venue / Year / Publication / Core Qualityを表示する。Artist/Holding不足とPresentationでFilterできる。Work CSVは`title_ja` / `title_en` / `title_original` / `original_language`、Artist、Holding Venue、任意のPresentation列を含み、Import後もfield / relation source URLを保持する。
 
 Publishはサーバー側でCore 3/3を再検証する。候補、Year、Display、Imageがなくても、Core 3/3なら公開可能である。
 

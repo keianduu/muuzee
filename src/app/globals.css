@@ -66,11 +66,22 @@ th { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform
 .license-summary strong { background: white; }
 pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; background: #1f1f1d; color: #f5f1e8; font-size: 12px; }
 .result { margin-top: 14px; white-space: pre-wrap; }
+.resolution-worker { margin: 24px 0; }
+.resolution-worker h2 { margin-top: 4px; }
+.resolution-worker h3 { margin-top: 24px; }
 .breadcrumbs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; color: var(--muted); font-size: 12px; }
 .breadcrumbs a { color: var(--ink); }
 .detail-navigation { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .master-filter { display: grid; grid-template-columns: repeat(auto-fit,minmax(138px,1fr)); align-items: end; gap: 12px; margin: 18px 0; padding: 16px; background: white; border: 1px solid var(--line); border-radius: 12px; }
 .master-action-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
+.master-view-tabs { display: flex; gap: 24px; margin: 18px 0 22px; border-bottom: 1px solid var(--line); }
+.master-view-tabs button { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-weight: 700; }
+.master-view-tabs button span { min-width: 24px; padding: 3px 7px; border-radius: 999px; background: #ece9e2; color: var(--muted); font-size: 11px; text-align: center; }
+.master-view-tabs button.is-active { border-bottom-color: var(--terra); color: var(--ink); }
+.master-view-tabs button.is-active span { background: var(--ink); color: var(--white); }
+.master-view-tabs button:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; }
+.work-candidates-panel { margin: 0 0 22px; }
+.work-candidates-panel h2 { margin-top: 0; }
 .venue-quality-dashboard { margin: 20px 0; }
 .quality-tier-grid { display: grid; grid-template-columns: repeat(5,minmax(130px,1fr)); gap: 10px; margin: 16px 0 22px; }
 .quality-tier { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, #fff); }

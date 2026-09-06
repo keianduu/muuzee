@@ -245,14 +245,15 @@ function bestExistingMatch(existing: ExistingVenue[], venue: WikidataVenue) {
   return existing.map((row) => ({ row, scored: scoreWikidataCandidate(row, candidate) })).sort((a, b) => b.scored.confidence - a.scored.confidence)[0] || null;
 }
 
-export async function importWikidataVenues(input: { mode: "count" | "full"; count?: number; offset?: number }, db: SupabaseClient = createSupabaseAdminClient()): Promise<WikidataVenueImportSummary> {
+export async function importWikidataVenues(input: { mode: "count" | "full"; count?: number; offset?: number; qids?: string[] }, db: SupabaseClient = createSupabaseAdminClient()): Promise<WikidataVenueImportSummary> {
+  const targetedQids = [...new Set((input.qids || []).filter((value) => /^Q\d+$/.test(value)))].slice(0, 50);
   const ids = await sourceIds(db);
   const before = await snapshot(db);
-  const count = Math.max(1, Math.min(500, Math.floor(input.count || 20)));
+  const count = targetedQids.length || Math.max(1, Math.min(500, Math.floor(input.count || 20)));
   let offset = input.mode === "count" ? (input.offset == null ? await nextSampleOffset(db, count) : Math.max(0, Math.floor(input.offset))) : 0;
   const { data: run, error: runError } = await db.from("import_runs").insert({
-    data_source_id: ids[DATA_SOURCE_KEY], operation_type: "wikidata_venue_import", status: "running",
-    requested_count: input.mode === "count" ? count : 0, metrics: { mode: input.mode, discoveryOffset: offset },
+    data_source_id: ids[DATA_SOURCE_KEY], operation_type: targetedQids.length ? "wikidata_venue_targeted_import" : "wikidata_venue_import", status: "running",
+    requested_count: input.mode === "count" ? count : 0, metrics: { mode: input.mode, targeted: Boolean(targetedQids.length), discoveryOffset: offset },
   }).select("id").single();
   if (runError || !run) throw runError || new Error("Import run could not be created");
   const result: WikidataVenueImportSummary = {
@@ -324,7 +325,10 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
     }
   };
   try {
-    if (input.mode === "count") {
+    if (targetedQids.length) {
+      result.discoveryPages = 1;
+      await processPage(targetedQids.map((qid) => ({ qid, rootIds: [] })));
+    } else if (input.mode === "count") {
       let discovered = await discoverWikidataVenues({ limit: count, offset });
       if (!discovered.length && offset > 0) {
         offset = 0; result.discoveryOffset = 0; result.currentOffset = 0;
