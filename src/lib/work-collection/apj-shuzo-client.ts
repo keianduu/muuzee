@@ -16,9 +16,13 @@ export function parseApjShuzoResults(html: string, artist: ArtistTarget, max = 5
     const link = item.find('a[href*="/collections/"]').first();
     const href = link.attr("href") || "";
     const externalId = href.split("/").filter(Boolean).pop() || item.attr("data-id") || "";
-    const title = item.find(".work-title-ja").first().text().trim() || item.find(".work-title-en").first().text().trim();
-    if (!externalId || !title) return;
+    const titleJa = item.find(".work-title-ja").first().text().trim() || null;
     const titleEn = item.find(".work-title-en").first().text().trim() || null;
+    const originalElement = item.find(".work-title-original").first();
+    const titleOriginal = originalElement.text().trim() || null;
+    const originalLanguage = originalElement.attr("lang")?.trim() || null;
+    const title = titleJa || titleOriginal || titleEn;
+    if (!externalId || !title) return;
     const yearRaw = item.find(".isYear").first().text().trim() || null;
     const venueName = item.find('a[href*="/museums/"]').first().text().trim() || null;
     const year = parseExplicitYear(yearRaw);
@@ -26,10 +30,10 @@ export function parseApjShuzoResults(html: string, artist: ArtistTarget, max = 5
     const presentation = explicitPresentation(displayText);
     candidates.push({
       externalId, sourceKey: "apj_shuzo", sourceUrl: new URL(href, "https://artplatform.go.jp").toString(), title,
-      titleEn, titleOriginal: null, artistName, venueName, yearText: year.text, createdYearFrom: year.from, createdYearTo: year.to,
+      titleJa, titleEn, titleOriginal, originalLanguage, artistName, venueName, yearText: year.text, createdYearFrom: year.from, createdYearTo: year.to,
       holdingType: venueName ? "collection" : null, presentationType: presentation.type, presentationStatus: presentation.status,
       representativeScore: Math.max(0, 1 - index * 0.05), representativeReason: "Source result order only; human selection required",
-      raw: { externalId, title, titleEn, artistName, venueName, year: yearRaw, displayText },
+      raw: { externalId, title, titleJa, titleEn, titleOriginal, originalLanguage, artistName, venueName, year: yearRaw, displayText },
     });
   });
   return candidates;

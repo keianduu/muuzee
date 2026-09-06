@@ -51,7 +51,8 @@ async function saveCandidate(db: SupabaseClient, artist: Artist, candidate: Work
   if (sourceError) throw sourceError;
   const { error } = await db.from("work_import_candidates").upsert({
     artist_id: artist.id, data_source_id: dataSourceId, external_id: candidate.externalId, source_url: candidate.sourceUrl,
-    title: candidate.title, title_en: candidate.titleEn, title_original: candidate.titleOriginal, year_text: candidate.yearText,
+    title: candidate.title, title_ja: candidate.titleJa, title_en: candidate.titleEn, title_original: candidate.titleOriginal,
+    original_language: candidate.originalLanguage, year_text: candidate.yearText,
     created_year_from: candidate.createdYearFrom, created_year_to: candidate.createdYearTo, source_artist_name: candidate.artistName,
     source_venue_name: candidate.venueName, matched_venue_id: venue.id, holding_type: candidate.holdingType,
     presentation_type: candidate.presentationType, presentation_status: candidate.presentationStatus,
@@ -81,7 +82,7 @@ export async function targetedWorkCoverage(options: { limit?: number; saveCandid
 }
 
 export async function listWorkImportCandidates(db: SupabaseClient = createSupabaseAdminClient()) {
-  const { data, error } = await db.from("work_import_candidates").select("id,artist_id,matched_work_id,title,year_text,source_artist_name,source_venue_name,matched_venue_id,holding_type,presentation_type,presentation_status,match_status,representative_score,representative_reason,source_url,artists(name),venues(name),data_sources(name,key)").order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await db.from("work_import_candidates").select("id,artist_id,matched_work_id,title,title_ja,title_en,title_original,original_language,year_text,source_artist_name,source_venue_name,matched_venue_id,holding_type,presentation_type,presentation_status,match_status,representative_score,representative_reason,source_url,artists(name),venues(name),data_sources(name,key)").order("created_at", { ascending: false }).limit(100);
   if (error) throw error;
   return data || [];
 }

@@ -1,5 +1,6 @@
 import { assertHttpUrl, nullableText } from "./http";
 import { MASTER_CONFIGS, type MasterEntity, type MasterField } from "./master-config";
+import { workDisplayTitleJa } from "@/lib/work-title";
 
 export type MasterValues = Record<string, string | number | boolean | string[] | null>;
 
@@ -36,7 +37,12 @@ export function normalizeMasterValues(entity: MasterEntity, input: Record<string
     values[field.key] = parseField(field, input[field.key]);
   }
   const title = values[config.titleKey];
-  if (!options.partial && (!title || typeof title !== "string")) throw new Error(`${config.label} ${config.titleKey}は必須です。`);
+  if (!options.partial && entity !== "works" && (!title || typeof title !== "string")) throw new Error(`${config.label} ${config.titleKey}は必須です。`);
+  if (!options.partial && entity === "works") {
+    const displayTitle = workDisplayTitleJa(values);
+    if (!displayTitle) throw new Error("Workは日本語タイトル・英語タイトル・原題・Legacy titleのいずれかが必須です。");
+    if (!values.title) values.title = displayTitle;
+  }
   if (entity === "venues") {
     if ((values.latitude == null) !== (values.longitude == null)) throw new Error("LatitudeとLongitudeは両方入力してください。");
     const country = values.country_code;

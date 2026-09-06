@@ -1,5 +1,9 @@
 # Muuzee Master Admin v1
 
+## Exhibition Daily Sync (Draft)
+
+`/admin/imports`にはLOCAL検証用のDry Run / Applyを置く。既定はAsia/Tokyoの今日に対する45日buffer〜1年後で、UI実行は20件sampleに制限する。結果はNew / Changed / Unchanged、Venue / Artist resolution、Targeted handoff、Tier changeを返す。Productionの長時間処理はWeb requestではなくbackground jobへ移す。詳細は[`docs/integrations/exhibition-daily-sync.md`](./integrations/exhibition-daily-sync.md)。
+
 Status: Draft. This is the local production-implementation reference for Venue / Artist / Work master operations.
 
 ## Wikidata Venue API Import
@@ -81,7 +85,7 @@ External import is represented by the shared `MasterImporter` interface. The UI 
 
 - Venue: Wikidata Source Aは件数指定Importと明示的な全件同期、既存Venue起点のVenue Enrichmentはbounded sampleを実行できる。identity候補が複数のときだけ人がSourceを選ぶ。単一座標は自動適用し、画像はPrimary選択とrights確認を分離する。
 - Artist: Wikidata Targeted ImportとImage再探索を提供する。Wikipedia EnrichmentとExhibition Artist MatchingはLOCAL用Admin APIとして実装し、Global Full Syncは提供しない。Getty ULAN / APJ DAJはCoverage TestだけでImportしない。
-- Work: SHŪZŌ / ToMuCoのTier A Targeted Candidate adapterを提供する。最大5候補/Artistを保存し、Core 3/3を満たすCandidateを人が1件または複数選択してDraft Workへ採用する。代表作の自動採用やGlobal Full Syncは行わない。
+- Work: SHŪZŌ / ToMuCoのTier A Targeted Candidate adapterを提供する。Sourceが区別した`title_ja` / `title_en` / `title_original` / `original_language`を候補へ保存し、最大5候補/Artistを保持する。Core 3/3を満たすCandidateを人が1件または複数選択してDraft Workへ採用する。代表作の自動採用やGlobal Full Syncは行わない。
 
 Artist / WorkのFull Syncは、adapterがdeterministic pagination、update identity、error aggregation、rate limiting、human-review boundaryを実装するまでunavailableのままにする。No sample or Full Sync button generates fictional data.
 
@@ -93,7 +97,7 @@ Completeness is calculated dynamically from shared configuration. It is not stor
 
 - Venue: Name / Address / Coordinates / Description / Primary Image / Opening Hours.
 - Artist: Name / Name EN / Nationality / Primary Imageの4項目だけ。Aliases / Life / Classification / Description / StyleはSupplemental。
-- Work: Title / Artist relation / Holding Venue relationの3項目だけ（Core Quality 3/3）。
+- Work: Title（`title_ja` / `title_en` / `title_original` / Legacy `title`のいずれか1つ）/ Artist relation / Holding Venue relationの3項目だけ（Core Quality 3/3）。
 
 Lists show a percentage. Detail pages show a checklist. Missing values are displayed as `未設定` or an explicit empty state.
 
@@ -103,7 +107,7 @@ Venue, Artist, and Work publication uses `draft / ready / published / archived`.
 
 - Venue: `name` required.
 - Artist: `name` required.
-- Work: `title` / Artist relation / Holding Venue relation required. Year / Display / Imageは任意。
+- Work: `title_ja` / `title_en` / `title_original` / Legacy `title`のいずれか1つ、Artist relation、Holding Venue relation required. Year / Display / Imageは任意。
 
 Bulk Publish / Unpublish applies the same server validation. UI disabled states are convenience only, never the validation boundary.
 

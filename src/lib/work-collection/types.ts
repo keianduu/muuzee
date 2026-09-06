@@ -3,8 +3,10 @@ export type WorkSourceCandidate = {
   sourceKey: "apj_shuzo" | "tomuco";
   sourceUrl: string;
   title: string;
+  titleJa: string | null;
   titleEn: string | null;
   titleOriginal: string | null;
+  originalLanguage: string | null;
   artistName: string;
   venueName: string | null;
   yearText: string | null;

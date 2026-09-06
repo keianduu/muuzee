@@ -89,7 +89,7 @@ async function requireDataSource(db: SupabaseClient) {
   return data.id as string;
 }
 
-async function syncSourceImageCandidates(db: SupabaseClient, sourceRecordId: string, item: ArtCommonsItem) {
+export async function syncSourceImageCandidates(db: SupabaseClient, sourceRecordId: string, item: ArtCommonsItem) {
   const { error: deactivateError } = await db
     .from("source_image_candidates")
     .update({ is_active: false })

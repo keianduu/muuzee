@@ -20,7 +20,7 @@ export function parseTomucoWorks(payload: unknown, artistName: string, max = 5):
     const yearRaw = text(row.dateCreated || row.temporalCoverage) || null;
     const year = parseExplicitYear(yearRaw);
     const presentation = explicitPresentation(text(row.exhibitionEvent || row.additionalProperty));
-    return [{ externalId: id, sourceKey: "tomuco" as const, sourceUrl: text(row.url || row["@id"]) || "https://museumcollection.tokyo/works/", title, titleEn: null, titleOriginal: null, artistName: sourceArtist, venueName, yearText: year.text, createdYearFrom: year.from, createdYearTo: year.to, holdingType: venueName ? "collection" as const : null, presentationType: presentation.type, presentationStatus: presentation.status, representativeScore: Math.max(0, 1 - index * 0.05), representativeReason: "Source result order only; human selection required", raw: row }];
+    return [{ externalId: id, sourceKey: "tomuco" as const, sourceUrl: text(row.url || row["@id"]) || "https://museumcollection.tokyo/works/", title, titleJa: null, titleEn: null, titleOriginal: null, originalLanguage: null, artistName: sourceArtist, venueName, yearText: year.text, createdYearFrom: year.from, createdYearTo: year.to, holdingType: venueName ? "collection" as const : null, presentationType: presentation.type, presentationStatus: presentation.status, representativeScore: Math.max(0, 1 - index * 0.05), representativeReason: "Source result order only; human selection required", raw: row }];
   });
 }
 

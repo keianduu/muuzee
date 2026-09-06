@@ -14,6 +14,18 @@ Work Core Qualityは次の3項目だけである。
 
 Yearは任意。Image、description、dimensions、medium、展示状態は公開必須条件に含めない。
 
+## Multilingual title policy
+
+Work titleは用途を分けて保存する。
+
+- `title_ja`: 日本語表示名。日本語UIでは最優先する。
+- `title_en`: 英語表示名。英語UIでは最優先する。
+- `title_original`: 原題。翻訳名から推測しない。
+- `original_language`: 原題の言語コード。Sourceが明示した場合だけ保存する。
+- `title`: 既存実装との互換用Legacy field。新しい表示・公開判定の唯一の根拠にはしない。
+
+日本語表示は`title_ja → title_original → title_en → title`、英語表示は`title_en → title_original → title_ja → title`の順でfallbackする。どれか1つのタイトルがあればTitle Coreは成立する。Sourceが日本語・英語・原題を区別して返した場合は各fieldへ保存し、同一文字列や文字種から言語を推測しない。
+
 ## Source adapters
 
 - SHŪZŌ: Artist名の完全一致後、検索結果から最大5候補を取得する。
@@ -52,7 +64,7 @@ Tier A Artist
 
 ## Admin and CSV
 
-`/admin/works`は候補のTitle / Artist / Holding Venue / Year / Source / HoldingとDisplayの区別 / Statusを表示し、1件または最大20件を明示的に採用できる。Master一覧はTitle / Artist / Holding Venue / Year / Publication / Core Qualityを表示する。Artist/Holding不足とPresentationでFilterできる。Work CSVはArtist、Holding Venue、任意のPresentation列を含み、Import後もrelation source URLを保持する。
+`/admin/works`は候補の日本語Title / English Title / Original Title / Artist / Holding Venue / Year / Source / HoldingとDisplayの区別 / Statusを表示し、1件または最大20件を明示的に採用できる。Master一覧はUI localeに応じたfallback Title / Artist / Holding Venue / Year / Publication / Core Qualityを表示する。Artist/Holding不足とPresentationでFilterできる。Work CSVは`title_ja` / `title_en` / `title_original` / `original_language`、Artist、Holding Venue、任意のPresentation列を含み、Import後もfield / relation source URLを保持する。
 
 Publishはサーバー側でCore 3/3を再検証する。候補、Year、Display、Imageがなくても、Core 3/3なら公開可能である。
 

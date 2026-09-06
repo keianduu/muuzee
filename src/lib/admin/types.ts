@@ -102,6 +102,8 @@ export type OccurrenceRow = {
   venues?: VenueRow | VenueRow[] | null;
 };
 
+export type ExhibitionRelationDiagnostic = { id: string; match_status?: string; resolution_status?: string; last_seen_at?: string | null; relation_status?: string };
+
 export type MediaAssetRow = {
   id: string;
   exhibition_id: string | null;
@@ -132,6 +134,8 @@ export type SourceRecordRow = {
   external_id: string;
   source_url: string | null;
   fetched_at: string;
+  last_seen_at?: string | null;
+  last_changed_at?: string | null;
   raw_payload: unknown;
   exhibition_id?: string | null;
   venue_id?: string | null;
@@ -199,6 +203,9 @@ export type ExhibitionRow = {
   publication_status: string;
   updated_at: string;
   exhibition_occurrences?: OccurrenceRow[];
+  exhibition_artists?: ExhibitionRelationDiagnostic[];
+  exhibition_artist_mentions?: ExhibitionRelationDiagnostic[];
+  exhibition_venue_mentions?: ExhibitionRelationDiagnostic[];
   media_assets?: MediaAssetRow[];
   source_records?: SourceRecordRow[];
 };

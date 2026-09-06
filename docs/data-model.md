@@ -19,6 +19,7 @@ Status: Draft for the Master Data Architecture; the existing Admin v0 publicatio
 | `exhibitions` | Exhibition identity and publication state |
 | `exhibition_occurrences` | Exhibition × Venue with occurrence dates and local details |
 | `exhibition_artists` | Exhibition × Artist with source-name/match audit fields |
+| `exhibition_venue_mentions` | Source Venue string, canonical match diagnostics, and targeted-resolution state |
 | `work_artists` | Work × Artist, including collaborative roles |
 | `collection_holdings` | Venue × Work holdings and inventory evidence |
 | `work_presentations` | Work × Venueの常設/企画・現在展示状態。明示された場合のみ |
@@ -67,7 +68,7 @@ each master ──< media_assets (exactly one owner per row)
 
 ## Import identity and audit
 
-Art Commons re-import uses the source record’s `exhibition_id` plus checksum. A linked unchanged record is skipped; a changed record updates its existing Exhibition and Occurrence. Provider names and raw JSON remain in `source_records` for audit/rematching, while display data comes through master joins.
+Art Commons re-import uses the source record’s `exhibition_id` plus checksum. Daily Sync additionally records `last_seen_at` and `last_changed_at`; a linked unchanged record does not update Master fields, while a changed record applies only fields permitted by provenance priority. Provider names and raw JSON remain in `source_records` and mention ledgers for audit/rematching, while display data comes through canonical UUID joins. Relation rows retain last-seen / active-stale metadata and are not immediately deleted for a temporary source omission.
 
 ## Publication and media rights
 
@@ -92,3 +93,5 @@ Master Admin v1 does not add derived database columns. Completeness is calculate
 Work–Artist and Work–Venue Holding edits write `work_artists` and `collection_holdings`。展示状態は独立した`work_presentations`へ書き、HoldingからDisplayを推測しない。Artist and Venue related-content sections are derived from those relations rather than duplicated onto master rows. See `docs/master-admin-v1.md` for the CRUD, CSV, publication, and delete-safety behavior.
 
 Candidate adoptionは`adopt_work_candidate` DB functionで原子的に実行する。外部IDを優先し、補助的に正規化Title + Artist + Holding Venue + Yearを照合する。Work、relation、provenance、Candidate statusの途中状態を残さず、同一Candidateの再実行は冪等である。
+
+Work titleは`title_ja` / `title_en` / `title_original` / `original_language`へ分離し、既存`title`は後方互換のLegacy fieldとして維持する。日本語表示は`title_ja → title_original → title_en → title`、英語表示は`title_en → title_original → title_ja → title`でfallbackする。いずれか1つが存在すればTitle Coreを満たす。既存SHŪZŌ CandidateはSource payloadが明示していた日本語Titleだけを`title_ja`へbackfillし、原題と言語は推測しない。Localized titleの更新も`Manual > Official Website > Trusted API > Wikidata > AI`のfield provenance priorityに従い、より高い優先順位のcurrent値を保護する。

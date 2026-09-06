@@ -58,7 +58,7 @@ export async function getExhibitions() {
     const db = createSupabaseAdminClient();
     const { data, error } = await db
       .from("exhibitions")
-      .select("*, exhibition_occurrences(*, venues(*)), media_assets(*), source_records(*, data_sources(name,key), source_image_candidates(*))")
+      .select("*, exhibition_occurrences(*, venues(*)), exhibition_artists(id,artist_id,relation_status), exhibition_artist_mentions(id,match_status,resolution_status), exhibition_venue_mentions(id,match_status,resolution_status,last_seen_at), media_assets(*), source_records(*, data_sources(name,key), source_image_candidates(*))")
       .order("updated_at", { ascending: false });
     if (error) throw error;
     const exhibitions = (data || []) as unknown as ExhibitionRow[];
@@ -78,7 +78,7 @@ export async function getExhibition(id: string) {
     const db = createSupabaseAdminClient();
     const { data, error } = await db
       .from("exhibitions")
-      .select("*, exhibition_occurrences(*, venues(*)), media_assets(*), source_records(*, data_sources(name,key), source_image_candidates(*))")
+      .select("*, exhibition_occurrences(*, venues(*)), exhibition_artists(id,artist_id,relation_status), exhibition_artist_mentions(id,match_status,resolution_status), exhibition_venue_mentions(id,match_status,resolution_status,last_seen_at), media_assets(*), source_records(*, data_sources(name,key), source_image_candidates(*))")
       .eq("id", id)
       .single();
     if (error) throw error;

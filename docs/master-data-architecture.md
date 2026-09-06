@@ -85,6 +85,8 @@ AI-generated values must never be presented as verified facts merely because the
 
 The default field priority is `Manual > Official Website > Trusted API > Wikidata`. Venue Address has a documented fallback exception: `Manual > Official Website > Wikipedia > Wikidata` while retaining Trusted API's existing authority. CSV is a transport rather than a source rank; an attributable CSV must declare its real source, while an undeclared generic CSV does not override sourced values automatically. Field-level accept/reject review is not the normal workflow. Human judgment is required when multiple candidates cannot be uniquely resolved, or when an operator explicitly chooses to override a higher-priority value. Re-enrichment must preserve manual decisions. Publication status remains the final content-wide control using `draft → ready → published → archived`.
 
+Work titleは日本語、英語、原題、原言語を`title_ja` / `title_en` / `title_original` / `original_language`として独立管理し、Legacy `title`は移行互換のため残す。表示はlocale別fallbackを用い、Title Core / Publicationは4つのtitle fieldのうち1つ以上で成立する。Sourceが明示しない言語や原題は推測せずNULLのまま保持する。Localized titleごとに`work_field_sources`のcurrent provenanceを持ち、Source Priorityにより高優先度値を保護する。
+
 `media_assets` serves all four masters through explicit `exhibition_id`, `venue_id`, `artist_id`, and `work_id` foreign keys. Exactly one owner is required, preventing orphan or ambiguous assets. Raw reported license, license URL, author, and usage terms are stored separately from Muuzee’s three-way rights classification:
 
 - `approved`: 明確に利用可能
@@ -124,6 +126,8 @@ Daily sync
 ```
 
 Master enrichment and daily exhibition sync must not be combined into one job. They have different frequency, failure, load, and review characteristics.
+
+Daily Sync v1は`source_records.last_seen_at / last_changed_at`、`exhibition_venue_mentions`、Artist/Venue relationのlast-seen監査を追加した。Venue文字列からMasterを新規作成せず、単一exact canonical matchだけを接続する。unresolved / ambiguousはTargeted Enrichment handoffとして保持する。詳細は[`docs/integrations/exhibition-daily-sync.md`](./integrations/exhibition-daily-sync.md)。
 
 ## 10. Current and future scope
 

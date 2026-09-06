@@ -8,6 +8,7 @@ import { normalizeMasterValues, valuesEqual, type MasterValues } from "./master-
 import { compareVenueQuality, effectiveVenueTier, tiersForFilter, VENUE_PRIORITY_TIERS, VENUE_TIER_TARGETS, venueQuality, type VenuePriorityTier } from "./venue-priority";
 import { ARTIST_PRIORITY_TIERS, artistQuality, compareArtistQuality, effectiveArtistTier, tiersForArtistFilter, type ArtistPriorityTier } from "./artist-priority";
 import { normalizeIdentity } from "@/lib/work-collection/mapping";
+import { hasWorkTitle } from "@/lib/work-title";
 
 export type MasterRecord = Record<string, unknown> & {
   id: string;
@@ -67,8 +68,8 @@ export type ArtistQualityDashboard = {
 };
 
 const selectByEntity: Record<MasterEntity, string> = {
-  venues: "*, media_assets(*), venue_field_sources(*), official_venue_crawl_results(*), venue_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_venue_id_fkey(*, data_sources(name,key), source_image_candidates(*)), venue_external_match_candidates(*), exhibition_occurrences(id,start_date,end_date,exhibition_id,exhibitions(id,title)), collection_holdings(id,work_id,works(id,title))",
-  artists: "*, media_assets(*), artist_field_sources(*), artist_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_artist_id_fkey(*, data_sources(name,key), source_image_candidates(*)), exhibition_artists(id,exhibition_id,exhibitions(id,title)), work_artists(id,work_id,role,works(id,title))",
+  venues: "*, media_assets(*), venue_field_sources(*), official_venue_crawl_results(*), venue_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_venue_id_fkey(*, data_sources(name,key), source_image_candidates(*)), venue_external_match_candidates(*), exhibition_occurrences(id,start_date,end_date,exhibition_id,exhibitions(id,title)), collection_holdings(id,work_id,works(id,title,title_ja,title_en,title_original,original_language))",
+  artists: "*, media_assets(*), artist_field_sources(*), artist_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_artist_id_fkey(*, data_sources(name,key), source_image_candidates(*)), exhibition_artists(id,exhibition_id,exhibitions(id,title)), work_artists(id,work_id,role,works(id,title,title_ja,title_en,title_original,original_language))",
   works: "*, media_assets(*), work_field_sources(*), work_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_work_id_fkey(*, data_sources(name,key), source_image_candidates(*)), work_artists(id,artist_id,role,source,source_url,artists(id,name)), collection_holdings(id,venue_id,holding_type,inventory_number,source,source_url,venues(id,name)), work_presentations(id,venue_id,presentation_type,status,start_date,end_date,source,source_url,venues(id,name))",
 };
 
@@ -120,7 +121,7 @@ async function findSearchIds(entity: MasterEntity, q: string) {
     return (data || []).filter((row) => [row.name, row.name_en, row.name_native, row.name_kana, ...(row.aliases || [])].some((value) => String(value || "").toLowerCase().includes(lower))).map((row) => row.id);
   }
   const [workResult, artistResult] = await Promise.all([
-    db.from("works").select("id").or(`title.ilike.%${term}%,title_en.ilike.%${term}%,title_original.ilike.%${term}%`),
+    db.from("works").select("id").or(`title.ilike.%${term}%,title_ja.ilike.%${term}%,title_en.ilike.%${term}%,title_original.ilike.%${term}%`),
     db.from("artists").select("id,name,name_en,aliases"),
   ]);
   if (workResult.error) throw workResult.error;
@@ -594,10 +595,13 @@ export async function fetchAllMasters(entity: MasterEntity) {
 export async function setMasterPublication(entity: MasterEntity, ids: string[], action: "publish" | "unpublish") {
   const db = createSupabaseAdminClient();
   const config = MASTER_CONFIGS[entity];
-  const { data, error } = await db.from(entity).select(`id,${config.titleKey}`).in("id", ids);
+  const publicationFields = entity === "works" ? "id,title,title_ja,title_en,title_original" : `id,${config.titleKey}`;
+  const { data, error } = await db.from(entity).select(publicationFields).in("id", ids);
   if (error) throw error;
   const found = data || [];
-  const invalid = found.filter((row) => !String((row as Record<string, unknown>)[config.titleKey] || "").trim());
+  const invalid = found.filter((row) => entity === "works"
+    ? !hasWorkTitle(row)
+    : !String((row as unknown as Record<string, unknown>)[config.titleKey] || "").trim());
   if (action === "publish" && invalid.length) throw new Error(`${config.label}の必須項目（${config.titleKey}）が不足しています。`);
   if (action === "publish" && entity === "works" && ids.length) {
     const [artists, holdings] = await Promise.all([

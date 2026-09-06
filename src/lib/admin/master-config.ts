@@ -101,9 +101,11 @@ export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {
     entity: "works", singular: "work", label: "Work", titleKey: "title",
     provenanceTable: "work_field_sources", ownerKey: "work_id",
     fields: [
-      { key: "title", label: "Title", type: "text", required: true, csv: true },
+      { key: "title_ja", label: "Japanese title", type: "text", csv: true },
       { key: "title_en", label: "English title", type: "text", csv: true },
       { key: "title_original", label: "Original title", type: "text", csv: true },
+      { key: "original_language", label: "Original language", type: "text", csv: true },
+      { key: "title", label: "Legacy title", type: "text", csv: true },
       { key: "year_text", label: "Year text", type: "text", csv: true },
       { key: "created_year_from", label: "Created year from", type: "year", csv: true },
       { key: "created_year_to", label: "Created year to", type: "year", csv: true },
@@ -113,7 +115,7 @@ export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {
       commonStatus,
     ],
     completeness: [
-      { key: "title", label: "Title" },
+      { key: "title", label: "Title", test: (row) => Boolean(row.title_ja || row.title_original || row.title_en || row.title) },
       { key: "artist", label: "Artist", test: (row) => Boolean((row.work_artists as unknown[] | undefined)?.length) },
       { key: "holding", label: "Holding Venue", test: (row) => Boolean((row.collection_holdings as unknown[] | undefined)?.length) },
     ],

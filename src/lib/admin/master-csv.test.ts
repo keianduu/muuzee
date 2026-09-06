@@ -95,7 +95,7 @@ describe("Master CSV", () => {
   it("accepts Work relation and optional presentation columns", () => {
     const artistId = "11111111-1111-4111-8111-111111111111";
     const venueId = "22222222-2222-4222-8222-222222222222";
-    expect(acceptedCsvHeaders("works")).toEqual(expect.arrayContaining(["artist_id", "venue_id", "holding_type", "presentation_type", "presentation_status"]));
+    expect(acceptedCsvHeaders("works")).toEqual(expect.arrayContaining(["title_ja", "title_en", "title_original", "original_language", "artist_id", "venue_id", "holding_type", "presentation_type", "presentation_status"]));
     const [row] = buildCsvPreview("works", [{ title: "Work", artist_id: artistId, venue_id: venueId, holding_type: "collection", presentation_type: "permanent", presentation_status: "unknown" }], new Map(), new Map());
     expect(row.status).toBe("new");
     expect(row.relationValues).toMatchObject({ artistId, venueId, holdingType: "collection", presentationType: "permanent", presentationStatus: "unknown" });

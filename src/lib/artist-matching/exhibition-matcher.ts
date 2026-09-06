@@ -9,7 +9,7 @@ type Exhibition = { id: string; title: string; source_records?: Source[] };
 
 function sourcePriority(source: Source) {
   const rows = Array.isArray(source.data_sources) ? source.data_sources : source.data_sources ? [source.data_sources] : [];
-  return rows.some((item) => item.key === "art_commons") ? 0 : 1;
+  return rows.some((item) => item.key === "art_commons_jpsearch") ? 0 : 1;
 }
 
 async function loadArtists(db: SupabaseClient): Promise<MatchableArtist[]> {

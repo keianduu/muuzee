@@ -22,4 +22,10 @@ describe("Japan Search client", () => {
     expect(secondUrl).not.toContain("f-db=exhib");
   });
   it("rejects unsafe item identifiers before making a request", async () => { await expect(getArtCommonsItem("../../secret")).rejects.toThrow("Invalid Art Commons item ID"); });
+  it("retries a transient source failure", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response("busy", { status: 503 })).mockResolvedValueOnce(new Response(JSON.stringify({ id: "exhib-1", common: {} }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getArtCommonsItem("exhib-1")).resolves.toMatchObject({ id: "exhib-1" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

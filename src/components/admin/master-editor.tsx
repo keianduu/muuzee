@@ -10,6 +10,7 @@ import { displayStatus } from "@/lib/admin/master-labels";
 import { MasterImageCandidateCard } from "./master-image-candidate";
 import type { SourceImageCandidateRow } from "@/lib/admin/types";
 import { artistImageStatus, effectiveArtistTier } from "@/lib/admin/artist-priority";
+import { workDisplayTitleJa } from "@/lib/work-title";
 
 type DetailRecord = MasterRecord & {
   completeness: { percent: number; items: Array<{ key: string; label: string; met: boolean }> };
@@ -27,6 +28,13 @@ function linkedValue(value: unknown, relation: string, labelKey: string) {
     const linked = item[relation]; const record = Array.isArray(linked) ? linked[0] : linked;
     return record && typeof record === "object" ? String((record as Record<string, unknown>)[labelKey] || "") : "";
   }).filter(Boolean);
+}
+
+function linkedWorkTitles(value: unknown) {
+  return ((value || []) as Array<Record<string, unknown>>).map((item) => {
+    const linked = item.works; const record = Array.isArray(linked) ? linked[0] : linked;
+    return workDisplayTitleJa(record);
+  }).filter((title): title is string => Boolean(title));
 }
 
 function FieldInput({ field, value }: { field: MasterField; value: unknown }) {
@@ -95,8 +103,8 @@ export function MasterEditor({ entity, record, mode = "edit", view = "all", embe
     {record && (view === "all" || view === "data") && <section><h2>Field Provenance（項目の出典履歴）</h2><div className="table-wrap"><table><thead><tr><th>Field（項目）</th><th>Source（出典）</th><th>Source URL</th><th>Current（現行）</th><th>Updated（更新日時）</th></tr></thead><tbody>{sources.map((source) => <tr key={String(source.id)}><td>{String(source.field_name)}</td><td>{displayStatus(source.source)}</td><td>{source.source_url ? <a href={String(source.source_url)} target="_blank" rel="noreferrer">Open ↗</a> : "—"}</td><td>{source.is_current ? "Current（現行）" : "History（履歴）"}</td><td>{source.updated_at ? new Date(String(source.updated_at)).toLocaleString("ja-JP") : "未設定"}</td></tr>)}{!sources.length && <tr><td colSpan={5} className="empty-state">Field provenanceはまだありません。</td></tr>}</tbody></table></div></section>}
     {record && (view === "all" || view === "data") && <section><h2>External Sources（外部データソース）</h2><div className="card">{external.map((source) => <p key={String(source.id)}><strong>{String(source.external_id || "Source")}</strong> · {source.source_url ? <a href={String(source.source_url)} target="_blank" rel="noreferrer">Source URL（出典を開く）</a> : "URL未設定"}</p>)}{!external.length && <p className="empty-state">外部Source recordはありません。</p>}</div></section>}
     {record && entity === "artists" && (view === "all" || view === "data") && <section><h2>Source Diagnostics（外部Source診断）</h2><div className="card"><h3>Wikidata / Wikipedia</h3>{external.filter((source) => /^Q\d+$/.test(String(source.external_id || ""))).map((source) => { const payload = source.raw_payload as { classification?: Record<string, unknown> } | undefined; return <details key={String(source.id)}><summary>{String(source.external_id)}</summary><pre>{JSON.stringify(payload?.classification || {}, null, 2)}</pre></details>; })}{!external.some((source) => /^Q\d+$/.test(String(source.external_id || ""))) && <p className="empty-state">Wikidata QIDは未設定です。</p>}<h3>Getty ULAN / APJ DAJ</h3><p className="notice">現在はLOCAL Coverage Testのみです。DB Import、Field Provenance適用、Full Syncは未実装です。実測結果は <code>docs/research/artist-source-coverage.md</code> を参照してください。</p><h3>Image Discovery</h3><div className="table-wrap"><table><thead><tr><th>Source</th><th>File</th><th>License</th><th>Rights</th></tr></thead><tbody>{candidates.map((candidate) => <tr key={String(candidate.id)}><td>{String(candidate.discovery_source || "unknown")}</td><td>{candidate.source_url ? <a href={String(candidate.source_url)} target="_blank" rel="noreferrer">{String(candidate.stable_identifier || "Open")}</a> : String(candidate.stable_identifier || "—")}</td><td>{String(candidate.license_short_name || "不明")}</td><td>{displayStatus(candidate.rights_status)}</td></tr>)}{!candidates.length && <tr><td colSpan={4} className="empty-state">画像探索結果はありません。</td></tr>}</tbody></table></div></div></section>}
-    {record && entity === "artists" && (view === "all" || view === "edit") && <section><h2>Relations（関連データ）</h2><div className="card"><p><strong>Exhibitions（展覧会）</strong>: {linkedValue(record.exhibition_artists, "exhibitions", "title").join(" / ") || "未設定"}</p><p><strong>Works（作品）</strong>: {linkedValue(record.work_artists, "works", "title").join(" / ") || "未設定"}</p></div></section>}
-    {record && entity === "venues" && (view === "all" || view === "edit") && <section><h2>Holdings（所蔵作品）</h2><div className="card"><p>{linkedValue(record.collection_holdings, "works", "title").join(" / ") || "未設定"}</p></div></section>}
+    {record && entity === "artists" && (view === "all" || view === "edit") && <section><h2>Relations（関連データ）</h2><div className="card"><p><strong>Exhibitions（展覧会）</strong>: {linkedValue(record.exhibition_artists, "exhibitions", "title").join(" / ") || "未設定"}</p><p><strong>Works（作品）</strong>: {linkedWorkTitles(record.work_artists).join(" / ") || "未設定"}</p></div></section>}
+    {record && entity === "venues" && (view === "all" || view === "edit") && <section><h2>Holdings（所蔵作品）</h2><div className="card"><p>{linkedWorkTitles(record.collection_holdings).join(" / ") || "未設定"}</p></div></section>}
     {record && entity === "venues" && (view === "all" || view === "edit") && <section><h2>Related Exhibitions（関連展覧会）</h2><div className="card"><p>{linkedValue(record.exhibition_occurrences, "exhibitions", "title").join(" / ") || "未設定"}</p></div></section>}
     {message && <div className={message.includes("失敗") || message.includes("不足") || message.includes("削除できません") ? "error" : "notice"}>{message}</div>}
   </>;

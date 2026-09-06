@@ -6,6 +6,7 @@ import { MasterDetailContent, type DetailRecord } from "./master-detail-content"
 import { displayStatus } from "@/lib/admin/master-labels";
 import { MASTER_CONFIGS, type MasterEntity } from "@/lib/admin/master-config";
 import { selectedQuery } from "@/lib/admin/master-list-state";
+import { workDisplayTitleJa } from "@/lib/work-title";
 
 export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntity; selectedId?: string }) {
   const router = useRouter();
@@ -67,7 +68,7 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
   }, [close, selectedId]);
 
   if (!selectedId) return null;
-  const title = record ? String(record[config.titleKey] || config.label) : config.label;
+  const title = record ? entity === "works" ? workDisplayTitleJa(record) || config.label : String(record[config.titleKey] || config.label) : config.label;
   return <div className="master-drawer-layer">
     <button type="button" className="master-drawer-scrim" aria-label="詳細を閉じる" onClick={close}/>
     <aside className="master-drawer" role="dialog" aria-modal="true" aria-labelledby="master-drawer-title">

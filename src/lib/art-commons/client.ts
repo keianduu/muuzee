@@ -9,6 +9,7 @@ const DEFAULT_BASE_URL = "https://jpsearch.go.jp";
 const DEFAULT_DATABASE_ID = "exhib";
 const DEFAULT_DELAY_MS = 750;
 const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_RETRY_COUNT = 3;
 
 export class JapanSearchError extends Error {
   constructor(message: string, readonly status?: number) {
@@ -25,7 +26,13 @@ function config() {
   };
 }
 
-async function fetchJson<T>(url: URL): Promise<T> {
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function isRetryableJapanSearchError(error: unknown) {
+  return error instanceof JapanSearchError && (error.status == null || error.status === 429 || error.status >= 500);
+}
+
+async function fetchJsonOnce<T>(url: URL): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   try {
@@ -51,6 +58,19 @@ async function fetchJson<T>(url: URL): Promise<T> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchJson<T>(url: URL): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < DEFAULT_RETRY_COUNT; attempt += 1) {
+    try { return await fetchJsonOnce<T>(url); }
+    catch (error) {
+      lastError = error;
+      if (!isRetryableJapanSearchError(error) || attempt === DEFAULT_RETRY_COUNT - 1) throw error;
+      await wait(250 * 2 ** attempt);
+    }
+  }
+  throw lastError;
 }
 
 export function getJapanSearchRequestDelayMs() {

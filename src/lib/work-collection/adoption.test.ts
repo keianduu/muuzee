@@ -5,6 +5,7 @@ import { preservedCandidateState } from "./targeted";
 describe("Work candidate adoption", () => {
   it("requires the Core 3 fields", () => {
     expect(hasWorkCandidateCore({ title: "Work", artist_id: "a", matched_venue_id: "v" })).toBe(true);
+    expect(hasWorkCandidateCore({ title_original: "De sterrennacht", artist_id: "a", matched_venue_id: "v" })).toBe(true);
     expect(hasWorkCandidateCore({ title: "Work", artist_id: "a", matched_venue_id: null })).toBe(false);
   });
 
