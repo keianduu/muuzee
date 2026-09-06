@@ -7,6 +7,7 @@ import { MASTER_CONFIGS, type MasterEntity, type MasterStatus } from "./master-c
 import { normalizeMasterValues, valuesEqual, type MasterValues } from "./master-validation";
 import { compareVenueQuality, effectiveVenueTier, tiersForFilter, VENUE_PRIORITY_TIERS, VENUE_TIER_TARGETS, venueQuality, type VenuePriorityTier } from "./venue-priority";
 import { ARTIST_PRIORITY_TIERS, artistQuality, compareArtistQuality, effectiveArtistTier, tiersForArtistFilter, type ArtistPriorityTier } from "./artist-priority";
+import { normalizeIdentity } from "@/lib/work-collection/mapping";
 
 export type MasterRecord = Record<string, unknown> & {
   id: string;
@@ -27,6 +28,9 @@ export type MasterListOptions = {
   completeness?: string;
   tier?: string;
   nationality?: string;
+  artistRelation?: string;
+  holdingRelation?: string;
+  presentation?: string;
   page?: number;
   pageSize?: number;
 };
@@ -65,13 +69,13 @@ export type ArtistQualityDashboard = {
 const selectByEntity: Record<MasterEntity, string> = {
   venues: "*, media_assets(*), venue_field_sources(*), official_venue_crawl_results(*), venue_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_venue_id_fkey(*, data_sources(name,key), source_image_candidates(*)), venue_external_match_candidates(*), exhibition_occurrences(id,start_date,end_date,exhibition_id,exhibitions(id,title)), collection_holdings(id,work_id,works(id,title))",
   artists: "*, media_assets(*), artist_field_sources(*), artist_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_artist_id_fkey(*, data_sources(name,key), source_image_candidates(*)), exhibition_artists(id,exhibition_id,exhibitions(id,title)), work_artists(id,work_id,role,works(id,title))",
-  works: "*, media_assets(*), work_field_sources(*), work_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_work_id_fkey(*, data_sources(name,key), source_image_candidates(*)), work_artists(id,artist_id,role,artists(id,name)), collection_holdings(id,venue_id,holding_type,inventory_number,venues(id,name))",
+  works: "*, media_assets(*), work_field_sources(*), work_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_work_id_fkey(*, data_sources(name,key), source_image_candidates(*)), work_artists(id,artist_id,role,source,source_url,artists(id,name)), collection_holdings(id,venue_id,holding_type,inventory_number,source,source_url,venues(id,name)), work_presentations(id,venue_id,presentation_type,status,start_date,end_date,source,source_url,venues(id,name))",
 };
 
 const listSelectByEntity: Record<MasterEntity, string> = {
   venues: "*, media_assets(*), source_records!source_records_venue_id_fkey(id,external_id,data_sources(name,key),source_image_candidates(*)), venue_external_match_candidates(id,status,provider,external_id), exhibition_occurrences(id), collection_holdings(id)",
   artists: "*, media_assets(*), source_records!source_records_artist_id_fkey(id,external_id,raw_payload,data_sources(name,key),source_image_candidates(*)), artist_external_match_candidates(id,status,provider,external_id), exhibition_artists(id), work_artists(id)",
-  works: "*, media_assets(*), work_artists(id,artist_id,artists(id,name)), collection_holdings(id,venue_id,venues(id,name))",
+  works: "*, media_assets(*), work_artists(id,artist_id,artists(id,name)), collection_holdings(id,venue_id,venues(id,name)), work_presentations(id,venue_id,presentation_type,status,venues(id,name))",
 };
 
 function asRecords(value: unknown) { return (value || []) as MasterRecord[]; }
@@ -155,6 +159,25 @@ async function filteredIdsByRelation(entity: MasterEntity, options: MasterListOp
   if (entity === "artists" && options.nationality === "missing") {
     const { data, error } = await db.from("artists").select("id").is("nationality_country_code", null);
     if (error) throw error; allowed = intersect(allowed, (data || []).map((row) => row.id));
+  }
+  if (entity === "works") {
+    for (const [filter, table] of [[options.artistRelation, "work_artists"], [options.holdingRelation, "collection_holdings"]] as const) {
+      if (filter !== "present" && filter !== "missing") continue;
+      const { data: relations, error } = await db.from(table).select("work_id");
+      if (error) throw error;
+      const present = new Set((relations || []).map((row) => row.work_id));
+      const { data: masters, error: masterError } = await db.from("works").select("id");
+      if (masterError) throw masterError;
+      allowed = intersect(allowed, (masters || []).map((row) => row.id).filter((id) => filter === "present" ? present.has(id) : !present.has(id)));
+    }
+    if (options.presentation) {
+      let query = db.from("work_presentations").select("work_id");
+      if (options.presentation === "currently_displayed") query = query.eq("status", "currently_displayed");
+      else if (options.presentation === "permanent") query = query.eq("presentation_type", "permanent");
+      const { data, error } = await query;
+      if (error) throw error;
+      allowed = intersect(allowed, [...new Set((data || []).map((row) => row.work_id))]);
+    }
   }
   if (entity === "venues" && options.match) {
     const { data: wikidataSource, error: wikidataSourceError } = await db.from("data_sources").select("id").eq("key", "wikidata").maybeSingle();
@@ -506,13 +529,48 @@ export async function executeCsvImport(entity: MasterEntity, rows: CsvPreviewRow
       const safeValues = !allowConflicts && row.conflicts.length
         ? Object.fromEntries(Object.entries(row.values).filter(([field]) => !row.conflicts.includes(field)))
         : row.values;
+      const hasRelationInput = entity === "works" && Boolean(
+        row.relationValues?.artistId || row.relationValues?.artistName ||
+        row.relationValues?.venueId || row.relationValues?.venueName
+      );
       if (row.conflicts.length && !allowConflicts) result.conflicts += row.conflicts.length;
-      if (!Object.keys(safeValues).length) { result.unchanged += 1; continue; }
+      if (!Object.keys(safeValues).length && !hasRelationInput) { result.unchanged += 1; continue; }
       const context: ProvenanceContext = { source: row.sourceType as ProvenanceContext["source"], fieldSourceUrls: row.fieldSourceUrls, generatedByAiFields: row.generatedByAiFields, aiConfidenceByField: row.aiConfidenceByField, aiNotes: row.aiNotes };
-      if (row.status === "new") { await createMaster(entity, safeValues, context); result.created += 1; }
+      let masterId = row.id;
+      if (row.status === "new") { masterId = await createMaster(entity, safeValues, context); result.created += 1; }
       else if (row.id) {
         const changed = await updateMaster(entity, row.id, safeValues, context);
-        if (changed.length) result.updated += 1; else result.unchanged += 1;
+        if (changed.length || hasRelationInput) result.updated += 1; else result.unchanged += 1;
+      }
+      if (entity === "works" && masterId && row.relationValues) {
+        const relation = row.relationValues;
+        const db = createSupabaseAdminClient();
+        let artistId = relation.artistId;
+        let venueId = relation.venueId;
+        if (!artistId && relation.artistName) {
+          const { data, error } = await db.from("artists").select("id,name,name_en,aliases"); if (error) throw error;
+          const needle = normalizeIdentity(relation.artistName); const matches = (data || []).filter((item) => [item.name, item.name_en, ...(item.aliases || [])].filter(Boolean).some((value) => normalizeIdentity(String(value)) === needle));
+          if (matches.length !== 1) throw new Error(`Artist name must resolve uniquely: ${relation.artistName}`); artistId = matches[0].id;
+        }
+        if (!venueId && relation.venueName) {
+          const { data, error } = await db.from("venues").select("id,name,name_en,aliases").is("merged_into_venue_id", null); if (error) throw error;
+          const needle = normalizeIdentity(relation.venueName); const matches = (data || []).filter((item) => [item.name, item.name_en, ...(item.aliases || [])].filter(Boolean).some((value) => normalizeIdentity(String(value)) === needle));
+          if (matches.length !== 1) throw new Error(`Venue name must resolve uniquely: ${relation.venueName}`); venueId = matches[0].id;
+        }
+        if (artistId) {
+          const { error } = await db.from("work_artists").upsert({ work_id: masterId, artist_id: artistId, source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() }, { onConflict: "work_id,artist_id" });
+          if (error) throw error;
+        }
+        if (venueId) {
+          const { data: holding } = await db.from("collection_holdings").select("id").eq("work_id", masterId).eq("venue_id", venueId).is("inventory_number", null).maybeSingle();
+          const values = { work_id: masterId, venue_id: venueId, holding_type: relation.holdingType || "collection", source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() };
+          const saved = holding ? await db.from("collection_holdings").update(values).eq("id", holding.id) : await db.from("collection_holdings").insert(values);
+          if (saved.error) throw saved.error;
+          if (relation.presentationType || relation.presentationStatus) {
+            const { error } = await db.from("work_presentations").upsert({ work_id: masterId, venue_id: venueId, presentation_type: relation.presentationType || "unknown", status: relation.presentationStatus || "unknown", start_date: relation.presentationStartDate || null, end_date: relation.presentationEndDate || null, source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() }, { onConflict: "work_id,venue_id,presentation_type,start_date" });
+            if (error) throw error;
+          }
+        }
       }
     } catch (error) { result.errors.push(`Line ${row.line}: ${error instanceof Error ? error.message : "Import failed"}`); }
   }
@@ -524,7 +582,8 @@ export async function fetchAllMasters(entity: MasterEntity) {
   const rows: MasterRecord[] = [];
   const batch = 1000;
   for (let start = 0; ; start += batch) {
-    const { data, error } = await db.from(entity).select("*").order("id").range(start, start + batch - 1);
+    const select = entity === "works" ? "*,work_artists(artist_id,source_url,artists(name)),collection_holdings(venue_id,holding_type,source_url,venues(name)),work_presentations(presentation_type,status,start_date,end_date,source_url)" : "*";
+    const { data, error } = await db.from(entity).select(select).order("id").range(start, start + batch - 1);
     if (error) throw error;
     rows.push(...asRecords(data));
     if ((data || []).length < batch) break;
@@ -540,6 +599,18 @@ export async function setMasterPublication(entity: MasterEntity, ids: string[], 
   const found = data || [];
   const invalid = found.filter((row) => !String((row as Record<string, unknown>)[config.titleKey] || "").trim());
   if (action === "publish" && invalid.length) throw new Error(`${config.label}の必須項目（${config.titleKey}）が不足しています。`);
+  if (action === "publish" && entity === "works" && ids.length) {
+    const [artists, holdings] = await Promise.all([
+      db.from("work_artists").select("work_id").in("work_id", ids),
+      db.from("collection_holdings").select("work_id").in("work_id", ids),
+    ]);
+    if (artists.error) throw artists.error;
+    if (holdings.error) throw holdings.error;
+    const withArtist = new Set((artists.data || []).map((row) => row.work_id));
+    const withHolding = new Set((holdings.data || []).map((row) => row.work_id));
+    const incomplete = ids.filter((id) => !withArtist.has(id) || !withHolding.has(id));
+    if (incomplete.length) throw new Error("Workの公開にはTitle / Artist Relation / Holding Venueの3項目が必要です。");
+  }
   const status = action === "publish" ? "published" : "draft";
   const { error: updateError } = await db.from(entity).update({ publication_status: status }).in("id", ids);
   if (updateError) throw updateError;

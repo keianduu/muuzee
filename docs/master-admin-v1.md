@@ -81,7 +81,7 @@ External import is represented by the shared `MasterImporter` interface. The UI 
 
 - Venue: Wikidata Source Aは件数指定Importと明示的な全件同期、既存Venue起点のVenue Enrichmentはbounded sampleを実行できる。identity候補が複数のときだけ人がSourceを選ぶ。単一座標は自動適用し、画像はPrimary選択とrights確認を分離する。
 - Artist: Wikidata Targeted ImportとImage再探索を提供する。Wikipedia EnrichmentとExhibition Artist MatchingはLOCAL用Admin APIとして実装し、Global Full Syncは提供しない。Getty ULAN / APJ DAJはCoverage TestだけでImportしない。
-- Work: no source adapter is connected, so the UI says unavailable.
+- Work: SHŪZŌ / ToMuCoのTier A Targeted Candidate adapterを提供する。最大5候補/Artistを保存し、Core 3/3を満たすCandidateを人が1件または複数選択してDraft Workへ採用する。代表作の自動採用やGlobal Full Syncは行わない。
 
 Artist / WorkのFull Syncは、adapterがdeterministic pagination、update identity、error aggregation、rate limiting、human-review boundaryを実装するまでunavailableのままにする。No sample or Full Sync button generates fictional data.
 
@@ -93,7 +93,7 @@ Completeness is calculated dynamically from shared configuration. It is not stor
 
 - Venue: Name / Address / Coordinates / Description / Primary Image / Opening Hours.
 - Artist: Name / Name EN / Nationality / Primary Imageの4項目だけ。Aliases / Life / Classification / Description / StyleはSupplemental。
-- Work: Title / Artist relation / Description / Holding Venue relation / Primary Image.
+- Work: Title / Artist relation / Holding Venue relationの3項目だけ（Core Quality 3/3）。
 
 Lists show a percentage. Detail pages show a checklist. Missing values are displayed as `未設定` or an explicit empty state.
 
@@ -103,7 +103,7 @@ Venue, Artist, and Work publication uses `draft / ready / published / archived`.
 
 - Venue: `name` required.
 - Artist: `name` required.
-- Work: `title` required.
+- Work: `title` / Artist relation / Holding Venue relation required. Year / Display / Imageは任意。
 
 Bulk Publish / Unpublish applies the same server validation. UI disabled states are convenience only, never the validation boundary.
 
@@ -123,7 +123,7 @@ Venue / Artist / Work rows open a right-side Detail Drawer. `selected={id}` rema
 
 The Drawer uses the shared `状態 / 編集 / データ` information architecture. It is 40–55% of the desktop viewport, becomes a full-screen sheet on narrow viewports, traps focus, closes with Escape or the close button, and blocks background interaction.
 
-Work detail supports explicit add/remove operations for Artist and Holding Venue relations. Selectors perform server-side search and return at most 20 candidates. Artist detail derives related Exhibitions and Works; Venue detail derives related Exhibitions and Holdings. VenueのDataタブはQID、Source、confidence、reason、Provenanceと複数候補時のSource選択を表示する。Field reviewとcoordinate採用操作は持たない。
+Work detail supports explicit add/remove operations for Artist、Holding Venue、明示的なPresentation relations。Selectors perform server-side search and return at most 20 candidates. Artist detail derives related Exhibitions and Works; Venue detail derives related Exhibitions and Holdings. VenueのDataタブはQID、Source、confidence、reason、Provenanceと複数候補時のSource選択を表示する。Field reviewとcoordinate採用操作は持たない。
 
 Venue coordinate status and candidate coordinates provide a Google Maps link generated as `https://www.google.com/maps?q={latitude},{longitude}` and opened in a new tab. An inline map is not included in v2 because the current production app has no map dependency and the external link covers human verification without adding a tile-provider dependency.
 

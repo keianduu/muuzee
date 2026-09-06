@@ -23,7 +23,7 @@ export async function MasterDetailPage({ entity, id, returnTo: rawReturnTo }: { 
     <div className="page-head"><div><p className="eyebrow">{config.label} Master</p><h1>{String(row[config.titleKey])}</h1><p className="muted">ID: {row.id}</p></div></div>
     <MasterEditor entity={entity} record={row}/>
     <MasterTags entity={entity} masterId={row.id} rows={(row[`${config.singular}_tags`] || []) as Array<Record<string, unknown>>}/>
-    {entity === "works" && <WorkRelations workId={row.id} artists={(row.work_artists || []) as Array<Record<string, unknown>>} holdings={(row.collection_holdings || []) as Array<Record<string, unknown>>}/>}
+    {entity === "works" && <WorkRelations workId={row.id} artists={(row.work_artists || []) as Array<Record<string, unknown>>} holdings={(row.collection_holdings || []) as Array<Record<string, unknown>>} presentations={(row.work_presentations || []) as Array<Record<string, unknown>>}/>}
     {entity === "venues" && <section className="legacy-enrichment"><h2>Venue Source & Media Enrichment</h2><VenueEditor venue={row as unknown as VenueRow} prompt={createVenueImageResearchPrompt({ name: String(row.name), address: row.address ? String(row.address) : null, officialUrl: row.official_url ? String(row.official_url) : null })} showBasicForm={false}/></section>}
   </>;
 }

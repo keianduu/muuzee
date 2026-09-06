@@ -32,11 +32,19 @@ export function chooseAutoPrimaryCandidate(input: {
 
 export function mediaAssetMetadataFromCandidate(candidate: Record<string, unknown>) {
   const provider = String(candidate.provider || "");
+  const reportedTerms = [
+    candidate.usage_terms,
+    candidate.commercial_use ? `Commercial use: ${candidate.commercial_use}` : null,
+    candidate.modification_crop ? `Modification / crop: ${candidate.modification_crop}` : null,
+    candidate.attribution_requirement ? `Attribution: ${candidate.attribution_requirement}` : null,
+    candidate.valid_until ? `Valid until: ${candidate.valid_until}` : null,
+    candidate.notes,
+  ].filter(Boolean).join("\n");
   return {
     source_type: provider === "wikimedia_commons" ? "wikimedia" : "other",
     source_url: candidate.source_url || candidate.image_url,
     credit: candidate.credit,
-    usage_note: candidate.usage_terms,
+    usage_note: reportedTerms || null,
     reported_license: candidate.license_short_name,
     reported_license_url: candidate.license_url,
     reported_author: candidate.author,

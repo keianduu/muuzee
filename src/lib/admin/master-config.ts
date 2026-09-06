@@ -115,9 +115,7 @@ export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {
     completeness: [
       { key: "title", label: "Title" },
       { key: "artist", label: "Artist", test: (row) => Boolean((row.work_artists as unknown[] | undefined)?.length) },
-      { key: "description", label: "Description" },
       { key: "holding", label: "Holding Venue", test: (row) => Boolean((row.collection_holdings as unknown[] | undefined)?.length) },
-      { key: "image", label: "Image", test: (row) => Boolean((row.media_assets as Array<{ is_primary?: boolean }> | undefined)?.some((item) => item.is_primary)) },
     ],
   },
 };

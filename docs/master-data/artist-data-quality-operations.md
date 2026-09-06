@@ -64,7 +64,19 @@ Exhibition source record
   → structured mention with no candidate: targeted Wikidata lookup
 ```
 
-Wikidataの不足はWikipedia Infoboxの明示値だけで補完する。Nationalityは`国籍` / `Nationality`が単一で明確な場合だけ適用し、Birth Placeや活動国から推測しない。Getty ULAN / APJ DAJは現在Researchのみ。
+Wikidataの不足は、Wikipedia Infobox、APJ DAJ、Getty ULANを必要なArtistだけTargetedに参照して補完する。NationalityはAuthority Sourceに明示された単一値だけを適用し、日本語名、APJ収録、Birth Place、活動国から推測しない。APJはIdentityとAuthority IDの照合に使い、APJ画面にNationalityが明記されない場合は国籍Sourceとして扱わない。Gettyの複数Nationality descriptorはRaw Source Recordに保持し、単一のcanonical country codeへ潰さない。
+
+## Tier A targeted enrichment (2026-09-06)
+
+- LOCAL Tier A 34件の不足対象だけを処理し、APJ / Gettyの全件同期は行っていない。
+- Nationality Missing 8件を調査し、APJ exact 5件、Getty exact 6件。Gettyに単一Nationalityが明記された5件（カイ・フランク、一原有徳、向井潤吉、平山郁夫、平櫛田中）を適用した。
+- エットレ・ソットサスはGettyにAustrian / Italianの複数値があるためRaw Sourceだけを保存し、canonicalは空欄を維持した。いわさきちひろ、やなせたかしはAPJでIdentityを一意確認したが、明示Nationalityを得られなかったため空欄を維持した。
+- 画像不足8件について、本人公式1件、美術館公式2件の候補を追加した。いずれも利用条件の明記を確認できないため`needs_review`であり、Rights Approvedにはしていない。
+- 単一Candidateの共通Policyにより3件をPrimaryへ設定。既存Primaryは上書きしていない。
+- Tier A Primary Coverageは26/34（76.5%）から29/34（85.3%）、Nationality Coverageは26/34（76.5%）から31/34（91.2%）、4/4は19件から26件へ改善した。
+- Tier A平均Core Qualityは120/136（88.2%）から128/136（94.1%）へ改善した。
+
+Targeted処理はAdminの`Tier A Targeted補完`からDry Run後に実行する。処理対象QIDは今回の不足対象に限定し、Source Record、External ID、Field Provenance、Image Candidateへ冪等保存する。
 
 ## Environment policy
 

@@ -159,7 +159,13 @@ export type SourceImageCandidateRow = {
   candidate_match_confidence: number | null;
   candidate_match_threshold: number | null;
   candidate_kind: string;
-  discovery_source: "wikidata_p18" | "commons_category" | "wikipedia_article" | null;
+  discovery_source: "wikidata_p18" | "commons_category" | "wikipedia_article" | "artist_official" | "gallery_official" | "foundation_estate" | "museum_official" | "official_press" | "open_collection" | null;
+  source_type?: string | null;
+  commercial_use?: "allowed" | "forbidden" | "unknown" | null;
+  modification_crop?: "allowed" | "forbidden" | "unknown" | null;
+  attribution_requirement?: "required" | "not_required" | "unknown" | null;
+  valid_until?: string | null;
+  notes?: string | null;
   contents_rights_type: string | null;
   contents_access: string | null;
   review_status: string;

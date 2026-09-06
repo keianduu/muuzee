@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCsvPreview, parseCsv, summarizeCsvPreview } from "./master-csv";
+import { acceptedCsvHeaders, buildCsvPreview, parseCsv, summarizeCsvPreview } from "./master-csv";
 
 describe("Master CSV", () => {
   it("parses quoted cells", () => {
@@ -90,5 +90,35 @@ describe("Master CSV", () => {
     expect(wikidata[0].conflicts).toEqual([]);
     const manual = buildCsvPreview("venues", [input], current, new Map([[id, [{ field_name: "address", source: "manual", review_status: "approved", is_current: true }]]]));
     expect(manual[0].conflicts).toEqual(["address"]);
+  });
+
+  it("accepts Work relation and optional presentation columns", () => {
+    const artistId = "11111111-1111-4111-8111-111111111111";
+    const venueId = "22222222-2222-4222-8222-222222222222";
+    expect(acceptedCsvHeaders("works")).toEqual(expect.arrayContaining(["artist_id", "venue_id", "holding_type", "presentation_type", "presentation_status"]));
+    const [row] = buildCsvPreview("works", [{ title: "Work", artist_id: artistId, venue_id: venueId, holding_type: "collection", presentation_type: "permanent", presentation_status: "unknown" }], new Map(), new Map());
+    expect(row.status).toBe("new");
+    expect(row.relationValues).toMatchObject({ artistId, venueId, holdingType: "collection", presentationType: "permanent", presentationStatus: "unknown" });
+  });
+
+  it("treats a name-only Work relation as an update", () => {
+    const workId = "10000000-0000-4000-8000-000000000001";
+    const current = new Map([[workId, { id: workId, title: "Work" }]]);
+    const [row] = buildCsvPreview("works", [{ id: workId, title: "Work", artist_name: "Claude Monet", venue_name: "The National Museum of Western Art" }], current, new Map());
+    expect(row.status).toBe("update");
+    expect(row.relationValues).toMatchObject({ artistName: "Claude Monet", venueName: "The National Museum of Western Art" });
+  });
+
+  it("rejects Presentation input without a Venue", () => {
+    const [row] = buildCsvPreview("works", [{ title: "Work", presentation_type: "permanent" }], new Map(), new Map());
+    expect(row.status).toBe("invalid");
+    expect(row.errors).toContain("Presentationにはvenue_idまたはvenue_nameが必要です。");
+  });
+
+  it("rejects invalid Work relation values", () => {
+    const [row] = buildCsvPreview("works", [{ title: "Work", artist_id: "not-a-uuid", holding_type: "owned" }], new Map(), new Map());
+    expect(row.status).toBe("invalid");
+    expect(row.errors.join(" ")).toContain("artist_id");
+    expect(row.errors.join(" ")).toContain("holding_type");
   });
 });

@@ -6,7 +6,7 @@ Environment: LOCAL only
 
 ## Scope and policy
 
-Wikidata → Wikipediaで不足するArtist Fieldについて、Getty ULANとArt Platform Japan「日本アーティスト事典（DAJ）」の実測Coverageを確認した。今回はWeb上の公式提供画面を読み取るCoverage Testだけであり、Importer、Full Sync、Master更新、Field Provenance登録は行っていない。
+Wikidata → Wikipediaで不足するArtist Fieldについて、Getty ULANとArt Platform Japan「日本アーティスト事典（DAJ）」の実測Coverageを確認した。初回Coverage Testに続き、2026-09-06にTier A不足対象だけのTargeted EnrichmentをLOCALへ適用した。Full Syncは行っていない。
 
 LOCAL / STG / Productionはいずれも、ExhibitionやWorkから必要になったArtistだけをTargeted Importする。Global Artist Full Sync、Cron、remote Supabase同期は、必要性と運用承認が得られるまで行わない。
 
@@ -32,7 +32,7 @@ SampleはLOCAL Tier A+Bの34 Artist。英語名を使ってULAN検索し、候�
 
 Unique match 24件におけるField存在数：Preferred Name 24、Variant Names / Aliases 24、Nationality 24、Role 24、Birth 18、Death 14、Birth Place 13、Death Place 6、Authority ID 24。
 
-ULANはAliases、Nationality、Role、Authority IDの補完候補として有望。ただし現在の公式案内では旧XML/Web Servicesは終了しており、OpenRefine reconciliation、SPARQL、Linked Open Data、download filesが案内されている。実装採否を決める前に、現行endpointの認証・利用条件・差分取得方法を別途設計する。
+ULANはAliases、Nationality、Role、Authority IDの補完候補として有望。現在の公式案内どおり、旧XML Web ServiceではなくGetty reconciliation endpointとLinked Open DataをTargeted Lookupに使用する。複数Nationality descriptorはRaw Source Recordに保持し、canonical country codeは一意な場合だけ保存する。
 
 ## APJ DAJ
 
@@ -49,14 +49,31 @@ Unique match 16件におけるField存在数：Japanese Name 16、English Name 1
 
 未Matchは、はしもとみお、國松明日香、落合陽一。明示済みJPだけを母数にした保守的テストなので、Nationality Missingの日本Artistに対する潜在的な追加Coverageは別途評価が必要。
 
-APJ DAJは日本ArtistのIdentity、Reading、英語名、Birth Place、活動領域の補完候補として特に有望。公開画面は検索結果をSSRで返し、内部GraphQL endpointも公開設定に現れるが、今回は公開Web画面だけを利用した。利用規約上、出典明記を伴う利用が案内される一方、データベース全体の複製や第三者権利を含む情報には制約があるため、正式Importer前に取得方法とField単位の権利確認を行う。
+APJ DAJは日本ArtistのIdentity、Reading、英語名、Birth Place、活動領域の補完候補として特に有望。Targeted Enrichmentは公開Artistページだけを参照し、APJ IDをExternal IDとして保存する。APJ収録やBirth PlaceからNationalityを推測せず、画面に国籍が明記されない場合は国籍値を作らない。
+
+## Tier A targeted result
+
+実DBでNationality Missingだった8件は、いわさきちひろ、エットレ・ソットサス、カイ・フランク、やなせたかし、一原有徳、向井潤吉、平山郁夫、平櫛田中。
+
+| Artist | APJ | Getty | Explicit nationality | Master result |
+| --- | --- | --- | --- | --- |
+| いわさきちひろ | A1123 exact | no exact | none | blank retained |
+| エットレ・ソットサス | none | 500019835 exact | Austrian / Italian | raw retained; canonical blank |
+| カイ・フランク | none | 500103402 exact | Finnish | FI applied |
+| やなせたかし | A2798 exact | no exact | none | blank retained |
+| 一原有徳 | none | 500468906 exact | Japanese | JP applied |
+| 向井潤吉 | A1956 exact | 500525357 exact | Japanese | JP applied |
+| 平山郁夫 | A1822 exact | 500319544 exact | Japanese | JP applied |
+| 平櫛田中 | A1815 exact | 500337156 exact | Japanese | JP applied |
+
+再実行時はNationality、Candidate、Primaryの追加0件で、冪等性をLOCAL確認済み。
 
 ## Recommendation
 
 次Sourceの優先検討順は次の通り。
 
-1. 日本Artist: APJ DAJ。Match率が84.2%でReading・Birth Place・Fieldが強く、Muuzeeの識別補完に適する。
-2. 国内外Artist: Getty ULAN。Match率70.6%でAliases・Nationality・Authority IDが強い。
-3. いずれも正式採用前にstable ID matching、曖昧候補処理、API/LOD取得方式、利用条件、Source Priorityを設計する。
+1. 日本Artist: APJ DAJをIdentity / Authority照合に使う。
+2. 国内外Artist: Getty ULANを明示NationalityとAuthority IDの補完に使う。
+3. いずれもExhibition / Workから必要になったArtistだけを処理し、曖昧候補は自動適用しない。
 
-再実行Scriptは`scripts/test_artist_source_coverage.mjs`。結果は標準出力JSONで、Master DBを書き換えない。
+Coverage再実行Scriptは`scripts/test_artist_source_coverage.mjs`。Targeted EnrichmentはAdminまたは`/api/admin/artists/targeted-enrichment`でDry Runを先に実行する。

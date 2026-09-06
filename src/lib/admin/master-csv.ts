@@ -17,6 +17,11 @@ export type CsvPreviewRow = {
   generatedByAiFields: string[];
   aiConfidenceByField: Record<string, "high" | "medium" | "low">;
   aiNotes: string;
+  relationValues?: {
+    artistId?: string; artistName?: string; venueId?: string; venueName?: string;
+    holdingType?: string; presentationType?: string; presentationStatus?: string;
+    presentationStartDate?: string; presentationEndDate?: string; sourceUrl?: string;
+  };
 };
 
 export type CurrentProvenance = { field_name: string; source: string; source_url?: string | null; review_status: string; is_current: boolean; generated_by_ai?: boolean };
@@ -39,6 +44,7 @@ const venueMetadataHeaders = [
   "official_source_text", "ai_notes", "generated_by_ai", "address_confidence", "postal_code_confidence",
   "opening_hours_text_confidence", "closed_days_text_confidence", "access_text_confidence", "description_confidence",
 ];
+const workRelationHeaders = ["artist_id", "artist_name", "venue_id", "venue_name", "holding_type", "presentation_type", "presentation_status", "presentation_start_date", "presentation_end_date", "source_url"];
 
 const aiFields = ["address", "postal_code", "opening_hours_text", "closed_days_text", "access_text", "description"] as const;
 const sourceUrlHeader: Record<string, string> = {
@@ -81,7 +87,7 @@ function escapeCsv(value: unknown) {
 }
 
 export function csvHeaders(entity: MasterEntity) {
-  return ["id", ...MASTER_CONFIGS[entity].fields.filter((field) => field.csv).map((field) => field.key)];
+  return ["id", ...MASTER_CONFIGS[entity].fields.filter((field) => field.csv).map((field) => field.key), ...(entity === "works" ? workRelationHeaders : [])];
 }
 
 export function acceptedCsvHeaders(entity: MasterEntity) {
@@ -90,7 +96,14 @@ export function acceptedCsvHeaders(entity: MasterEntity) {
 
 export function createCsv(entity: MasterEntity, rows: Array<Record<string, unknown>>) {
   const headers = csvHeaders(entity);
-  return [headers.join(","), ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(","))].join("\r\n");
+  return [headers.join(","), ...rows.map((row) => headers.map((header) => {
+    if (entity !== "works") return escapeCsv(row[header]);
+    const artist = ((row.work_artists || []) as Array<Record<string, unknown>>)[0]; const artistRecord = artist?.artists as Record<string, unknown> | undefined;
+    const holding = ((row.collection_holdings || []) as Array<Record<string, unknown>>)[0]; const venueRecord = holding?.venues as Record<string, unknown> | undefined;
+    const presentation = ((row.work_presentations || []) as Array<Record<string, unknown>>)[0];
+    const relational: Record<string, unknown> = { artist_id: artist?.artist_id, artist_name: artistRecord?.name, venue_id: holding?.venue_id, venue_name: venueRecord?.name, holding_type: holding?.holding_type, presentation_type: presentation?.presentation_type, presentation_status: presentation?.status, presentation_start_date: presentation?.start_date, presentation_end_date: presentation?.end_date, source_url: holding?.source_url || artist?.source_url || presentation?.source_url };
+    return escapeCsv(relational[header] ?? row[header]);
+  }).join(","))].join("\r\n");
 }
 
 export function createCsvTemplate(entity: MasterEntity) {
@@ -121,7 +134,7 @@ export function buildCsvPreview(
     const isPartialSource = sourceType === "official_website";
     const fieldInput = isPartialSource
       ? Object.fromEntries(Object.entries(input).filter(([key, value]) => allowed.has(key) && csvHeaders(entity).includes(key) && String(value || "").trim()))
-      : input;
+      : Object.fromEntries(Object.entries(input).filter(([key]) => !workRelationHeaders.includes(key)));
     let values: MasterValues = {};
     try { values = normalizeMasterValues(entity, fieldInput, { partial: isPartialSource }); delete values.publication_status; } catch (error) { errors.push(error instanceof Error ? error.message : "値が不正です。"); }
     const current = id ? existing.get(id) : undefined;
@@ -148,7 +161,20 @@ export function buildCsvPreview(
       if (!fieldSourceUrls[field]) errors.push(`${field}: AI生成Fieldには公式source URLが必要です。`);
     }
     const aiNotes = String(input.ai_notes || "").trim();
-    const base = { sourceType, fieldSourceUrls, generatedByAiFields, aiConfidenceByField, aiNotes };
+    const relationValues = entity === "works" ? {
+      artistId: String(input.artist_id || "").trim() || undefined, artistName: String(input.artist_name || "").trim() || undefined,
+      venueId: String(input.venue_id || "").trim() || undefined, venueName: String(input.venue_name || "").trim() || undefined,
+      holdingType: String(input.holding_type || "").trim() || "collection", presentationType: String(input.presentation_type || "").trim() || undefined,
+      presentationStatus: String(input.presentation_status || "").trim() || undefined, presentationStartDate: String(input.presentation_start_date || "").trim() || undefined,
+      presentationEndDate: String(input.presentation_end_date || "").trim() || undefined, sourceUrl: String(input.source_url || "").trim() || undefined,
+    } : undefined;
+    if (relationValues?.artistId && !/^[0-9a-f-]{36}$/i.test(relationValues.artistId)) errors.push("artist_idがUUIDではありません。");
+    if (relationValues?.venueId && !/^[0-9a-f-]{36}$/i.test(relationValues.venueId)) errors.push("venue_idがUUIDではありません。");
+    if (relationValues?.holdingType && !["collection", "long_term_loan", "deposit", "other"].includes(relationValues.holdingType)) errors.push("holding_typeが不正です。");
+    if (relationValues?.presentationType && !["permanent", "temporary", "unknown"].includes(relationValues.presentationType)) errors.push("presentation_typeが不正です。");
+    if (relationValues?.presentationStatus && !["currently_displayed", "not_displayed", "unknown"].includes(relationValues.presentationStatus)) errors.push("presentation_statusが不正です。");
+    if ((relationValues?.presentationType || relationValues?.presentationStatus) && !(relationValues.venueId || relationValues.venueName)) errors.push("Presentationにはvenue_idまたはvenue_nameが必要です。");
+    const base = { sourceType, fieldSourceUrls, generatedByAiFields, aiConfidenceByField, aiNotes, relationValues };
     if (errors.length) return { line: index + 2, id, label, status: "invalid", values, changedFields: [], changes: [], conflicts: [], errors, ...base };
     if (!current) return { line: index + 2, id: null, label, status: "new", values, changedFields: Object.keys(values), changes: Object.entries(values).map(([field, after]) => ({ field, before: null, after })), conflicts: [], errors: [], ...base };
     const changedFields = Object.keys(values).filter((key) => !valuesEqual(current[key], values[key]));
@@ -165,7 +191,8 @@ export function buildCsvPreview(
       for (const field of changedFields) if (ambiguous[field] && !conflicts.includes(field)) conflicts.push(field);
     } catch { if (input.ambiguous_fields) errors.push("ambiguous_fieldsのJSONが不正です。"); }
     const changes = changedFields.map((field) => ({ field, before: current[field], after: values[field] }));
-    return { line: index + 2, id, label, status: errors.length ? "invalid" : changedFields.length ? "update" : "unchanged", values, changedFields, changes, conflicts, errors, ...base };
+    const hasRelationInput = Boolean(relationValues?.artistId || relationValues?.artistName || relationValues?.venueId || relationValues?.venueName);
+    return { line: index + 2, id, label, status: errors.length ? "invalid" : changedFields.length || hasRelationInput ? "update" : "unchanged", values, changedFields, changes, conflicts, errors, ...base };
   });
 }
 

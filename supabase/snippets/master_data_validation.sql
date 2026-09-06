@@ -16,7 +16,13 @@ from public.work_artists r left join public.artists a on a.id = r.artist_id wher
 union all select 'collection_holdings.venue', count(*)
 from public.collection_holdings r left join public.venues v on v.id = r.venue_id where v.id is null
 union all select 'collection_holdings.work', count(*)
-from public.collection_holdings r left join public.works w on w.id = r.work_id where w.id is null;
+from public.collection_holdings r left join public.works w on w.id = r.work_id where w.id is null
+union all select 'work_presentations.venue', count(*)
+from public.work_presentations r left join public.venues v on v.id = r.venue_id where v.id is null
+union all select 'work_presentations.work', count(*)
+from public.work_presentations r left join public.works w on w.id = r.work_id where w.id is null
+union all select 'work_import_candidates.artist', count(*)
+from public.work_import_candidates r left join public.artists a on a.id = r.artist_id where a.id is null;
 
 -- Duplicate relations / external IDs / holdings (returns no rows when valid).
 select 'exhibition_artists' as relation, exhibition_id::text as owner, artist_id::text as related, count(*)
@@ -26,7 +32,9 @@ from public.work_artists group by work_id, artist_id having count(*) > 1
 union all select 'source_records_external_id', data_source_id::text, external_id, count(*)
 from public.source_records group by data_source_id, external_id having count(*) > 1
 union all select 'collection_holdings', venue_id::text, work_id::text || ':' || coalesce(inventory_number, ''), count(*)
-from public.collection_holdings group by venue_id, work_id, inventory_number having count(*) > 1;
+from public.collection_holdings group by venue_id, work_id, inventory_number having count(*) > 1
+union all select 'work_presentations', work_id::text, venue_id::text || ':' || presentation_type || ':' || coalesce(start_date::text, ''), count(*)
+from public.work_presentations group by work_id, venue_id, presentation_type, start_date having count(*) > 1;
 
 -- Media owners and source/provenance owners (all values must be zero).
 select 'media_assets_invalid_owner_count' as check_name, count(*) as issue_count

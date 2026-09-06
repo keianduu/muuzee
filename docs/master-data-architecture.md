@@ -27,6 +27,7 @@ External IDs, names, or URLs must never replace a Muuzee UUID primary key. A sou
 | `exhibition_artists` | Exhibition × Artist, including source name and match review state |
 | `work_artists` | Work × Artist; supports collaboration and multiple creators |
 | `collection_holdings` | Venue × Work; collection inventory and verification metadata |
+| `work_presentations` | Work × Venueの明示的な展示状態。所蔵とは独立 |
 
 “Artists held by a venue” is derived through `collection_holdings` plus `work_artists`; it is not stored as another direct relation. Canonical venue names, addresses, coordinates, and artist names are not copied into exhibitions or occurrences.
 
@@ -128,7 +129,7 @@ Master enrichment and daily exhibition sync must not be combined into one job. T
 
 Current scope includes schema, validation SQL, the existing Art Commons / Exhibition / Venue workflows, and Master Admin v1 shared CRUD / CSV / publication / deletion-safety interfaces.
 
-Artist has a Draft Wikidata Source A importer, explicit Wikipedia Infobox fallback, Exhibition Artist mention audit, canonical matching, and A/B/C priority tiers. Getty ULAN / APJ DAJ remain Research-only and are not DB sources. Work source adapters, AI-assisted research, authenticated remote environments, deployment, scheduling, Source C, and remote-environment Full Sync remain future scope. Venue currently has Wikidata Source A and Official Website Source B. Source B is local-only and always stops at a CSV artifact before explicit Preview / Confirm. Artist Source Aは[`docs/integrations/wikidata-artist-import.md`](./integrations/wikidata-artist-import.md)、Artist品質運用は[`docs/master-data/artist-data-quality-operations.md`](./master-data/artist-data-quality-operations.md)、Venue品質運用は[`docs/master-data/venue-data-quality-operations.md`](./master-data/venue-data-quality-operations.md)を参照。
+Artist has a Draft Wikidata Source A importer, explicit Wikipedia Infobox fallback, Exhibition Artist mention audit, canonical matching, and A/B/C priority tiers. Getty ULAN / APJ DAJ remain Research-only. WorkはSHŪZŌ / ToMuCoのLOCAL Targeted Candidate adapterを持ち、候補を`work_import_candidates`へ保存する。人がAdminで採用したCore 3/3候補だけをatomic / idempotentなDB functionでDraft Work、Artist relation、Holding、Provenanceへ反映する。Work / Collectionの境界と運用は[`docs/integrations/work-collection-import.md`](./integrations/work-collection-import.md)を参照。AI-assisted research, authenticated remote environments, deployment, scheduling, Source C, and remote-environment Full Sync remain future scope. Venue currently has Wikidata Source A and Official Website Source B. Source B is local-only and always stops at a CSV artifact before explicit Preview / Confirm. Artist Source Aは[`docs/integrations/wikidata-artist-import.md`](./integrations/wikidata-artist-import.md)、Artist品質運用は[`docs/master-data/artist-data-quality-operations.md`](./master-data/artist-data-quality-operations.md)、Venue品質運用は[`docs/master-data/venue-data-quality-operations.md`](./master-data/venue-data-quality-operations.md)を参照。
 
 ## Validation and reproducibility
 

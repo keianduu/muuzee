@@ -44,5 +44,8 @@ export const MASTER_IMPORTERS: Record<MasterEntity, MasterImporter[]> = {
     key: "wikidata-artist-import", label: "Wikidata", entity: "artists", sampleAvailable: true, fullSyncAvailable: true,
     description: "Global Visual ArtistをQIDで同期します。新規はDraft、曖昧なidentity候補だけ選択対象になります。",
   }],
-  works: [],
+  works: [{
+    key: "targeted-work-candidates", label: "SHŪZŌ / ToMuCo Targeted Candidates", entity: "works", sampleAvailable: true, fullSyncAvailable: false,
+    description: "Tier A Artistを起点に代表作品候補を最大5件ずつ探索します。候補保存のみで、Work Masterへは自動採用しません。",
+  }],
 };

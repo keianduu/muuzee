@@ -21,6 +21,8 @@ Status: Draft for the Master Data Architecture; the existing Admin v0 publicatio
 | `exhibition_artists` | Exhibition × Artist with source-name/match audit fields |
 | `work_artists` | Work × Artist, including collaborative roles |
 | `collection_holdings` | Venue × Work holdings and inventory evidence |
+| `work_presentations` | Work × Venueの常設/企画・現在展示状態。明示された場合のみ |
+| `work_import_candidates` | Targeted sourceの代表作品候補、Artist/Venue照合、採用済みWork ID |
 
 ## Classification, source, and media tables
 
@@ -87,4 +89,6 @@ Wikidata Artist Importerは既存`artists`、`source_records`、`artist_field_so
 
 Master Admin v1 does not add derived database columns. Completeness is calculated in application code from canonical fields, Primary media, and explicit relations. Manual, Official Website, trusted API, Wikidata, and CSV operations append field provenance history; only one row per field remains `is_current`. Priority is `Manual > Official Website > Trusted API > Wikidata`. CSV is only a transport: a known source must be declared in `source_type`, and an undeclared generic CSV cannot automatically displace attributable source data. Reliable values are applied at explicit import confirmation without a separate field decision, while ambiguity and higher-priority conflicts remain reviewable. Publication changes are separate server-side actions and CSV cannot publish a master directly.
 
-Work–Artist and Work–Venue Holding edits write only `work_artists` and `collection_holdings`. Artist and Venue related-content sections are derived from those relations rather than duplicated onto master rows. See `docs/master-admin-v1.md` for the CRUD, CSV, publication, and delete-safety behavior.
+Work–Artist and Work–Venue Holding edits write `work_artists` and `collection_holdings`。展示状態は独立した`work_presentations`へ書き、HoldingからDisplayを推測しない。Artist and Venue related-content sections are derived from those relations rather than duplicated onto master rows. See `docs/master-admin-v1.md` for the CRUD, CSV, publication, and delete-safety behavior.
+
+Candidate adoptionは`adopt_work_candidate` DB functionで原子的に実行する。外部IDを優先し、補助的に正規化Title + Artist + Holding Venue + Yearを照合する。Work、relation、provenance、Candidate statusの途中状態を残さず、同一Candidateの再実行は冪等である。
