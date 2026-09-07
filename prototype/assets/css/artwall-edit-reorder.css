@@ -222,3 +222,42 @@
     padding:14px 16px 18px;
   }
 }
+
+
+/* artwall-reorder-dynamic-viewport:start */
+/*
+  100vh can include the area behind Safari browser chrome.
+  Use dynamic viewport height for the live visible viewport and respect
+  device safe areas. 100vh remains as the fallback.
+*/
+.artwall-reorder-dialog-backdrop{
+  box-sizing:border-box;
+  height:100vh;
+  height:100dvh;
+  padding:
+    max(16px,env(safe-area-inset-top))
+    max(16px,env(safe-area-inset-right))
+    max(16px,env(safe-area-inset-bottom))
+    max(16px,env(safe-area-inset-left));
+}
+
+.artwall-reorder-dialog{
+  max-height:100%;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+@media(max-width:720px){
+  .artwall-reorder-dialog-backdrop{
+    padding:
+      max(10px,env(safe-area-inset-top))
+      max(10px,env(safe-area-inset-right))
+      max(10px,env(safe-area-inset-bottom))
+      max(10px,env(safe-area-inset-left));
+  }
+
+  .artwall-reorder-dialog{
+    max-height:100%;
+  }
+}
+/* artwall-reorder-dynamic-viewport:end */

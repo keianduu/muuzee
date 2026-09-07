@@ -5,7 +5,7 @@
     "muuzee:artwall-settings";
 
   const COLUMN_VERSION =
-    2;
+    3;
 
   const DEFAULT_COLUMNS =
     4;
@@ -50,7 +50,7 @@
     || !columnButton
   ) {
     console.warn(
-      "[Muuzee ArtWall Columns v20260907-25] "
+      "[Muuzee ArtWall Columns v20260907-26] "
       + "required element missing"
     );
 
@@ -1002,10 +1002,10 @@
   document.documentElement
     .dataset
     .artwallColumnsModule =
-      "v20260907-25";
+      "v20260907-26";
 
   console.info(
-    "[Muuzee ArtWall Columns v20260907-25]",
+    "[Muuzee ArtWall Columns v20260907-26]",
     {
       initial:
         columns,

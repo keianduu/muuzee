@@ -630,3 +630,25 @@
 }
 
 /* artwall-editor-bottom-spacing:end */
+
+
+/* artwall-mobile-input-focus-zoom:start */
+/*
+  iOS Safari automatically zooms focused form controls below 16px.
+  Keep page zoom available; only prevent focus-triggered zoom by making
+  editable controls 16px on mobile.
+*/
+@media(max-width:720px){
+  .artwall-edit-page input[type="text"],
+  .artwall-edit-page input[type="search"],
+  .artwall-edit-page input[type="email"],
+  .artwall-edit-page input[type="url"],
+  .artwall-edit-page input[type="tel"],
+  .artwall-edit-page input[type="number"],
+  .artwall-edit-page input[type="password"],
+  .artwall-edit-page textarea,
+  .artwall-edit-page select{
+    font-size:16px !important;
+  }
+}
+/* artwall-mobile-input-focus-zoom:end */
