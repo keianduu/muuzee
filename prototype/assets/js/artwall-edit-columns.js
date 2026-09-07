@@ -113,6 +113,13 @@
   let resizeTimer =
     0;
 
+  /*
+    Track the rendered grid width.
+    iOS/PWA may change viewport HEIGHT during scroll without changing this.
+  */
+  let lastLayoutWidth =
+    0;
+
   const resolveGrid = () => (
     preview.querySelector(
       ".wall-grid.muuzee-masonry-grid"
@@ -350,6 +357,15 @@
 
           return false;
         }
+
+        /*
+          Width is the only resize dimension that requires Masonry geometry
+          to be recalculated.
+        */
+        lastLayoutWidth =
+          Math.round(
+            grid.clientWidth
+          );
 
         const columnWidth =
           (
@@ -896,13 +912,35 @@
     }
   );
 
-  /*
-    Resize is debounced and never dispatches another resize.
-    This removes the previous resize-feedback loop.
+  /* width-only-resize-guard:start
+     Browser chrome / safe-area changes can emit resize while scrolling.
+     Relayout only when the ArtWall grid width actually changed.
   */
   window.addEventListener(
     "resize",
     () => {
+      const grid =
+        resolveGrid();
+
+      const nextWidth =
+        Math.round(
+          grid?.clientWidth
+          || 0
+        );
+
+      if (
+        !nextWidth
+        || (
+          lastLayoutWidth
+          && Math.abs(
+            nextWidth
+            - lastLayoutWidth
+          ) < 2
+        )
+      ) {
+        return;
+      }
+
       window.clearTimeout(
         resizeTimer
       );
@@ -918,6 +956,7 @@
         );
     }
   );
+  /* width-only-resize-guard:end */
 
   saveButton
     ?.addEventListener(

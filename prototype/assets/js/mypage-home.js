@@ -449,9 +449,39 @@
 
   renderWall();
 
-  let resizeTimer;
-  window.addEventListener("resize",() => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(renderWall,120);
-  });
+  /* scroll-resize-redraw-guard:start
+     Mobile Safari / PWA can emit window.resize while scrolling because
+     browser chrome changes viewport height. ArtWall membership must not be
+     rebuilt for height-only changes.
+
+     On the dedicated ArtWall editor, artwall-edit-columns.js owns responsive
+     relayout after the initial render, so mypage-home must not redraw there.
+  */
+  if (!document.body.classList.contains("artwall-edit-page")) {
+    let resizeTimer;
+    let lastWallGridWidth = Math.round(
+      document.querySelector("[data-mypage-wall-grid]")?.clientWidth || 0
+    );
+
+    window.addEventListener("resize",() => {
+      const grid = document.querySelector("[data-mypage-wall-grid]");
+      const nextWidth = Math.round(grid?.clientWidth || 0);
+
+      if (
+        !nextWidth
+        || (
+          lastWallGridWidth
+          && Math.abs(nextWidth - lastWallGridWidth) < 2
+        )
+      ) {
+        return;
+      }
+
+      lastWallGridWidth = nextWidth;
+
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(renderWall,120);
+    });
+  }
+  /* scroll-resize-redraw-guard:end */
 })();
