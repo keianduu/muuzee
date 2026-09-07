@@ -2115,18 +2115,35 @@ itemsButton.addEventListener(
                 {}
               );
 
-            localStorage.setItem(
-              SETTINGS_KEY,
-              JSON.stringify({
-                ...current,
-                columns:
-                  state.columns,
-                exhibitionOrder:
-                  [...state.order],
-                hiddenExhibitionIds:
-                  [...state.hidden]
-              })
-            );
+            /* shared-artwall-collection-store-patch:start */
+            if (
+              window.MuuzeeArtWallStore
+                ?.patch
+            ) {
+              window.MuuzeeArtWallStore
+                .patch({
+                  columns:
+                    state.columns,
+                  exhibitionOrder:
+                    [...state.order],
+                  hiddenExhibitionIds:
+                    [...state.hidden]
+                });
+            } else {
+              localStorage.setItem(
+                SETTINGS_KEY,
+                JSON.stringify({
+                  ...current,
+                  columns:
+                    state.columns,
+                  exhibitionOrder:
+                    [...state.order],
+                  hiddenExhibitionIds:
+                    [...state.hidden]
+                })
+              );
+            }
+            /* shared-artwall-collection-store-patch:end */
           },
           0
         );

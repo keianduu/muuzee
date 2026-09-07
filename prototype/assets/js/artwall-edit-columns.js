@@ -970,15 +970,29 @@
                 {}
               );
 
-            localStorage.setItem(
-              SETTINGS_KEY,
-              JSON.stringify({
-                ...current,
-                columns,
-                artwallColumnsVersion:
-                  COLUMN_VERSION
-              })
-            );
+            /* shared-artwall-column-store-patch:start */
+            if (
+              window.MuuzeeArtWallStore
+                ?.patch
+            ) {
+              window.MuuzeeArtWallStore
+                .patch({
+                  columns,
+                  artwallColumnsVersion:
+                    COLUMN_VERSION
+                });
+            } else {
+              localStorage.setItem(
+                SETTINGS_KEY,
+                JSON.stringify({
+                  ...current,
+                  columns,
+                  artwallColumnsVersion:
+                    COLUMN_VERSION
+                })
+              );
+            }
+            /* shared-artwall-column-store-patch:end */
 
             persistedColumns =
               columns;

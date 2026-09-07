@@ -36,38 +36,177 @@ document.querySelector('[data-posters]').innerHTML = EXHIBITIONS.map(x=>{
 
 
 
+/* home-shared-artwall-store:start */
 let wallRenderToken = 0;
 
-async function renderWall(){
-  const token = ++wallRenderToken;
-  const grid = document.querySelector("[data-wall-grid]");
-  if(!grid || !window.Muuzee?.layoutMasonry) return;
+const homeArtWallStore =
+  window.MuuzeeArtWallStore
+  || null;
 
-  const items = EXHIBITIONS.map((x,i)=>({...x, originalIndex:i}));
+const getHomeArtWallBaseItems =
+  () => EXHIBITIONS.map(
+    (item,index) => ({
+      ...item,
+      id:String(
+        item.id
+        || item.exhibitionId
+        || item.exhibition_id
+        || item.title
+        || `home-${index + 1}`
+      ),
+      src:
+        item.src
+        || item.image
+        || "",
+      href:
+        item.href
+        || item.url
+        || "./exhibitions.html",
+      originalIndex:index
+    })
+  );
+
+async function renderWall(){
+  const token =
+    ++wallRenderToken;
+
+  const grid =
+    document.querySelector(
+      "[data-wall-grid]"
+    );
+
+  if(
+    !grid
+    || !window.Muuzee?.layoutMasonry
+  ){
+    return;
+  }
+
+  const wall =
+    grid.closest(
+      ".artwall"
+    );
+
+  const settings =
+    homeArtWallStore?.get?.()
+    || {
+      schemaVersion:0,
+      columns:4
+    };
+
+  const baseItems =
+    getHomeArtWallBaseItems();
+
+  const items =
+    homeArtWallStore?.selectItems?.(
+      baseItems
+    )
+    || baseItems;
+
+  /*
+    Reuse the same presentation state as My Art.
+    Selectors that do not exist on Home are ignored by the shared store.
+  */
+  homeArtWallStore
+    ?.applyPresentation?.(
+      wall
+    );
+
+  /*
+    Keep the Home ArtWall exhibition stat aligned with saved membership.
+  */
+  const exhibitionStat =
+    wall?.querySelector(
+      ".stats .stat:first-child strong"
+    );
+
+  if(exhibitionStat){
+    exhibitionStat.textContent =
+      String(
+        items.length
+      );
+  }
 
   await window.Muuzee.layoutMasonry({
     grid,
     items,
-    columns:4,
+    columns:
+      Number(
+        settings.columns
+      ) === 3
+        ? 3
+        : 4,
     gapDesktop:8,
     gapMobile:4,
-    renderItem:(x)=>{
-      if(token !== wallRenderToken) return null;
-
-      const card = document.createElement("a");
-      card.className = "wall-item";
-      card.href = x.url || "#";
-      if(x.url){
-        card.target = "_blank";
-        card.rel = "noopener";
+    renderItem:(item)=>{
+      if(
+        token
+        !== wallRenderToken
+      ){
+        return null;
       }
-      card.setAttribute("aria-label", x.title || "Exhibition");
 
-      const img = document.createElement("img");
-      img.src = x.src;
-      img.alt = x.title || "";
-      img.loading = "lazy";
-      card.appendChild(img);
+      const card =
+        document.createElement(
+          "a"
+        );
+
+      card.className =
+        "wall-item";
+
+      const href =
+        item.href
+        || item.url
+        || "./exhibitions.html";
+
+      card.href =
+        href;
+
+      if(
+        /^https?:\/\//i.test(
+          href
+        )
+      ){
+        card.target =
+          "_blank";
+
+        card.rel =
+          "noopener";
+      }
+
+      if(item.id){
+        card.dataset.exhibitionId =
+          String(
+            item.id
+          );
+      }
+
+      card.setAttribute(
+        "aria-label",
+        item.title
+        || "Exhibition"
+      );
+
+      const img =
+        document.createElement(
+          "img"
+        );
+
+      img.src =
+        item.src
+        || item.image
+        || "";
+
+      img.alt =
+        item.title
+        || "";
+
+      img.loading =
+        "lazy";
+
+      card.appendChild(
+        img
+      );
 
       return card;
     }
@@ -76,14 +215,66 @@ async function renderWall(){
 
 renderWall();
 
+/*
+  Mobile Safari / PWA can emit resize during scrolling because browser
+  chrome changes viewport height. Redraw only if ArtWall width changes.
+*/
 let resizeTimer;
-window.addEventListener('resize',()=>{
-  clearTimeout(resizeTimer);
-  resizeTimer=setTimeout(renderWall,120);
-});
+let lastHomeWallWidth =
+  Math.round(
+    document.querySelector(
+      "[data-wall-grid]"
+    )?.clientWidth
+    || 0
+  );
 
+window.addEventListener(
+  "resize",
+  () => {
+    const grid =
+      document.querySelector(
+        "[data-wall-grid]"
+      );
 
+    const nextWidth =
+      Math.round(
+        grid?.clientWidth
+        || 0
+      );
 
+    if(
+      !nextWidth
+      || (
+        lastHomeWallWidth
+        && Math.abs(
+          nextWidth
+          - lastHomeWallWidth
+        ) < 2
+      )
+    ){
+      return;
+    }
+
+    lastHomeWallWidth =
+      nextWidth;
+
+    clearTimeout(
+      resizeTimer
+    );
+
+    resizeTimer =
+      setTimeout(
+        renderWall,
+        120
+      );
+  }
+);
+
+window.addEventListener(
+  "muuzee:artwall-store-change",
+  renderWall
+);
+/* home-shared-artwall-store:end */
 
 
 /* home-shared-exhibition-map:start */

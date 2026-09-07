@@ -1873,14 +1873,27 @@
                 grid
               );
 
-            localStorage.setItem(
-              SETTINGS_KEY,
-              JSON.stringify({
-                ...current,
-                exhibitionOrder:
-                  order
-              })
-            );
+            /* shared-artwall-reorder-store-patch:start */
+            if (
+              window.MuuzeeArtWallStore
+                ?.patch
+            ) {
+              window.MuuzeeArtWallStore
+                .patch({
+                  exhibitionOrder:
+                    order
+                });
+            } else {
+              localStorage.setItem(
+                SETTINGS_KEY,
+                JSON.stringify({
+                  ...current,
+                  exhibitionOrder:
+                    order
+                })
+              );
+            }
+            /* shared-artwall-reorder-store-patch:end */
           },
           0
         );

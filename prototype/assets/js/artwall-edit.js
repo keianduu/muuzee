@@ -305,8 +305,19 @@
 
   const isDirty = () => JSON.stringify(state) !== JSON.stringify(persisted);
 
+  /* shared-artwall-store-save:start */
   const saveState = () => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(state));
+    if (window.MuuzeeArtWallStore?.save) {
+      window.MuuzeeArtWallStore.save(
+        state
+      );
+    } else {
+      localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify(state)
+      );
+    }
+
     persisted = clone(state);
     setDirty(false);
 
@@ -314,6 +325,7 @@
       detail: clone(state)
     }));
   };
+  /* shared-artwall-store-save:end */
 
 
 

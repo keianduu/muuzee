@@ -17,7 +17,8 @@
     href:"./exhibitions.html"
   }));
 
-  const wallItems = exhibitions.length
+  /* shared-artwall-store-consumer:start */
+  const baseWallItems = exhibitions.length
     ? exhibitions.map(item => ({
         ...item,
         src:item.src,
@@ -25,18 +26,43 @@
       }))
     : fallbackWall;
 
+  const artwallStore =
+    window.MuuzeeArtWallStore
+    || null;
+
+  const artwallSettings =
+    artwallStore?.get?.()
+    || {
+      schemaVersion:0,
+      columns:4
+    };
+
+  const wallItems =
+    artwallStore?.selectItems?.(
+      baseWallItems
+    )
+    || baseWallItems;
+  /* shared-artwall-store-consumer:end */
+
   let renderToken = 0;
 
   async function renderWall(){
     const grid = document.querySelector("[data-mypage-wall-grid]");
     if(!grid || !window.Muuzee?.layoutMasonry) return;
 
+    artwallStore?.applyPresentation?.(
+      grid.closest(".artwall")
+    );
+
     const token = ++renderToken;
 
     await window.Muuzee.layoutMasonry({
       grid,
       items:wallItems,
-      columns:4,
+      columns:
+        Number(artwallSettings.columns) === 3
+          ? 3
+          : 4,
       gapDesktop:8,
       gapMobile:4,
       renderItem:item => {
