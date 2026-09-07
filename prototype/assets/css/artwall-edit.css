@@ -1,0 +1,632 @@
+/* Muuzee ArtWall Edit — page-specific prototype */
+.artwall-edit-page{background:var(--warm)}
+.artwall-editor-main{padding:40px 0 120px}
+.artwall-editor-eyebrow,
+.artwall-editor-preview-head small,
+.artwall-editor-control-head small{
+  display:block;margin-bottom:8px;color:var(--muted);font-size:10px;line-height:1.4;
+  letter-spacing:.08em;text-transform:uppercase
+}
+.artwall-editor-layout{
+  display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:24px;align-items:start
+}
+.artwall-editor-controls{display:grid;gap:12px}
+.artwall-editor-control-group,.artwall-editor-preview-panel{
+  border:1px solid var(--line);border-radius:28px;background:#fff
+}
+.artwall-editor-control-group{padding:24px}
+.artwall-editor-control-head{margin-bottom:20px}
+.artwall-editor-control-head h2,.artwall-editor-preview-head h2{
+  margin:0;color:var(--ink);font-size:22px;line-height:1.25;font-weight:650;letter-spacing:-.03em
+}
+.artwall-editor-profile-lock{
+  display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:center;
+  margin-bottom:20px;padding:14px;border-radius:18px;background:var(--warm)
+}
+.artwall-editor-profile-lock-icon{
+  width:48px;height:48px;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 36% 30%,#fff 0 12%,transparent 13%),
+  linear-gradient(145deg,var(--greige),var(--terra))
+}
+.artwall-editor-profile-lock-icon img{width:100%;height:100%;object-fit:cover}
+.artwall-editor-profile-lock strong{display:block;font-size:14px;line-height:1.45}
+.artwall-editor-profile-lock p,.artwall-editor-profile-lock a{
+  margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.55
+}
+.artwall-editor-profile-lock a{
+  display:inline-block;color:var(--ink);text-decoration:underline;text-underline-offset:3px
+}
+.artwall-editor-field{display:block;margin-top:16px}
+.artwall-editor-field > span{
+  display:block;margin-bottom:7px;color:var(--ink);font-size:12px;line-height:1.4;font-weight:650
+}
+.artwall-editor-field input,.artwall-editor-field textarea{
+  width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);
+  font:inherit;font-size:14px;line-height:1.55;outline:none;
+  transition:border-color 180ms ease,box-shadow 180ms ease
+}
+.artwall-editor-field input{min-height:46px;padding:0 13px}
+.artwall-editor-field textarea{min-height:124px;padding:12px 13px;resize:vertical}
+.artwall-editor-field input:focus,.artwall-editor-field textarea:focus{
+  border-color:var(--terra);box-shadow:0 0 0 3px rgba(185,111,85,.12)
+}
+.artwall-editor-field input[readonly]{background:var(--warm);color:var(--muted);cursor:default}
+.artwall-editor-field small,.artwall-editor-help{
+  display:block;margin-top:6px;color:var(--muted);font-size:10px;line-height:1.55
+}
+.artwall-editor-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.artwall-editor-stat-grid > div{
+  min-width:0;padding:14px 8px;border-radius:16px;background:var(--warm);text-align:center
+}
+.artwall-editor-stat-grid strong{display:block;color:var(--ink);font-size:22px;line-height:1;font-weight:650}
+.artwall-editor-stat-grid span{
+  display:block;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.35
+}
+.artwall-editor-colors{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0;border:0
+}
+.artwall-editor-colors label{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;
+  padding:10px 6px;border:1px solid var(--line);border-radius:14px;cursor:pointer
+}
+.artwall-editor-colors input{position:absolute;opacity:0;pointer-events:none}
+.artwall-editor-colors label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.artwall-editor-colors label > span:last-child{color:var(--muted);font-size:10px;line-height:1.2}
+.artwall-color-swatch{width:32px;height:32px;border:1px solid rgba(38,37,34,.08);border-radius:50%}
+.artwall-color-swatch.is-default{background:var(--greige)}
+.artwall-color-swatch.is-blue{background:#eef4f7}
+.artwall-color-swatch.is-pink{background:#f8eef1}
+.artwall-color-swatch.is-green{background:#eef4ed}
+.artwall-color-swatch.is-yellow{background:#faf5df}
+.artwall-color-swatch.is-beige{background:#fbfaf6}
+.artwall-editor-setting-row{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;
+  border-top:1px solid var(--line)
+}
+.artwall-editor-setting-row:first-of-type{border-top:0;padding-top:0}
+.artwall-editor-setting-row:last-child{padding-bottom:0}
+.artwall-editor-setting-row strong{display:block;font-size:14px;line-height:1.4}
+.artwall-editor-setting-row p{margin:4px 0 0;color:var(--muted);font-size:10px;line-height:1.5}
+.artwall-editor-segmented{display:flex;flex:0 0 auto;padding:3px;border-radius:999px;background:var(--warm)}
+.artwall-editor-segmented label{position:relative;cursor:pointer}
+.artwall-editor-segmented input{position:absolute;opacity:0;pointer-events:none}
+.artwall-editor-segmented span{
+  min-height:34px;padding:0 12px;border-radius:999px;display:flex;align-items:center;
+  justify-content:center;color:var(--muted);font-size:12px;line-height:1;white-space:nowrap
+}
+.artwall-editor-segmented input:checked + span{background:var(--ink);color:#fff}
+.artwall-editor-switch{display:flex;align-items:center;gap:8px;flex:0 0 auto;cursor:pointer}
+.artwall-editor-switch input{position:absolute;opacity:0;pointer-events:none}
+.artwall-editor-switch > span{
+  position:relative;width:42px;height:24px;border-radius:999px;background:var(--line);transition:background 180ms ease
+}
+.artwall-editor-switch > span::after{
+  content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 4px rgba(38,37,34,.18);transition:transform 180ms ease
+}
+.artwall-editor-switch input:checked + span{background:var(--terra)}
+.artwall-editor-switch input:checked + span::after{transform:translateX(18px)}
+.artwall-editor-switch em{
+  min-width:24px;color:var(--muted);font-size:10px;line-height:1;font-style:normal
+}
+.artwall-editor-preview-panel{min-width:0;padding:24px;position:sticky;top:92px}
+.artwall-editor-preview-head{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px
+}
+.artwall-editor-edit-items-button,.artwall-editor-item-toolbar button,.artwall-editor-edit-items-button{min-height:38px;padding:0 14px;background:var(--ink);color:#fff}
+.artwall-editor-item-toolbar{
+  margin-bottom:12px;padding:12px 14px;border:1px dashed var(--terra);border-radius:16px;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fffaf8
+}
+.artwall-editor-item-toolbar[hidden]{display:none}
+.artwall-editor-item-toolbar strong,.artwall-editor-item-toolbar span{display:block}
+.artwall-editor-item-toolbar strong{font-size:12px}
+.artwall-editor-item-toolbar span{margin-top:3px;color:var(--muted);font-size:10px;line-height:1.45}
+.artwall-editor-item-toolbar-actions{display:flex;gap:7px;flex:0 0 auto}
+.artwall-editor-item-toolbar button{min-height:34px;padding:0 12px;background:var(--warm);color:var(--ink)}
+.artwall-editor-item-toolbar button[data-artwall-item-save]{background:var(--terra);color:#fff}.artwall-editor-shared-item.is-editing{cursor:grab}
+.artwall-editor-shared-item.is-editing:active{cursor:grabbing}
+.artwall-editor-shared-item.is-hidden-item{opacity:.38}
+.artwall-editor-shared-item.is-dragging{opacity:.24}.artwall-editor-item-check{
+  position:absolute;z-index:4;top:8px;right:8px;width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.94);
+  box-shadow:0 2px 10px rgba(38,37,34,.12);cursor:pointer
+}
+.artwall-editor-item-check[hidden]{display:none}
+.artwall-editor-item-check input{width:16px;height:16px;margin:0;accent-color:var(--terra)}
+.artwall-editor-drop-placeholder{
+  min-height:96px;border:2px dashed var(--terra);border-radius:10px;background:rgba(255,255,255,.34)
+}.artwall-editor-savebar.is-saved span{color:var(--terra)}
+@media(max-width:980px){
+  .artwall-editor-layout{grid-template-columns:1fr}
+  .artwall-editor-preview-panel{position:static}
+}
+@media(max-width:720px){
+  .artwall-editor-main{padding:28px 0 132px}
+  .artwall-editor-control-group,.artwall-editor-preview-panel{border-radius:22px;padding:20px}
+  .artwall-editor-preview-head{align-items:center}
+  .artwall-editor-preview-head h2{font-size:22px}
+  .artwall-editor-edit-items-button{min-height:36px;padding-inline:12px}
+  .artwall-editor-item-toolbar{align-items:flex-start;flex-direction:column}}
+@media(max-width:420px){
+  .artwall-editor-pagehead .muuzee-section-cta{margin-top:14px}
+  .artwall-editor-setting-row{align-items:flex-start;flex-direction:column}
+  .artwall-editor-stat-grid{gap:4px}
+  .artwall-editor-control-group,.artwall-editor-preview-panel{padding:18px}
+}
+@media(prefers-reduced-motion:reduce){}
+
+/* artwall-editor-overlay-ui:start */
+
+/* Shared .artwall owns the ArtWall visual design. */
+.artwall-editor-main{
+  background:#fff;
+  padding-top:0;
+}
+
+.artwall-editor-shell{
+  padding-top:24px;
+  padding-bottom:120px;
+}
+
+.artwall-editor-canvas-shell{
+  width:100%;
+}
+
+.artwall-editor-instruction{
+  margin-bottom:14px;
+}
+
+.artwall-editor-instruction span,
+.artwall-editor-dialog-head small{
+  display:block;
+  margin-bottom:6px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.artwall-editor-instruction strong{
+  display:block;
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.5;
+  font-weight:600;
+}
+
+.artwall-editor-canvas{
+  position:relative;
+}
+
+.artwall-editor-overlay{
+  position:absolute;
+  inset:0;
+  z-index:20;
+  pointer-events:none;
+}
+
+.artwall-editor-savebar button,
+.artwall-editor-dialog-actions button{
+  min-height:42px;
+  padding:0 16px;
+  border:0;
+  border-radius:999px;
+  background:var(--ink);
+  color:#fff;
+  font:inherit;
+  font-size:12px;
+  line-height:1;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.artwall-editor-dialog-backdrop{
+  position:fixed;
+  z-index:1200;
+  inset:0;
+  padding:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(38,37,34,.38);
+  backdrop-filter:blur(6px);
+}
+
+.artwall-editor-dialog-backdrop[hidden]{
+  display:none;
+}
+
+.artwall-editor-dialog{
+  width:min(520px,100%);
+  max-height:min(760px,calc(100vh - 48px));
+  overflow:auto;
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 24px 64px rgba(38,37,34,.24);
+}
+
+.artwall-editor-dialog.is-wide{
+  width:min(760px,100%);
+}
+
+.artwall-editor-dialog-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  padding:20px 20px 14px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  background:#fff;
+}
+
+.artwall-editor-dialog-head h2{
+  margin:0;
+  color:var(--ink);
+  font-size:22px;
+  line-height:1.25;
+}
+
+.artwall-editor-dialog-close{
+  width:36px;
+  height:36px;
+  border:1px solid var(--line);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  color:var(--ink);
+  font-size:22px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.artwall-editor-dialog-body{
+  padding:20px;
+}
+
+.artwall-editor-dialog-actions{
+  position:sticky;
+  bottom:0;
+  padding:14px 20px 18px;
+  border-top:1px solid var(--line);
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  background:#fff;
+}
+
+.artwall-editor-dialog-actions .is-secondary{
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--ink);
+}
+
+.artwall-editor-dialog-field{
+  display:block;
+}
+
+.artwall-editor-dialog-field + .artwall-editor-dialog-field{
+  margin-top:18px;
+}
+
+.artwall-editor-dialog-field > span{
+  display:block;
+  margin-bottom:7px;
+  color:var(--ink);
+  font-size:12px;
+  line-height:1.4;
+  font-weight:600;
+}
+
+.artwall-editor-dialog-field input[type="text"],
+.artwall-editor-dialog-field textarea{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  color:var(--ink);
+  font:inherit;
+  font-size:14px;
+  line-height:1.55;
+  outline:none;
+}
+
+.artwall-editor-dialog-field input[type="text"]{
+  min-height:46px;
+  padding:0 13px;
+}
+
+.artwall-editor-dialog-field textarea{
+  min-height:144px;
+  padding:12px 13px;
+  resize:vertical;
+}
+
+.artwall-editor-dialog-options{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.artwall-editor-dialog-option{
+  position:relative;
+  cursor:pointer;
+}
+
+.artwall-editor-dialog-option input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.artwall-editor-dialog-option span{
+  min-height:38px;
+  padding:0 14px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1;
+}
+
+.artwall-editor-dialog-option input:checked + span{
+  border-color:var(--ink);
+  background:var(--ink);
+  color:#fff;
+}
+
+.artwall-editor-dialog-colors{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+
+.artwall-editor-dialog-color{
+  position:relative;
+  min-width:0;
+  cursor:pointer;
+}
+
+.artwall-editor-dialog-color input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.artwall-editor-dialog-color span{
+  min-height:66px;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.2;
+}
+
+.artwall-editor-dialog-color i{
+  width:28px;
+  height:28px;
+  border:1px solid rgba(38,37,34,.08);
+  border-radius:50%;
+}
+
+.artwall-editor-dialog-color input:checked + span{
+  border-color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--ink);
+}
+
+.artwall-editor-item-list{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+
+.artwall-editor-item-list article{
+  position:relative;
+  min-width:0;
+  cursor:grab;
+}
+
+.artwall-editor-item-list article.is-dragging{
+  opacity:.24;
+}
+
+.artwall-editor-item-list img{
+  width:100%;
+  height:auto;
+  display:block;
+  pointer-events:none;
+}
+
+.artwall-editor-item-list label{
+  position:absolute;
+  top:7px;
+  right:7px;
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 2px 10px rgba(38,37,34,.12);
+}
+
+.artwall-editor-item-list input{
+  width:16px;
+  height:16px;
+  margin:0;
+  accent-color:var(--terra);
+}
+
+.artwall-editor-item-drop{
+  min-height:100px;
+  border:2px dashed var(--terra);
+  border-radius:10px;
+  background:var(--warm);
+}
+
+@media(max-width:720px){
+  .artwall-editor-shell{
+    padding-top:18px;
+    padding-bottom:136px;
+  }
+
+  .artwall-editor-dialog-backdrop{
+    padding:14px;
+  }
+
+  .artwall-editor-dialog{
+    max-height:calc(100vh - 28px);
+  }
+
+  .artwall-editor-dialog-colors{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .artwall-editor-item-list{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+/* artwall-editor-overlay-ui:end */
+
+/* artwall-editor-refined-controls:start */
+
+.artwall-editor-topbar{
+  margin-bottom:14px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.artwall-editor-topbar .artwall-editor-instruction{
+  margin-bottom:0;
+}
+
+.artwall-editor-save-button{
+  min-height:38px;
+  padding:0 15px;
+  border:0;
+  border-radius:999px;
+  background:var(--ink);
+  color:#fff;
+  font:inherit;
+  font-size:12px;
+  line-height:1;
+  font-weight:600;
+  cursor:pointer;
+  transition:
+    opacity 160ms ease,
+    background 160ms ease;
+}
+
+.artwall-editor-save-button:disabled{
+  background:var(--line);
+  color:var(--muted);
+  cursor:default;
+  opacity:.72;
+}
+
+/*
+  Quiet edit affordance:
+  translucent white surface + subtle shadow, smaller than before.
+*/
+@media(max-width:720px){
+  .artwall-editor-topbar{
+    align-items:center;
+  }
+
+  .artwall-editor-save-button{
+    min-height:36px;
+    padding-inline:13px;
+  }
+
+  }
+
+/* artwall-editor-refined-controls:end */
+
+/* artwall-plus-position-final:start */
+
+.artwall-editor-plus{
+  position:absolute !important;
+  z-index:30 !important;
+  width:24px !important;
+  height:24px !important;
+  padding:0 !important;
+  border:1px solid rgba(38,37,34,.06) !important;
+  border-radius:50% !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:rgba(255,255,255,.58) !important;
+  color:var(--ink) !important;
+  font-size:14px !important;
+  line-height:1 !important;
+  font-weight:500 !important;
+  box-shadow:0 4px 12px rgba(38,37,34,.08) !important;
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+  cursor:pointer;
+  pointer-events:auto !important;
+  transform:none !important;
+  opacity:1 !important;
+}
+
+.artwall-editor-plus:hover{
+  background:rgba(255,255,255,.8) !important;
+  box-shadow:0 4px 12px rgba(38,37,34,.12) !important;
+}
+
+.artwall-editor-plus:focus-visible{
+  outline:3px solid rgba(185,111,85,.16);
+  outline-offset:2px;
+}
+
+/* artwall-plus-position-final:end */
+
+/* artwall-editor-bottom-spacing:start */
+
+/*
+  Keep breathing room above the shared footer without restoring
+  the old floating-save-bar reservation.
+*/
+.artwall-editor-main{
+  margin-bottom:0 !important;
+  padding-bottom:64px !important;
+}
+
+.shell.artwall-editor-shell{
+  margin-bottom:0 !important;
+  padding-bottom:0 !important;
+}
+
+@media(max-width:720px){
+  .artwall-editor-main{
+    margin-bottom:0 !important;
+    padding-bottom:48px !important;
+  }
+
+  .shell.artwall-editor-shell{
+    margin-bottom:0 !important;
+    padding-bottom:0 !important;
+  }
+}
+
+/* artwall-editor-bottom-spacing:end */

@@ -3,11 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>ArtWall編集 — Muuzee</title>
+  <title>ArtWallを編集 — Muuzee</title>
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260902-02">
-  <link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-02">
+<link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-03">
+<link rel="stylesheet" href="./assets/css/home.css?v=20260828-13">
+<link rel="stylesheet" href="./assets/css/artwall-edit.css?v=20260907-37">
+<link rel="stylesheet" href="./assets/css/artwall-edit-reorder.css?v=20260907-34">
+<link rel="stylesheet" href="./assets/css/artwall-edit-collection.css?v=20260907-29">
+<link rel="stylesheet" href="./assets/css/artwall-edit-layout-sync.css?v=20260907-35">
 </head>
-<body class="muuzee-app mypage-page">
+<body class="muuzee-app mypage-page artwall-edit-page">
   <header class="site-header is-over-sheet">
     <div class="shell header-inner">
       <a class="logo" href="./index.html">Muuzee</a>
@@ -16,26 +21,78 @@
       </div>
     </div>
   </header>
-  <main>
-    <section class="mypage-profile-shell">
+  <main class="artwall-editor-main">
+  <section class="mypage-profile-shell">
       <div class="shell mypage-profile" data-mypage-profile></div>
     </section>
-    <section class="mypage-nav-shell">
-      <div class="shell" data-mypage-nav data-mypage-active=""></div>
-    </section>
-    <div class="shell mypage-content-shell">
-      <header class="mypage-content-head">
-        <small>ArtWall</small>
-        <h1>ArtWall編集</h1>
-        <p>ArtWallに表示する体験や作品を編集します。</p>
-      </header>
-      <div class="mypage-placeholder">
-        <small>ArtWall</small>
-        <h2>ArtWall編集</h2>
-        <p>このページの詳細UIは次のPrototypeで追加します。</p>
+
+  <div class="shell artwall-editor-shell">
+  <div class="artwall-editor-canvas-shell">
+    <div class="artwall-editor-topbar">
+      <div class="artwall-editor-instruction">
+        <span>ArtWall Edit</span>
+        <strong>＋から各エリアを編集できます</strong>
+      </div>
+
+      <button
+        type="button"
+        class="artwall-editor-save-button"
+        data-artwall-save-all
+        disabled
+      >
+        ArtWallを保存
+      </button>
+    </div>
+
+    <div class="artwall-editor-canvas" data-artwall-editor-canvas>
+      <div class="artwall mypage-page" data-artwall-editor-preview>
+          <div class="artwall-copy">
+            <div class="artwall-owner">
+              <div class="artwall-owner-copy">
+                <span class="artwall-owner-label">ASHELRY'S ARTWALL</span>
+                <h2 class="artwall-owner-title">ashelry ArtWall</h2>
+              </div>
+              <span class="artwall-user-avatar">
+                <img src="./assets/images/profile-avatar.jpg" alt="ashelry">
+              </span>
+            </div>
+
+            <p>訪れた展示が、自分だけのアートの履歴として少しずつ積み上がっていきます。</p>
+
+            <div class="stats">
+              <div class="stat">
+                <strong>12</strong>
+                <span>Exhibitions</span>
+              </div>
+              <div class="stat">
+                <strong>7</strong>
+                <span>Museums</span>
+              </div>
+              <div class="stat">
+                <strong>18</strong>
+                <span>Artists</span>
+              </div>
+          </div>
+
+          <div class="wall">
+            <div class="wall-grid muuzee-masonry-grid" data-mypage-wall-grid></div>
+            <div class="wall-fade" aria-hidden="true"></div>
+          </div>
+        </div>
+</div>
+
+      <div class="artwall-editor-overlay" data-artwall-editor-overlay aria-label="ArtWall editing controls">
+        <button type="button" class="artwall-editor-plus artwall-editor-plus--icon" data-artwall-edit-target="icon" aria-label="アイコン表示を編集">＋</button>
+        <button type="button" class="artwall-editor-plus artwall-editor-plus--title" data-artwall-edit-target="title" aria-label="タイトルを編集">＋</button>
+        <button type="button" class="artwall-editor-plus artwall-editor-plus--comment" data-artwall-edit-target="comment" aria-label="コメントを編集">＋</button>
+        <button type="button" class="artwall-editor-plus artwall-editor-plus--background" data-artwall-edit-target="background" aria-label="背景を編集">＋</button>
+        <button type="button" class="artwall-editor-plus artwall-editor-plus--columns" data-artwall-edit-target="columns" aria-label="展示会列数を編集">＋</button>
+        <button type="button" class="artwall-editor-plus artwall-editor-plus--items" data-artwall-edit-target="items" aria-label="展示会写真を編集">＋</button>
       </div>
     </div>
-  </main>
+  </div>
+</div>
+</main>
   <footer class="footer">
     <div class="shell footer-inner">
       <nav aria-label="Primary navigation" class="footer-nav">
@@ -50,5 +107,40 @@
   </footer>
   <script src="./assets/js/muuzee-global.js?v=20260901-03"></script>
   <script src="./assets/js/mypage-nav.js?v=20260828-37"></script>
+<script defer src="./assets/js/exhibition-data.js?v=20260907-01"></script>
+<script src="./assets/js/mypage-home.js?v=20260902-01"></script>
+<script defer src="./assets/js/artwall-edit.js?v=20260907-18"></script>
+<script defer src="./assets/js/artwall-edit-dummy-data.js?v=20260907-21"></script>
+<script defer src="./assets/js/artwall-edit-collection.js?v=20260907-33"></script>
+<script defer src="./assets/js/artwall-edit-columns.js?v=20260907-28"></script>
+
+<div class="artwall-editor-dialog-backdrop" data-artwall-dialog-backdrop hidden>
+  <section
+    class="artwall-editor-dialog"
+    data-artwall-dialog
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="artwall-editor-dialog-title"
+  >
+    <div class="artwall-editor-dialog-head">
+      <div>
+        <small>ArtWall Edit</small>
+        <h2 id="artwall-editor-dialog-title" data-artwall-dialog-title>編集</h2>
+      </div>
+      <button type="button" class="artwall-editor-dialog-close" data-artwall-dialog-close aria-label="閉じる">×</button>
+    </div>
+
+    <div class="artwall-editor-dialog-body" data-artwall-dialog-body></div>
+
+    <div class="artwall-editor-dialog-actions">
+      <button type="button" class="is-secondary" data-artwall-dialog-cancel>キャンセル</button>
+      <button type="button" data-artwall-dialog-apply>反映</button>
+    </div>
+  </section>
+</div>
+
+<script defer src="./assets/js/artwall-edit-reorder-seeds.js?v=20260907-34"></script>
+<script defer src="./assets/js/artwall-edit-reorder.js?v=20260907-34"></script>
+<script defer src="./assets/js/artwall-edit-layout-sync.js?v=20260907-35"></script>
 </body>
 </html>

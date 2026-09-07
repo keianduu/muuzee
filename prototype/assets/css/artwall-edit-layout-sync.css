@@ -1,0 +1,25 @@
+/*
+  ArtWall Edit Layout Sync
+  Position only. ArtWall visual design remains shared.
+*/
+
+.artwall-editor-plus{
+  left:var(--artwall-handle-left,0px) !important;
+  top:var(--artwall-handle-top,0px) !important;
+  right:auto !important;
+  bottom:auto !important;
+  transform:none !important;
+}
+
+/*
+  A handle is hidden only when its target truly cannot be resolved.
+  Icon OFF keeps the icon geometry in the DOM, so the icon handle remains.
+*/
+.artwall-editor-plus[data-artwall-handle-resolved="false"]{
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+.artwall-editor-plus[data-artwall-handle-resolved="true"]{
+  pointer-events:auto !important;
+}

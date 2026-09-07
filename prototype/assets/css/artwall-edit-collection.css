@@ -1,0 +1,371 @@
+/*
+  ArtWall Edit Collection Module
+  Only column / exhibition-photo editing UI.
+*/
+
+.artwall-collection-dialog-backdrop{
+  position:fixed;
+  z-index:1400;
+  inset:0;
+  padding:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(38,37,34,.34);
+  backdrop-filter:blur(6px);
+}
+
+.artwall-collection-dialog{
+  width:min(760px,100%);
+  max-height:min(820px,calc(100vh - 48px));
+  overflow:auto;
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 24px 64px rgba(38,37,34,.22);
+}
+
+.artwall-collection-dialog.is-compact{
+  width:min(420px,100%);
+}
+
+.artwall-collection-dialog-head{
+  position:sticky;
+  z-index:2;
+  top:0;
+  padding:20px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  background:#fff;
+}
+
+.artwall-collection-dialog-head small{
+  display:block;
+  margin-bottom:6px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+}
+
+.artwall-collection-dialog-head h2{
+  margin:0;
+  color:var(--ink);
+  font-size:22px;
+  line-height:1.25;
+}
+
+.artwall-collection-dialog-close{
+  width:36px;
+  height:36px;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:50%;
+  background:#fff;
+  color:var(--ink);
+  font-size:22px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.artwall-collection-dialog-body{
+  padding:20px;
+}
+
+.artwall-collection-dialog-actions{
+  position:sticky;
+  bottom:0;
+  padding:14px 20px 18px;
+  border-top:1px solid var(--line);
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  background:#fff;
+}
+
+.artwall-collection-dialog-actions button{
+  min-height:40px;
+  padding:0 16px;
+  border:0;
+  border-radius:999px;
+  background:var(--ink);
+  color:#fff;
+  font:inherit;
+  font-size:12px;
+  line-height:1;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.artwall-collection-dialog-actions button.is-secondary{
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--ink);
+}
+
+.artwall-collection-help{
+  margin:0 0 14px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+}
+
+.artwall-column-options{
+  display:flex;
+  gap:8px;
+}
+
+.artwall-column-option{
+  position:relative;
+  cursor:pointer;
+}
+
+.artwall-column-option input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.artwall-column-option span{
+  min-height:42px;
+  padding:0 18px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  background:#fff;
+  font-size:12px;
+  line-height:1;
+}
+
+.artwall-column-option input:checked + span{
+  border-color:var(--ink);
+  background:var(--ink);
+  color:#fff;
+}
+
+/* Masonry editor */
+.artwall-seen-item,
+@media(max-width:720px){
+  .artwall-collection-dialog-backdrop{
+    padding:14px;
+  }
+
+  .artwall-collection-dialog{
+    max-height:calc(100vh - 28px);
+  }
+
+  }
+
+/* artwall-grid-column-switch:start */
+
+/*
+  ArtWall exhibition grid source:
+  .wall-grid.muuzee-masonry-grid
+
+  Default = 4 columns.
+  Column editor changes only data-artwall-columns.
+*/
+.wall-grid.muuzee-masonry-grid{
+  --artwall-columns:4;
+  --wall-columns:4;
+  --masonry-columns:4;
+  --columns:4;
+  grid-template-columns:
+    repeat(4,minmax(0,1fr)) !important;
+  column-count:4 !important;
+}
+
+.wall-grid.muuzee-masonry-grid[
+  data-artwall-columns="3"
+]{
+  --artwall-columns:3;
+  --wall-columns:3;
+  --masonry-columns:3;
+  --columns:3;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr)) !important;
+  column-count:3 !important;
+}
+
+.wall-grid.muuzee-masonry-grid[
+  data-artwall-columns="4"
+]{
+  --artwall-columns:4;
+  --wall-columns:4;
+  --masonry-columns:4;
+  --columns:4;
+  grid-template-columns:
+    repeat(4,minmax(0,1fr)) !important;
+  column-count:4 !important;
+}
+
+/* artwall-grid-column-switch:end */
+
+/* artwall-editor-tight-masonry:start */
+
+.wall-grid.muuzee-masonry-grid[
+  data-artwall-editor-layout-managed="true"
+]{
+  position:relative !important;
+  display:block !important;
+  height:var(--artwall-editor-grid-height) !important;
+  min-height:0 !important;
+  column-count:auto !important;
+  column-width:auto !important;
+  grid-template-columns:none !important;
+  grid-auto-rows:auto !important;
+  grid-auto-flow:initial !important;
+}
+
+.wall-grid.muuzee-masonry-grid[
+  data-artwall-editor-layout-managed="true"
+] > *{
+  position:absolute !important;
+  left:var(--artwall-editor-left) !important;
+  top:var(--artwall-editor-top) !important;
+  right:auto !important;
+  bottom:auto !important;
+  width:var(--artwall-editor-width) !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  margin:0 !important;
+  aspect-ratio:auto !important;
+  grid-row:auto !important;
+  grid-row-start:auto !important;
+  grid-row-end:auto !important;
+  grid-column:auto !important;
+  grid-column-start:auto !important;
+  grid-column-end:auto !important;
+  transform:none !important;
+  translate:none !important;
+  break-inside:avoid !important;
+  box-sizing:border-box !important;
+}
+
+.wall-grid.muuzee-masonry-grid[
+  data-artwall-editor-layout-managed="true"
+] > * img{
+  display:block !important;
+  width:100% !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  aspect-ratio:auto !important;
+  object-fit:contain !important;
+  object-position:center !important;
+  transform:none !important;
+}
+
+.wall-grid.muuzee-masonry-grid[
+  data-artwall-editor-layout-pending="true"
+]{
+  visibility:hidden !important;
+}
+
+/* artwall-editor-tight-masonry:end */
+
+/* artwall-reorder-list:start */
+
+/*
+  Mobile-first exhibition reorder list.
+  64px row = 8px padding + 48px thumbnail + 8px padding.
+*/
+.artwall-reorder-list{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+.artwall-reorder-row{
+  width:100%;
+  height:64px;
+  padding:8px 4px 8px 8px;
+  border-bottom:1px solid var(--line);
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr) 44px;
+  gap:12px;
+  align-items:center;
+  background:#fff;
+  box-sizing:border-box;
+}
+
+.artwall-reorder-row:first-child{
+  border-top:1px solid var(--line);
+}
+
+.artwall-reorder-row.is-dragging{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,255,255,.96);
+  box-shadow:0 10px 28px rgba(38,37,34,.16);
+}
+
+.artwall-reorder-thumb{
+  width:48px;
+  height:48px;
+  border-radius:6px;
+  display:block;
+  object-fit:cover;
+  background:var(--warm);
+}
+
+.artwall-reorder-title{
+  min-width:0;
+  overflow:hidden;
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.45;
+  font-weight:500;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.artwall-reorder-handle{
+  width:44px;
+  height:48px;
+  padding:0;
+  border:0;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent;
+  color:var(--muted);
+  cursor:grab;
+  touch-action:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+
+.artwall-reorder-handle:active{
+  cursor:grabbing;
+  background:var(--warm);
+}
+
+.artwall-reorder-handle:focus-visible{
+  outline:2px solid var(--terra);
+  outline-offset:2px;
+}
+
+.artwall-reorder-handle svg{
+  display:block;
+  fill:currentColor;
+  pointer-events:none;
+}
+
+.artwall-reorder-placeholder{
+  width:100%;
+  height:64px;
+  border:2px dashed var(--terra);
+  border-radius:10px;
+  background:rgba(185,111,85,.05);
+  box-sizing:border-box;
+}
+
+/* artwall-reorder-list:end */
