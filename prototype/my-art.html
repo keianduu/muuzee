@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="./assets/css/muuzee-personal-actions.css?v=20260902-02">
 <link rel="stylesheet" href="./assets/css/muuzee-artwall.css?v=20260908-stats-direct-01">
   <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
+  <link rel="stylesheet" href="./assets/css/my-art-download.css?v=20260908-preview-01">
 </head>
 <body class="muuzee-app mypage-page">
   <header class="site-header is-over-sheet">
@@ -137,7 +138,54 @@
     </div>
   </main>
 
-  <footer class="footer">
+  <!-- artwall-image-preview:start -->
+<dialog class="artwall-image-preview-dialog" data-artwall-image-preview-dialog>
+  <div class="artwall-image-preview-dialog-inner">
+    <div class="artwall-image-preview-head">
+      <div>
+        <small>ArtWall Image</small>
+        <h2>ArtWall画像</h2>
+      </div>
+
+      <button
+        class="artwall-image-preview-close-icon"
+        type="button"
+        data-artwall-image-preview-close
+        aria-label="閉じる"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 5l14 14M19 5 5 19"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="artwall-image-preview-body">
+      <p class="artwall-image-preview-guide">
+        画像を長押しして写真に保存できます
+      </p>
+
+      <div class="artwall-image-preview-frame">
+        <img
+          alt="生成したArtWall画像"
+          data-artwall-image-preview
+        >
+      </div>
+    </div>
+
+    <div class="artwall-image-preview-actions">
+      <button
+        class="mypage-artwall-action"
+        type="button"
+        data-artwall-image-preview-close
+      >
+        閉じる
+      </button>
+    </div>
+  </div>
+</dialog>
+<!-- artwall-image-preview:end -->
+
+<footer class="footer">
     <div class="shell footer-inner">
       <nav aria-label="Primary navigation" class="footer-nav">
         <a class="nav-item" href="./index.html">
@@ -174,7 +222,6 @@
 <script src="./assets/js/muuzee-personal-actions.js?v=20260901-10"></script>
   <script defer src="./assets/js/muuzee-artwall-stats-tint.js?v=20260908-08"></script>
   <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>
-  <script defer src="./assets/js/muuzee-artwall-height.js?v=20260908-01"></script><script src="./assets/js/vendor/html-to-image-1.11.13.js?v=1.11.13"></script>
-  <script defer src="./assets/js/my-art-download.js?v=20260908-native-share-01"></script>
+  <script defer src="./assets/js/muuzee-artwall-height.js?v=20260908-01"></script><script src="./assets/js/vendor/html-to-image-1.11.13.js?v=1.11.13"></script>  <script defer src="./assets/js/my-art-image-preview.js?v=20260908-preview-only-01"></script>
 </body>
 </html>
