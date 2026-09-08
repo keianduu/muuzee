@@ -1,0 +1,275 @@
+.profile-settings-shell{max-width:860px}
+.profile-settings-section{margin-top:44px}
+.profile-settings-section:first-of-type{margin-top:0}
+.profile-settings-section-head{margin-bottom:16px}
+.profile-settings-section-head small{display:block;margin-bottom:5px;color:var(--muted2);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.profile-settings-section-head h2{margin:0;font-size:14px;line-height:1.4;font-weight:650}
+.profile-settings-list{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.profile-settings-row{min-height:84px;padding:18px 0;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:28px}
+.profile-settings-row:last-child{border-bottom:0}
+.profile-settings-copy{min-width:0;flex:1 1 auto}
+.profile-settings-copy strong{display:block;margin-bottom:5px;font-size:14px;line-height:1.4;font-weight:620}
+.profile-settings-copy span{display:block;color:var(--muted);font-size:12px;line-height:1.65}
+.profile-settings-input{flex:0 0 min(360px,48%);width:min(360px,48%);height:44px;padding:0 13px;border:1px solid var(--line);border-radius:12px;outline:0;background:#fff;color:var(--ink);font:inherit;font-size:14px}
+.profile-settings-input:focus{border-color:var(--ink)}.profile-toggle{flex:0 0 auto;display:flex;align-items:center;gap:9px;cursor:pointer}
+.profile-toggle input{position:absolute;opacity:0;pointer-events:none}
+.profile-toggle-track{width:44px;height:24px;padding:2px;border-radius:999px;display:block;background:var(--line)}
+.profile-toggle-track>span{width:20px;height:20px;border-radius:50%;display:block;background:#fff;transition:transform var(--motion-fast) ease}
+.profile-toggle input:checked+.profile-toggle-track{background:var(--ink)}
+.profile-toggle input:checked+.profile-toggle-track>span{transform:translateX(20px)}
+.profile-toggle em{min-width:24px;color:var(--muted);font-size:10px;font-style:normal;text-align:right}
+.profile-location-control{flex:0 0 auto;display:flex;align-items:center;gap:12px}
+.profile-location-control>span{max-width:320px;color:var(--muted);font-size:12px;line-height:1.5;text-align:right}
+.profile-settings-actions{margin-top:44px;display:flex;justify-content:flex-end;gap:10px}
+.profile-save-button.mypage-artwall-action{min-width:112px;border-color:var(--ink);background:var(--ink);color:#fff}
+.profile-settings-section.is-danger{margin-top:56px}
+.profile-danger-button{min-height:36px;padding:0 13px;border:1px solid rgba(185,111,85,.34);border-radius:999px;background:#fff;color:var(--terra);font-size:10px;cursor:pointer}@media(max-width:720px){
+  .profile-settings-section{margin-top:38px}
+  .profile-settings-row{min-height:0;padding:16px 0;gap:16px}
+  .profile-settings-row.is-field{display:block}
+  .profile-settings-row.is-field .profile-settings-copy{display:block;margin-bottom:12px}
+  .profile-settings-input{width:100%;max-width:none}
+      .profile-location-control{max-width:48%;display:grid;justify-items:end;gap:8px}
+  .profile-settings-actions{margin-top:36px}
+}
+
+/* profile-avatar-upload-layout:start */
+
+/*
+  Avatar setting uses a vertical row so the description cannot collapse
+  on narrow screens.
+*/
+.profile-settings-avatar-row{
+  display:block;
+}
+
+.profile-settings-avatar-row > .profile-settings-copy{
+  margin-bottom:12px;
+}
+
+.profile-settings-avatar{
+  width:100%;
+}
+
+.profile-avatar-upload{
+  width:100%;
+  min-height:82px;
+  padding:12px 16px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  box-sizing:border-box;
+  background:#fff;
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+}
+
+.profile-avatar-upload img{
+  width:56px;
+  height:56px;
+  flex:0 0 56px;
+  border-radius:50%;
+  object-fit:cover;
+  background:var(--warm);
+}
+
+.profile-avatar-upload-copy{
+  min-width:0;
+  display:grid;
+  gap:5px;
+}
+
+.profile-avatar-upload-copy strong{
+  font-size:14px;
+  line-height:1.4;
+  font-weight:620;
+}
+
+.profile-avatar-upload-copy small{
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.5;
+}
+
+@media(max-width:720px){
+  .profile-avatar-upload{
+    min-height:80px;
+    padding:12px 14px;
+  }
+}
+
+/* profile-avatar-upload-layout:end */
+
+/* profile-avatar-delete-action:start */
+
+/*
+  Existing upload action + 48px destructive action.
+*/
+.profile-settings-avatar{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 48px;
+  align-items:stretch;
+  gap:8px;
+}
+
+.profile-avatar-upload{
+  min-width:0;
+}
+
+.profile-avatar-delete{
+  width:48px;
+  min-width:48px;
+  padding:0;
+  border:1px solid rgba(185,111,85,.22);
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(185,111,85,.08);
+  color:var(--terra);
+  cursor:pointer;
+}
+
+.profile-avatar-delete svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+/*
+  Simple native confirmation dialog.
+*/
+.profile-avatar-delete-dialog{
+  width:min(360px,calc(100vw - 32px));
+  padding:0;
+  border:0;
+  border-radius:20px;
+  background:#fff;
+  color:var(--ink);
+}
+
+.profile-avatar-delete-dialog::backdrop{
+  background:rgba(0,0,0,.28);
+}
+
+.profile-avatar-delete-dialog-inner{
+  padding:22px;
+}
+
+.profile-avatar-delete-dialog-copy small{
+  display:block;
+  margin-bottom:6px;
+  color:var(--muted2);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.profile-avatar-delete-dialog-copy h2{
+  margin:0;
+  font-size:14px;
+  line-height:1.4;
+  font-weight:650;
+}
+
+.profile-avatar-delete-dialog-copy p{
+  margin:10px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.65;
+}
+
+.profile-avatar-delete-dialog-actions{
+  margin-top:20px;
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.profile-avatar-delete-confirm.mypage-artwall-action{
+  border-color:var(--terra);
+  background:var(--terra);
+  color:#fff;
+}
+
+/* profile-avatar-delete-action:end */
+
+/* profile-avatar-action-polish:start */
+
+/*
+  Delete action:
+  explicit destructive control, visually separated from the upload action.
+*/
+.profile-avatar-delete{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:#fff;
+}
+
+.profile-avatar-delete svg{
+  width:20px;
+  height:20px;
+}
+
+/*
+  Avatar edit affordance:
+  small + badge on the bottom-right of the current image.
+*/
+.profile-avatar-thumb{
+  position:relative;
+  width:56px;
+  height:56px;
+  flex:0 0 56px;
+  display:block;
+}
+
+.profile-avatar-thumb img{
+  width:56px;
+  height:56px;
+  display:block;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.profile-avatar-thumb-plus{
+  position:absolute;
+  right:-2px;
+  bottom:-2px;
+  width:20px;
+  height:20px;
+  border:2px solid #fff;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  background:var(--ink);
+  color:#fff;
+  font-size:14px;
+  line-height:1;
+  font-weight:500;
+  pointer-events:none;
+}
+
+/* profile-avatar-action-polish:end */
+
+/* profile-feedback-dialog:start */
+
+/*
+  Reuse the existing native dialog visual system.
+  Only ensure the My Art action reads as the primary action.
+*/
+.profile-feedback-dialog .profile-save-button.mypage-artwall-action{
+  border-color:var(--ink);
+  background:var(--ink);
+  color:#fff;
+}
+
+/* profile-feedback-dialog:end */

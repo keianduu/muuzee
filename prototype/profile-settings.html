@@ -4,51 +4,348 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>プロフィール設定 — Muuzee</title>
+  <meta name="description" content="Muuzeeのプロフィール・通知・プライバシー設定。">
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260902-02">
-  <link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-02">
+  <link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-03">
+  <link rel="stylesheet" href="./assets/css/list-filter.css?v=20260828-03">
+  <link rel="stylesheet" href="./assets/css/profile-settings.css?v=20260908-feedback-01">
 </head>
-<body class="muuzee-app mypage-page">
-  <header class="site-header is-over-sheet">
-    <div class="shell header-inner">
-      <a class="logo" href="./index.html">Muuzee</a>
-      <div class="header-actions">
-<a aria-label="MyPage" class="avatar" href="./my-art.html"><img alt="ashelry" src="./assets/images/profile-avatar.jpg"></a>
+<body class="muuzee-app mypage-page profile-settings-page">
+
+<header class="site-header is-over-sheet">
+  <div class="shell header-inner">
+    <a class="logo" href="./index.html">Muuzee</a>
+    <div class="header-actions">
+      <a aria-label="MyPage" class="avatar" href="./my-art.html">
+        <img alt="ashelry" src="./assets/images/profile-avatar.jpg">
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="mypage-profile-shell">
+    <div class="shell mypage-profile" data-mypage-profile></div>
+  </section>
+<div class="shell mypage-content-shell profile-settings-shell">
+    <header class="mypage-content-head">
+      <small>Profile</small>
+      <h1>プロフィール設定</h1>
+    </header>
+
+    <form class="profile-settings-form" data-profile-form>
+
+      <section class="profile-settings-section">
+        <header class="profile-settings-section-head">
+          <small>Display Info</small>
+          <h2>表示設定</h2>
+        </header>
+        <div class="profile-settings-list">
+          <div class="profile-settings-row profile-settings-avatar-row">
+            <div class="profile-settings-copy">
+              <strong>アイコン</strong>
+              <span>画像をアップロードして変更できます。</span>
+            </div>
+            <div class="profile-settings-avatar">
+              <button
+                class="profile-avatar-upload"
+                type="button"
+                data-avatar-button
+              >
+                <span class="profile-avatar-thumb">
+                  <img
+                  src="./assets/images/profile-avatar.jpg"
+                  alt="プロフィール画像"
+                  data-avatar-preview
+                >
+                  <span class="profile-avatar-thumb-plus" aria-hidden="true">＋</span>
+                </span>
+
+                <span class="profile-avatar-upload-copy">
+                  <strong>画像を変更</strong>
+                  <small>※推奨：1 : 1 の正方形画像。サイズ 1Mまで</small>
+                </span>
+              </button>
+
+              <!-- profile-avatar-delete:start -->
+              <button
+                class="profile-avatar-delete"
+                type="button"
+                data-avatar-delete
+                aria-label="アイコン画像を削除"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16"></path>
+                  <path d="M9 7V4h6v3"></path>
+                  <path d="M7 7l1 13h8l1-13"></path>
+                  <path d="M10 11v5M14 11v5"></path>
+                </svg>
+              </button>
+              <!-- profile-avatar-delete:end -->
+
+              </button>
+
+              <input
+                type="file"
+                accept="image/*"
+                data-avatar-input
+                hidden
+              >
+            </div>
+          </div>
+
+          <label class="profile-settings-row is-field">
+            <span class="profile-settings-copy">
+              <strong>ニックネーム</strong>
+              <span>MyPageやフレンドに表示されます。</span>
+            </span>
+            <input class="profile-settings-input" type="text" maxlength="40" required data-nickname>
+          </label>
+        </div>
+      </section>
+
+      <section class="profile-settings-section">
+        <header class="profile-settings-section-head">
+          <small>Account</small>
+          <h2>アカウント</h2>
+        </header>
+        <div class="profile-settings-list">
+          <label class="profile-settings-row is-field">
+            <span class="profile-settings-copy">
+              <strong>登録メールアドレス</strong>
+              <span>現在の登録内容を確認・変更できます。</span>
+            </span>
+            <input class="profile-settings-input" type="email" required data-email>
+          </label>
+
+          <div class="profile-settings-row">
+            <div class="profile-settings-copy">
+              <strong>パスワード</strong>
+              <span>パスワード変更画面へ進みます。</span>
+            </div>
+            <button class="mypage-artwall-action" type="button" data-password>
+              <span>変更する</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-settings-section">
+        <header class="profile-settings-section-head">
+          <small>Delivery</small>
+          <h2>配信・通知</h2>
+        </header>
+        <div class="profile-settings-list">
+          <label class="profile-settings-row">
+            <span class="profile-settings-copy">
+              <strong>ニュースレター</strong>
+              <span>おすすめ展示会などのメールを受け取ります。</span>
+            </span>
+            <span class="profile-toggle">
+              <input type="checkbox" data-newsletter>
+              <span class="profile-toggle-track"><span></span></span>
+              <em data-toggle-text>ON</em>
+            </span>
+          </label>
+
+          <label class="profile-settings-row">
+            <span class="profile-settings-copy">
+              <strong>通知</strong>
+              <span>保存した展示会やフレンドに関する通知を受け取ります。</span>
+            </span>
+            <span class="profile-toggle">
+              <input type="checkbox" data-notifications>
+              <span class="profile-toggle-track"><span></span></span>
+              <em data-toggle-text>ON</em>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section class="profile-settings-section">
+        <header class="profile-settings-section-head">
+          <small>Location</small>
+          <h2>住んでいる地域</h2>
+        </header>
+        <div class="profile-settings-list">
+          <div class="profile-settings-row">
+            <div class="profile-settings-copy">
+              <strong>居住地域</strong>
+              <span>地図検索の初期エリアに利用します。</span>
+            </div>
+            <div class="profile-location-control">
+              <span data-location-summary>日本 / 関東 / 東京都 / 多摩市</span>
+              <button class="mypage-artwall-action" type="button" data-filter-open data-location-open>
+                <span>変更する</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-settings-section">
+        <header class="profile-settings-section-head">
+          <small>Privacy</small>
+          <h2>プライバシー</h2>
+        </header>
+        <div class="profile-settings-list">
+          <label class="profile-settings-row">
+            <span class="profile-settings-copy">
+              <strong>フレンド検索への公開</strong>
+              <span>ONにするとニックネームから検索できるようになります。</span>
+            </span>
+            <span class="profile-toggle">
+              <input type="checkbox" data-friend-search>
+              <span class="profile-toggle-track"><span></span></span>
+              <em data-toggle-text>ON</em>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section class="profile-settings-section is-danger">
+        <header class="profile-settings-section-head">
+          <small>Account management</small>
+          <h2>アカウント管理</h2>
+        </header>
+        <div class="profile-settings-list">
+          <div class="profile-settings-row">
+            <div class="profile-settings-copy">
+              <strong>退会</strong>
+              <span>アカウント削除の確認画面へ進みます。</span>
+            </div>
+            <button class="profile-danger-button" type="button" data-withdraw>退会する</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="profile-settings-actions">
+        <a class="mypage-artwall-action" href="./my-art.html">My Artに戻る</a>
+        <button class="mypage-artwall-action profile-save-button" type="submit">
+          <span>保存</span>
+        </button>
       </div>
+    </form>
+  </div>
+</main>
+
+<!-- profile-avatar-delete-dialog:start -->
+<dialog class="profile-avatar-delete-dialog" data-avatar-delete-dialog>
+  <div class="profile-avatar-delete-dialog-inner">
+    <div class="profile-avatar-delete-dialog-copy">
+      <small>Profile image</small>
+      <h2>画像を削除しますか？</h2>
+      <p>現在設定している画像を削除し、初期画像に戻します。</p>
     </div>
-  </header>
-  <main>
-    <section class="mypage-profile-shell">
-      <div class="shell mypage-profile" data-mypage-profile></div>
-    </section>
-    <section class="mypage-nav-shell">
-      <div class="shell" data-mypage-nav data-mypage-active=""></div>
-    </section>
-    <div class="shell mypage-content-shell">
-      <header class="mypage-content-head">
-        <small>Profile</small>
-        <h1>プロフィール設定</h1>
-        <p>プロフィール画像、名前、公開情報などを設定します。</p>
-      </header>
-      <div class="mypage-placeholder">
-        <small>Profile</small>
-        <h2>プロフィール設定</h2>
-        <p>このページの詳細UIは次のPrototypeで追加します。</p>
-      </div>
+
+    <div class="profile-avatar-delete-dialog-actions">
+      <button
+        class="mypage-artwall-action"
+        type="button"
+        data-avatar-delete-cancel
+      >
+        キャンセル
+      </button>
+
+      <button
+        class="mypage-artwall-action profile-avatar-delete-confirm"
+        type="button"
+        data-avatar-delete-confirm
+      >
+        はい
+      </button>
     </div>
-  </main>
-  <footer class="footer">
-    <div class="shell footer-inner">
-      <nav aria-label="Primary navigation" class="footer-nav">
-        <a class="nav-item" href="./index.html"><svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9H7v-6h10v6"></path></svg><span>ホーム</span></a>
-        <a class="nav-item" href="./exhibitions.html"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="m6.5 17 4-4 3 3 2-2 2 3"></path></svg><span>展示会</span></a>
-        <a class="nav-item" href="./artists.html"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><circle cx="12" cy="9" r="2.4"></circle><path d="M8.5 17c.5-2.3 1.8-3.5 3.5-3.5s3 1.2 3.5 3.5"></path></svg><span>アーティスト</span></a>
-        <a class="nav-item" href="./museums.html"><svg viewBox="0 0 24 24"><path d="M3 9h18M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18M4 8l8-5 8 5"></path></svg><span>美術館</span></a>
-        <a class="nav-item" href="./map.html"><svg viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"></path><path d="M9 3v15M15 6v15"></path></svg><span>マップ</span></a>
-        <a class="nav-item" href="./saved.html"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4Z"></path></svg><span>保存</span></a>
-      </nav>
+  </div>
+</dialog>
+<!-- profile-avatar-delete-dialog:end --><!-- profile-feedback-dialog:start -->
+<dialog
+  class="profile-avatar-delete-dialog profile-feedback-dialog"
+  data-profile-feedback-dialog
+>
+  <div class="profile-avatar-delete-dialog-inner">
+    <div class="profile-avatar-delete-dialog-copy">
+      <small>Profile settings</small>
+      <h2 data-profile-feedback-title>保存しました</h2>
+      <p data-profile-feedback-message>設定を保存しました。</p>
     </div>
-  </footer>
-  <script src="./assets/js/muuzee-global.js?v=20260901-03"></script>
-  <script src="./assets/js/mypage-nav.js?v=20260828-37"></script>
+
+    <div class="profile-avatar-delete-dialog-actions">
+      <button
+        class="mypage-artwall-action"
+        type="button"
+        data-profile-feedback-close
+      >
+        閉じる
+      </button>
+
+      <a
+        class="mypage-artwall-action profile-save-button"
+        href="./my-art.html"
+      >
+        My Artに戻る
+      </a>
+    </div>
+  </div>
+</dialog>
+<!-- profile-feedback-dialog:end -->
+
+<div class="filter-backdrop" data-filter-backdrop hidden></div>
+<section class="filter-sheet profile-location-sheet" data-filter-sheet aria-hidden="true" aria-label="居住地域を選択">
+  <div class="filter-sheet-head">
+    <div>
+      <small>Location</small>
+      <h2>住んでいる地域</h2>
+    </div>
+    <button class="filter-close" type="button" data-filter-close aria-label="閉じる">
+      <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"></path></svg>
+    </button>
+  </div>
+
+  <div class="filter-sheet-body">
+    <div class="filter-group">
+      <h3>エリア</h3>
+      <div class="filter-chips" data-countries></div>
+    </div>
+
+    <div class="filter-group">
+      <h3>地方</h3>
+      <div class="filter-chips" data-regions></div>
+    </div>
+
+    <div class="filter-group" data-prefecture-group>
+      <h3>都道府県</h3>
+      <div class="filter-chips" data-prefectures></div>
+    </div>
+
+    <div class="filter-group" data-city-group>
+      <h3>市区</h3>
+      <div class="filter-chips" data-cities></div>
+    </div>
+  </div>
+
+  <div class="filter-sheet-actions">
+    <button class="filter-reset" type="button" data-location-clear>クリア</button>
+    <button class="filter-apply" type="button" data-location-apply>この地域に設定</button>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="shell footer-inner">
+    <nav aria-label="Primary navigation" class="footer-nav">
+      <a class="nav-item" href="./index.html"><svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9H7v-6h10v6"></path></svg><span>ホーム</span></a>
+      <a class="nav-item" href="./exhibitions.html"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="m6.5 17 4-4 3 3 2-2 2 3"></path></svg><span>展示会</span></a>
+      <a class="nav-item" href="./artists.html"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><circle cx="12" cy="9" r="2.4"></circle><path d="M8.5 17c.5-2.3 1.8-3.5 3.5-3.5s3 1.2 3.5 3.5"></path></svg><span>アーティスト</span></a>
+      <a class="nav-item" href="./museums.html"><svg viewBox="0 0 24 24"><path d="M3 9h18M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18M4 8l8-5 8 5"></path></svg><span>美術館</span></a>
+      <a class="nav-item" href="./map.html"><svg viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"></path><path d="M9 3v15M15 6v15"></path></svg><span>マップ</span></a>
+      <a class="nav-item" href="./saved.html"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4Z"></path></svg><span>保存</span></a>
+    </nav>
+  </div>
+</footer>
+
+<script src="./assets/js/muuzee-global.js?v=20260901-03"></script>
+<script src="./assets/js/mypage-nav.js?v=20260828-37"></script>
+<script src="./assets/js/list-filter.js?v=20260828-03"></script>
+<script src="./assets/js/profile-settings.js?v=20260908-avatar-256-01"></script>
+  <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-01"></script>
 </body>
 </html>
