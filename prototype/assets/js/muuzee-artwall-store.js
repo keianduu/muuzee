@@ -818,12 +818,26 @@
           state.title;
       }
 
-      if (
-        comment
-        && state.comment
-      ) {
+            if (comment) {
+        const value =
+          String(
+            state.comment
+            ?? ""
+          );
+
+        const hasComment =
+          value.trim().length > 0;
+
         comment.textContent =
-          state.comment;
+          value;
+
+        comment.hidden =
+          !hasComment;
+
+        comment.style.display =
+          hasComment
+            ? ""
+            : "none";
       }
 
       if (icon) {

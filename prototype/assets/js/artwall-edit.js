@@ -59,6 +59,11 @@
   const clone = value => JSON.parse(JSON.stringify(value));
 
   const saved = readJSON(SETTINGS_KEY, {});
+  const hasPersistedComment =
+    Object.prototype.hasOwnProperty.call(
+      saved || {},
+      "comment"
+    );
   let state = {...defaults, ...(saved && typeof saved === "object" ? saved : {})};
   state.columns = Number(state.columns) === 4 ? 4 : 3;
   state.showIcon = state.showIcon !== false;
@@ -291,7 +296,12 @@
   };
 
   if (!state.title) state.title = original.title;
-  if (!state.comment) state.comment = original.comment;
+  if (
+    !hasPersistedComment
+  ) {
+    state.comment =
+      original.comment;
+  }
 
   const setDirty = dirty => {
     if (saveAll) {
@@ -612,7 +622,29 @@
 
   const applyState = () => {
     if (parts.title) parts.title.textContent = state.title || original.title;
-    if (parts.comment) parts.comment.textContent = state.comment || original.comment;
+    if (
+      parts.comment
+    ) {
+      const comment =
+        String(
+          state.comment
+          ?? ""
+        );
+
+      const hasComment =
+        comment.trim().length > 0;
+
+      parts.comment.textContent =
+        comment;
+
+      parts.comment.hidden =
+        !hasComment;
+
+      parts.comment.style.display =
+        hasComment
+          ? ""
+          : "none";
+    }
 
     if (iconVisual) {
       iconVisual.style.visibility =
@@ -627,6 +659,68 @@
     renderPrototypeItems();
     positionButtons();
   };
+
+  /* combined-profile-editor-api:start
+     The combined "「観た」展示会" popup can edit the same draft state
+     without duplicating ArtWall state logic.
+  */
+  window.MuuzeeArtWallEditor = {
+    getState:
+      () => clone(
+        state
+      ),
+
+    patchState:
+      patch => {
+        if (
+          !patch
+          || typeof patch
+            !== "object"
+        ) {
+          return clone(
+            state
+          );
+        }
+
+        state = {
+          ...state,
+          ...patch
+        };
+
+        state.showIcon =
+          state.showIcon
+          !== false;
+
+        state.title =
+          String(
+            state.title
+            ?? ""
+          );
+
+        state.comment =
+          String(
+            state.comment
+            ?? ""
+          );
+
+        applyState();
+        setDirty(
+          isDirty()
+        );
+
+        requestAnimationFrame(
+          positionButtons
+        );
+
+        return clone(
+          state
+        );
+      },
+
+    isDirty:
+      () => isDirty()
+  };
+  /* combined-profile-editor-api:end */
 
   const rectWithinCanvas = element => {
     if (!element) return null;
@@ -785,6 +879,23 @@
       );
     }
 
+    /* three-popup-profile-position:start */
+    const profileRect =
+      titleRect
+      || iconRect
+      || commentRect;
+
+    if (profileRect) {
+      placeButton(
+        "profile",
+        profileRect.left
+          - OUTSET,
+        profileRect.top
+          - OUTSET
+      );
+    }
+    /* three-popup-profile-position:end */
+
     if (gridRect) {
       /*
         Fixed editor-handle positions requested for the current ArtWall layout.
@@ -877,7 +988,119 @@
       $("[data-dialog-comment-input]", dialogBody).value = state.comment;
     }
 
+    /* three-popup-profile-dialog:start */
+    if (target === "profile") {
+      dialogTitle.textContent =
+        "ArtWall情報";
+
+      /*
+        Same composition as the current Seen-exhibition popup:
+        head -> full-width section -> body -> actions.
+        Profile content must NOT live inside dialogBody.
+      */
+      dialogBody.hidden =
+        true;
+
+      dialogBody.replaceChildren();
+
+      const existingProfile =
+        dialogBody.parentElement
+          ?.querySelector(
+            ":scope > .artwall-editor-dialog-profile"
+          );
+
+      existingProfile?.remove();
+
+      const profileSection =
+        document.createElement(
+          "div"
+        );
+
+      profileSection.className =
+        "artwall-editor-dialog-profile";
+
+      profileSection.innerHTML = `
+        <div class="artwall-editor-dialog-profile-row">
+          <span>アイコン表示</span>
+
+          <div class="artwall-editor-dialog-options">
+            <label class="artwall-editor-dialog-option">
+              <input
+                type="radio"
+                name="dialog-profile-icon"
+                value="on"
+                ${state.showIcon ? "checked" : ""}
+              >
+              <span>表示</span>
+            </label>
+
+            <label class="artwall-editor-dialog-option">
+              <input
+                type="radio"
+                name="dialog-profile-icon"
+                value="off"
+                ${!state.showIcon ? "checked" : ""}
+              >
+              <span>非表示</span>
+            </label>
+          </div>
+        </div>
+
+        <label class="artwall-editor-dialog-profile-field artwall-editor-dialog-field">
+          <span>タイトル</span>
+          <input
+            type="text"
+            maxlength="80"
+            data-dialog-profile-title
+          >
+        </label>
+
+        <label class="artwall-editor-dialog-profile-field artwall-editor-dialog-field">
+          <span>コメント</span>
+          <textarea
+            rows="2"
+            maxlength="280"
+            data-dialog-profile-comment
+            placeholder="未入力でもOK"
+          ></textarea>
+        </label>
+      `;
+
+      profileSection
+        .querySelector(
+          "[data-dialog-profile-title]"
+        )
+        .value =
+          String(
+            state.title
+            ?? ""
+          );
+
+      profileSection
+        .querySelector(
+          "[data-dialog-profile-comment]"
+        )
+        .value =
+          String(
+            state.comment
+            ?? ""
+          );
+
+      dialogBody.before(
+        profileSection
+      );
+    }
+    /* three-popup-profile-dialog:end */
+
     if (target === "background") {
+      dialogBody.hidden =
+        false;
+
+      dialogBody.parentElement
+        ?.querySelector(
+          ":scope > .artwall-editor-dialog-profile"
+        )
+        ?.remove();
       dialogTitle.textContent = "背景を変更";
 
       const colors = [
@@ -1075,6 +1298,42 @@
     if (activeTarget === "comment") {
       state.comment = $("[data-dialog-comment-input]", dialogBody)?.value || "";
     }
+
+    /* three-popup-profile-apply:start */
+    if (activeTarget === "profile") {
+      const profileSection =
+        dialogBody.parentElement
+          ?.querySelector(
+            ":scope > .artwall-editor-dialog-profile"
+          );
+
+      const icon =
+        profileSection
+          ?.querySelector(
+            'input[name="dialog-profile-icon"]:checked'
+          )
+          ?.value;
+
+      state.showIcon =
+        icon !== "off";
+
+      state.title =
+        profileSection
+          ?.querySelector(
+            "[data-dialog-profile-title]"
+          )
+          ?.value
+        || "";
+
+      state.comment =
+        profileSection
+          ?.querySelector(
+            "[data-dialog-profile-comment]"
+          )
+          ?.value
+        ?? "";
+    }
+    /* three-popup-profile-apply:end */
 
     if (activeTarget === "background") {
       state.background = $('input[name="dialog-background"]:checked', dialogBody)?.value || "default";

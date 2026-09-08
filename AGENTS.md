@@ -669,3 +669,24 @@ This AGENTS.md applies only to the `muuzee` project.
 Do not use specifications, research, Tasks, or Decisions from other projects under `my-project`.
 
 Do not modify files outside this project unless the user explicitly requests it.
+
+<!-- muuzee-simple-implementation:start -->
+## Simple Implementation Principle
+
+Muuzeeの実装では、要件を満たす範囲で**最もシンプルで保守しやすい実装を優先する**。
+
+- まず、既存のEvent / State / Shared Component / DOM構造で直接解決できないか確認する。
+- 直接対応できる値や状態がある場合、推測・近似判定・間接的な監視処理を先に選ばない。
+- 不要な `MutationObserver`、重複State、変換Layer、個別Adapter、推測ロジック、同じ責務を持つ複数実装を安易に追加しない。
+- 共通Componentや既存ロジックを再利用できる場合は、新しい独自実装より再利用を優先する。
+- シンプルな実装では要件を満たせない、または明確なUX / 技術上の問題がある場合のみ、必要な範囲で複雑化する。
+- 「複雑な方が柔軟そう」「将来使えそう」という理由だけで、現時点で不要な抽象化や仕組みを追加しない。
+- Prototypeで一時的な補助処理が必要な場合も、本番設計へ移行しやすい最小限の構造に留める。
+- 実装前に、同じ役割の直近実装・既存Shared Component・Design Guideを確認し、それを基準に最小差分で修正する。
+
+実装は原則として、以下の順序で進める。
+
+`方針検討 → 調査 → 方針FIX → 実装 → 確認 → 完成`
+
+各工程で不要な複雑化が入っていないか確認し、完成前に不要な処理・重複ロジック・一時的な回避策を整理する。
+<!-- muuzee-simple-implementation:end -->

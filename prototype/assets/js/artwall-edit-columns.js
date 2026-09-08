@@ -47,11 +47,10 @@
 
   if (
     !preview
-    || !columnButton
   ) {
     console.warn(
-      "[Muuzee ArtWall Columns v20260907-26] "
-      + "required element missing"
+      "[Muuzee ArtWall Columns] "
+      + "preview missing"
     );
 
     return;
@@ -893,7 +892,7 @@
   /*
     Only this module owns the column edit button.
   */
-  columnButton.addEventListener(
+  columnButton?.addEventListener(
     "click",
     openColumns,
     true
@@ -1029,4 +1028,54 @@
         "detached-js-masonry"
     }
   );
+
+  /* seen-popup-columns-api:start
+     Public prototype API used by the combined "「観た」展示会" popup.
+     The existing module remains the only owner of Masonry layout.
+  */
+  window.MuuzeeArtWallColumns = {
+    get:
+      () => (
+        Number(columns) === 3
+          ? 3
+          : 4
+      ),
+
+    getPersisted:
+      () => (
+        Number(persistedColumns) === 3
+          ? 3
+          : 4
+      ),
+
+    set:
+      async requested => {
+        const next =
+          Number(requested) === 3
+            ? 3
+            : 4;
+
+        await layoutMasonry(
+          next
+        );
+
+        return (
+          Number(columns) === 3
+            ? 3
+            : 4
+        );
+      },
+
+    markDirty:
+      () => {
+        if (
+          typeof markDirty
+          === "function"
+        ) {
+          markDirty();
+        }
+      }
+  };
+  /* seen-popup-columns-api:end */
+
 })();

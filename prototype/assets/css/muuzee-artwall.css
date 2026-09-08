@@ -1,0 +1,109 @@
+/*
+  Muuzee Shared ArtWall
+  ---------------------
+  Shared visual contract for the ArtWall copy area.
+
+  Important:
+  - Typography stays owned by the current Design Guide / existing ArtWall CSS.
+  - Avatar sizing stays owned by the current ArtWall implementation.
+  - Comment/avatar visibility stays owned by the existing JS state.
+  - This file only stabilizes layout and the approved Stats surface.
+*/
+
+/* artwall-copy-final-layout:start */
+
+.artwall .artwall-copy{
+  width:100%;
+  min-width:0;
+}
+
+.artwall .artwall-owner{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.artwall .artwall-owner-copy{
+  min-width:0;
+  flex:1 1 auto;
+}
+
+.artwall .artwall-user-avatar{
+  order:-1;
+  box-shadow:none;
+}
+
+/*
+  Keep the current comment typography.
+  Only normalize spacing so the Stats surface lands consistently below it.
+*/
+.artwall .artwall-copy > p{
+  margin-top:0;
+  margin-bottom:19px;
+}
+
+/*
+  Target layout from the supplied reference:
+  full copy width / quiet sage surface / evenly distributed stats.
+*/
+.artwall .artwall-copy .stats{
+  width:100%;
+  margin-left:0;
+  margin-right:0;
+  padding:8px 0;
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  gap:0;
+  border-radius:8px;
+  /* Blend with the current ArtWall background instead of using a fixed color. */
+
+  background:rgba(100,100,0,.05);
+}
+
+.artwall .artwall-copy .stat{
+  width:70px;
+  min-width:70px;
+  flex:0 0 70px;
+  text-align:center;
+}
+
+.artwall .artwall-copy .stat strong,
+.artwall .artwall-copy .stat span{
+  text-align:center;
+}
+
+/*
+  Existing JS can fully collapse optional content.
+  Do not reserve layout space for hidden comment/avatar.
+*/
+.artwall .artwall-copy > p[hidden],
+.artwall .artwall-user-avatar[hidden],
+.artwall .artwall-user-avatar[data-muuzee-avatar-collapsed="true"]{
+  display:none;
+}
+
+@media(max-width:720px){
+  /*
+    These values intentionally match the CURRENT ArtWall mobile pattern
+    rather than introducing a new mobile design.
+  */
+  .artwall .artwall-owner{
+    gap:8px;
+    margin-bottom:12px;
+  }
+
+  .artwall .artwall-copy > p{
+    margin-bottom:14px;
+  }
+}
+
+
+.artwall .artwall-owner-title{
+  font-size:28px;
+  line-height:1.2;
+}
+
+/* artwall-copy-final-layout:end */

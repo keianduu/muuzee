@@ -520,23 +520,6 @@
   margin-bottom:0;
 }
 
-.artwall-editor-save-button{
-  min-height:38px;
-  padding:0 15px;
-  border:0;
-  border-radius:999px;
-  background:var(--ink);
-  color:#fff;
-  font:inherit;
-  font-size:12px;
-  line-height:1;
-  font-weight:600;
-  cursor:pointer;
-  transition:
-    opacity 160ms ease,
-    background 160ms ease;
-}
-
 .artwall-editor-save-button:disabled{
   background:var(--line);
   color:var(--muted);
@@ -553,11 +536,7 @@
     align-items:center;
   }
 
-  .artwall-editor-save-button{
-    min-height:36px;
-    padding-inline:13px;
-  }
-
+  
   }
 
 /* artwall-editor-refined-controls:end */
@@ -634,21 +613,159 @@
 
 /* artwall-mobile-input-focus-zoom:start */
 /*
-  iOS Safari automatically zooms focused form controls below 16px.
-  Keep page zoom available; only prevent focus-triggered zoom by making
-  editable controls 16px on mobile.
+  iOS focus zoom is handled by artwall-edit-focus-zoom.js.
+  Keep form typography on the existing Design Guide scale.
 */
+/* artwall-mobile-input-focus-zoom:end */
+
+
+/* artwall-profile-popup-polish:start */
+/*
+  Follow the same full-width section composition as the current
+  "「観た」展示会" popup.
+*/
+.artwall-editor-dialog-profile{
+  width:100%;
+  box-sizing:border-box;
+  display:block;
+  background:#fff;
+}
+
+/*
+  Each item owns only inner horizontal padding.
+  The divider belongs to the full-width item itself.
+*/
+.artwall-editor-dialog-profile > *{
+  width:100%;
+  box-sizing:border-box;
+  margin:0;
+  padding:14px 20px;
+  border:0;
+}
+
+/*
+  Border ONLY between items.
+  No border above アイコン表示.
+  No border below コメント.
+*/
+.artwall-editor-dialog-profile > * + *{
+  border-top:1px solid var(--line);
+}
+
+.artwall-editor-dialog-profile-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.artwall-editor-dialog-profile-row > span,
+.artwall-editor-dialog-profile-field > span{
+  display:block;
+  margin:0 0 8px;
+  color:var(--ink);
+  font-size:12px;
+  font-weight:600;
+  line-height:1.4;
+  letter-spacing:0;
+}
+
+.artwall-editor-dialog-profile-row > span{
+  margin-bottom:0;
+}
+
+.artwall-editor-dialog-profile-field{
+  display:block;
+}
+
+.artwall-editor-dialog-profile-field input[type="text"],
+.artwall-editor-dialog-profile-field textarea{
+  width:100%;
+  box-sizing:border-box;
+}
+
+/*
+  Exactly a compact 2-line comment field.
+  rows="2" is the semantic source; these overrides remove the older
+  large fixed-height textarea styling.
+*/
+.artwall-editor-dialog-profile-field textarea{
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  resize:none;
+}
+
 @media(max-width:720px){
-  .artwall-edit-page input[type="text"],
-  .artwall-edit-page input[type="search"],
-  .artwall-edit-page input[type="email"],
-  .artwall-edit-page input[type="url"],
-  .artwall-edit-page input[type="tel"],
-  .artwall-edit-page input[type="number"],
-  .artwall-edit-page input[type="password"],
-  .artwall-edit-page textarea,
-  .artwall-edit-page select{
-    font-size:16px !important;
+  .artwall-editor-dialog-profile > *{
+    padding:14px 16px;
+  }
+
+  .artwall-editor-dialog-profile-row > span,
+  .artwall-editor-dialog-profile-field > span{
+    font-size:12px;
+    font-weight:600;
+    line-height:1.4;
   }
 }
-/* artwall-mobile-input-focus-zoom:end */
+/* artwall-profile-popup-polish:end */
+
+/* artwall-editor-close-page:start */
+.artwall-editor-close-page{
+  margin-top:24px;
+  display:flex;
+  justify-content:center;
+}
+
+.artwall-editor-close-page-button.mypage-artwall-action{
+  border-color:var(--line);
+  background:#fff;
+  color:var(--muted);
+}
+
+@media(max-width:720px){
+  .artwall-editor-close-page{
+    margin-top:20px;
+  }
+}
+/* artwall-editor-close-page:end */
+
+/* artwall-editor-button-polish:start */
+
+/*
+  Save reuses the My Art action component.
+  When disabled, remove the visible border entirely.
+*/
+.artwall-editor-save-button:disabled{
+  border:0;
+}
+
+/*
+  Close also reuses the same action component.
+  Only the requested secondary appearance and wider horizontal padding
+  are page-specific.
+*/
+.artwall-editor-close-page-button.mypage-artwall-action{
+  padding-inline:48px;
+}
+
+/*
+  Keep only about 32px of breathing room below the editor content.
+*/
+.artwall-editor-main{
+  margin-bottom:0 !important;
+  padding-bottom:32px !important;
+}
+
+@media(max-width:720px){
+  .artwall-editor-main{
+    margin-bottom:0 !important;
+    padding-bottom:32px !important;
+  }
+
+  .artwall-editor-close-page-button.mypage-artwall-action{
+    padding-inline:48px;
+  }
+}
+
+/* artwall-editor-button-polish:end */

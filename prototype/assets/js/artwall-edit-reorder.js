@@ -1302,7 +1302,7 @@
           <div class="artwall-reorder-dialog-head">
             <div>
               <small>ArtWall Edit</small>
-              <h2>展示会の並び替え</h2>
+              <h2>「観た」展示会</h2>
             </div>
 
             <button
