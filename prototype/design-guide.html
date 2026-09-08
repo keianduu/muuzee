@@ -4,7 +4,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Muuzee — Global Design Guide</title>
 
 <link href="./assets/css/muuzee-global.css?v=20260902-02" rel="stylesheet"/><link href="./assets/css/design-guide.css?v=20260828-06" rel="stylesheet"/><link rel="stylesheet" href="./assets/css/muuzee-save-control.css?v=20260828-24">
@@ -670,6 +670,15 @@ Breakpoints: 980px / 720px</pre></div>
 </section>
 <!-- synced-global-rules-card:end -->
 
+
+<!-- global-viewport-zoom-rule:start -->
+<div class="section dg-side-margin-shell">
+<div class="global-rule">
+  <strong>Global viewport / browser zoom</strong>
+  <p>Prototype全画面は <code>width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover</code> を共通Viewport Ruleとする。iOS Safariを含むブラウザで入力フォーカス時の自動拡大を発生させないため、ページ固有のfocus zoom JS / CSSは追加しない。Viewport Ruleを変更する場合はGlobal変更として本Guideと全画面へ同時反映する。</p>
+</div>
+</div>
+<!-- global-viewport-zoom-rule:end -->
 </main>
 <script id="muuzee-design-tokens" type="application/json">
 {
