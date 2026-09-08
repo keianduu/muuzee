@@ -2,6 +2,7 @@
   "use strict";
 
   const KEY = "muuzee:profile-settings:v1";
+  const MAX_AVATAR_SOURCE_BYTES=20*1024*1024;
   const DEFAULTS = {
     avatar:"./assets/images/profile-avatar.jpg",
     nickname:"ashelry",
@@ -210,6 +211,12 @@
   avatarInput?.addEventListener("change",()=>{
     const file=avatarInput.files?.[0];
     if(!file||!file.type.startsWith("image/")) return;
+
+    if(file.size>MAX_AVATAR_SOURCE_BYTES){
+      alert("画像は20MB以下のものを選択してください。");
+      avatarInput.value="";
+      return;
+    }
     const reader=new FileReader();
     reader.onload=()=>{
       if(typeof reader.result!=="string") return;

@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>ashelry — Muuzee</title>
   <meta name="description" content="Muuzee Art Profile">
-  <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260902-02">
+  <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260908-avatar-ready-02">
   <link rel="stylesheet" href="./assets/css/home.css?v=20260828-13">
   <link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-03">
 <link rel="stylesheet" href="./assets/css/muuzee-personal-actions.css?v=20260902-02">
 <link rel="stylesheet" href="./assets/css/muuzee-artwall.css?v=20260908-stats-direct-01">
+  <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
 </head>
 <body class="muuzee-app mypage-page">
   <header class="site-header is-over-sheet">
@@ -36,10 +37,14 @@
             <h2>あなたのArtWall</h2>
           </div>
           <div class="mypage-artwall-actions">
-            <button class="mypage-artwall-action" type="button" data-artwall-share>
-              <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"></path><path d="M5 12v7h14v-7"></path></svg>
-              <span>シェア</span>
-            </button>
+            <button class="mypage-artwall-action" type="button" data-artwall-share type="button" data-artwall-download>
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3v12"></path>
+    <path d="m7 10 5 5 5-5"></path>
+    <path d="M5 20h14"></path>
+  </svg>
+  <span>画像DL</span>
+</button>
             <a class="mypage-artwall-action" href="./artwall-edit.html">
               <svg viewBox="0 0 24 24"><path d="m4 20 4.2-1 10.9-10.9-3.2-3.2L5 15.8 4 20Z"></path><path d="m14.8 6 3.2 3.2"></path></svg>
               <span>編集</span>
@@ -168,6 +173,8 @@
 <script src="./assets/js/mypage-home.js?v=20260907-artwall-store-01"></script>
 <script src="./assets/js/muuzee-personal-actions.js?v=20260901-10"></script>
   <script defer src="./assets/js/muuzee-artwall-stats-tint.js?v=20260908-08"></script>
-  <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-01"></script>
+  <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>
+  <script defer src="./assets/js/muuzee-artwall-height.js?v=20260908-01"></script><script src="./assets/js/vendor/html-to-image-1.11.13.js?v=1.11.13"></script>
+  <script defer src="./assets/js/my-art-download.js?v=20260908-resolution-04"></script>
 </body>
 </html>

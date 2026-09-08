@@ -723,3 +723,18 @@ body.is-hamburger-open{
 }
 
 /* shared-section-cta:end */
+
+/* profile-avatar-flash-guard:start */
+
+/*
+  Profile avatars have a hard-coded fallback src in HTML.
+  Hide only the image until muuzee-profile-ui.js has replaced it with
+  the saved profile image. visibility keeps the layout box intact.
+*/
+html:not([data-profile-avatar-ready="true"]) .site-header .avatar img,
+html:not([data-profile-avatar-ready="true"]) .mypage-profile-avatar-link img,
+html:not([data-profile-avatar-ready="true"]) .artwall-user-avatar img{
+  visibility:hidden;
+}
+
+/* profile-avatar-flash-guard:end */

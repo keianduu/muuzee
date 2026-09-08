@@ -330,3 +330,49 @@
 
 
 
+
+/* artwall-reorder-setting-groups:start */
+
+.artwall-reorder-columns{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+}
+
+.artwall-reorder-setting-group{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+.artwall-reorder-setting-group--columns{
+  justify-content:flex-start;
+}
+
+.artwall-reorder-setting-group--rows{
+  margin-left:auto;
+  justify-content:flex-end;
+}
+
+.artwall-reorder-setting-group .artwall-reorder-columns-label{
+  flex:0 0 auto;
+}
+
+.artwall-reorder-setting-group .artwall-reorder-column-options{
+  flex:0 0 auto;
+}
+
+@media(max-width:720px){
+  .artwall-reorder-columns{
+    gap:16px;
+  }
+
+  .artwall-reorder-setting-group{
+    gap:8px;
+  }
+}
+
+/* artwall-reorder-setting-groups:end */

@@ -164,7 +164,13 @@
             ? 3
             : 4,
 
-        exhibitionOrder,
+        
+
+        wallHeightMode:
+          committed
+          && source.wallHeightMode === "expanded"
+            ? "expanded"
+            : "standard",exhibitionOrder,
 
         hiddenExhibitionIds,
 
