@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260908-avatar-ready-02">
   <link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-03">
   <link rel="stylesheet" href="./assets/css/list-filter.css?v=20260828-03">
-  <link rel="stylesheet" href="./assets/css/profile-settings.css?v=20260910-dialog-mobile-height-01">
+  <link rel="stylesheet" href="./assets/css/profile-settings.css?v=20260910-ios-popup-overlay-01">
   <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
 </head>
 <body class="muuzee-app mypage-page profile-settings-page">
@@ -385,15 +385,24 @@
   <script defer src="./assets/js/profile-avatar-picker.js?v=20260910-avatar-cleanup-01"></script>
 
   <!-- profile-save-confirm:start -->
-  <dialog
-    class="profile-save-confirm-dialog"
+  <div
+    class="profile-save-confirm-overlay"
     data-profile-save-confirm-dialog
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="profile-save-confirm-title"
+    hidden
   >
     <div class="profile-save-confirm-panel">
       <div class="profile-save-confirm-head">
         <div>
           <small>CONFIRM CHANGES</small>
-          <h2 data-profile-save-confirm-title>更新内容を確認</h2>
+          <h2
+            id="profile-save-confirm-title"
+            data-profile-save-confirm-title
+          >
+            更新内容を確認
+          </h2>
         </div>
 
         <button
@@ -409,7 +418,10 @@
       </div>
 
       <div class="profile-save-confirm-body">
-        <p class="profile-save-confirm-lead" data-profile-save-confirm-lead>
+        <p
+          class="profile-save-confirm-lead"
+          data-profile-save-confirm-lead
+        >
           以下の内容を更新します。
         </p>
 
@@ -419,7 +431,10 @@
         ></div>
       </div>
 
-      <div class="profile-save-confirm-actions" data-profile-save-confirm-actions>
+      <div
+        class="profile-save-confirm-actions"
+        data-profile-save-confirm-actions
+      >
         <button
           class="profile-save-confirm-secondary"
           type="button"
@@ -453,11 +468,11 @@
         >
           My Artに戻る
         </a>
-</div>
+      </div>
     </div>
-  </dialog>
-  <!-- profile-save-confirm:end -->
+  </div>
+<!-- profile-save-confirm:end -->
 
-  <script defer src="./assets/js/profile-save-confirm.js?v=20260910-dialog-mobile-height-01"></script>
+  <script defer src="./assets/js/profile-save-confirm.js?v=20260910-ios-popup-overlay-01"></script>
 </body>
 </html>

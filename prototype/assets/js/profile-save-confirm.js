@@ -54,6 +54,53 @@
       "[data-profile-save-confirm-cancel]"
     )
     || [];
+  /* profile-save-overlay-api:start */
+  const syncPopupViewport =
+    () => {
+      const height =
+        window.visualViewport?.height
+        || window.innerHeight;
+
+      document.documentElement.style.setProperty(
+        "--profile-save-popup-vh",
+        `${Math.round(height)}px`
+      );
+    };
+
+  const isConfirmOpen =
+    () => !dialog.hidden;
+
+  const openConfirmOverlay =
+    () => {
+      syncPopupViewport();
+      dialog.hidden = false;
+      document.body.classList.add(
+        "profile-save-popup-open"
+      );
+    };
+
+  const closeConfirmOverlay =
+    () => {
+      dialog.hidden = true;
+      document.body.classList.remove(
+        "profile-save-popup-open"
+      );
+    };
+
+  syncPopupViewport();
+
+  window.visualViewport?.addEventListener(
+    "resize",
+    syncPopupViewport
+  );
+
+  window.addEventListener(
+    "resize",
+    syncPopupViewport
+  );
+  /* profile-save-overlay-api:end */
+
+
 
   if(
     !saveButton
@@ -831,8 +878,8 @@
 
   const closeConfirm =
     () => {
-      if(dialog.open){
-        dialog.close();
+      if(isConfirmOpen()){
+        closeConfirmOverlay();
       }
     };
 
@@ -897,8 +944,8 @@
         changes
       );
 
-      if(!dialog.open){
-        dialog.showModal();
+      if(!isConfirmOpen()){
+        openConfirmOverlay();
       }
     },
     true
@@ -933,7 +980,7 @@
   /* profile-save-dialog-mobile-height:start */
   const syncSaveDialogViewport =
     () => {
-      if(!dialog.open){
+      if(!isConfirmOpen()){
         return;
       }
 
