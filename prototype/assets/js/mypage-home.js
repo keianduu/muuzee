@@ -512,7 +512,7 @@
     }).join("");
   }
 
-  startWallRender();
+
 
   /* scroll-resize-redraw-guard:start
      Mobile Safari / PWA can emit window.resize while scrolling because
