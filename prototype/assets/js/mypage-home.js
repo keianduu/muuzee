@@ -18,7 +18,11 @@
   }));
 
   /* shared-artwall-store-consumer:start */
-  const baseWallItems = exhibitions.length
+  const artwallStore = window.MuuzeeArtWallStore || null;
+  const artwallDataSource = window.MuuzeeArtWallDataSource || null;
+  const artwallSettings = artwallStore?.get?.() || {schemaVersion:0,columns:4};
+
+  const fallbackBaseItems = exhibitions.length
     ? exhibitions.map(item => ({
         ...item,
         src:item.src,
@@ -26,31 +30,71 @@
       }))
     : fallbackWall;
 
-  const artwallStore = window.MuuzeeArtWallStore || null;
-  const artwallSettings = artwallStore?.get?.() || {schemaVersion:0,columns:4};
-  const selectedWallItems = artwallStore?.selectItems?.(baseWallItems) || baseWallItems;
-  const hasConfiguredArtWall =
-    Number(artwallSettings.schemaVersion) === 1
+  const sourceItems = artwallDataSource?.getAllItems?.() || fallbackBaseItems;
+  const hasCommittedMembership =
+    Number(artwallSettings.schemaVersion) === Number(artwallStore?.schemaVersion ?? 1)
     && Array.isArray(artwallSettings.exhibitionOrder)
     && artwallSettings.exhibitionOrder.length > 0;
 
-  const wallItems = selectedWallItems
-    .slice(0,hasConfiguredArtWall ? 30 : 20)
-    .map(item => {
-      const imageData = window.Muuzee?.getArtWallImageData?.(item.src);
-      return {
-        ...item,
-        artwallSrc:imageData?.thumb || item.src,
-        artwallRatio:Number(imageData?.ratio) || null
-      };
-    });
+  const selectedItems = hasCommittedMembership
+    ? (artwallStore?.selectItems?.(sourceItems) || sourceItems)
+    : (artwallDataSource?.getInitialItems?.() || fallbackBaseItems);
+
+  const maxItems = Number(artwallDataSource?.config?.maxItems) || 30;
+  const wallItems = selectedItems.slice(0,maxItems).map(item => {
+    const imageData = window.Muuzee?.getArtWallImageData?.(item.src);
+    return {
+      ...item,
+      artwallSrc:imageData?.thumb || item.src,
+      artwallRatio:Number(imageData?.ratio) || null
+    };
+  });
   /* shared-artwall-store-consumer:end */
 
   let renderToken = 0;
+  const ARTWALL_IMAGE_READY_TIMEOUT = 12000;
+
+  const waitForWallImage = image => new Promise(resolve => {
+    if (image.complete && image.naturalWidth > 0) {
+      resolve(true);
+      return;
+    }
+
+    let finished = false;
+    const finish = success => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      image.removeEventListener("load",loaded);
+      image.removeEventListener("error",failed);
+      resolve(success);
+    };
+    const loaded = () => finish(image.naturalWidth > 0);
+    const failed = () => finish(false);
+    const timer = setTimeout(
+      () => finish(image.complete && image.naturalWidth > 0),
+      ARTWALL_IMAGE_READY_TIMEOUT
+    );
+
+    image.addEventListener("load",loaded,{once:true});
+    image.addEventListener("error",failed,{once:true});
+  });
+
+  const waitForWallImages = async grid => {
+    const images = Array.from(grid.querySelectorAll("img"));
+    const results = await Promise.all(images.map(waitForWallImage));
+    return {
+      complete:images.length > 0 && results.every(Boolean),
+      count:images.length,
+      failed:results.filter(value => !value).length
+    };
+  };
 
   async function renderWall(){
     const grid = document.querySelector("[data-mypage-wall-grid]");
-    if(!grid || !window.Muuzee?.layoutMasonry) return;
+    if (!grid || !window.Muuzee?.layoutMasonry) {
+      return {complete:false,count:0,failed:0};
+    }
 
     artwallStore?.applyPresentation?.(grid.closest(".artwall"));
     const token = ++renderToken;
@@ -64,26 +108,45 @@
       gapDesktop:8,
       gapMobile:4,
       renderItem:(item,_geometry,index) => {
-        if(token !== renderToken) return null;
+        if (token !== renderToken) return null;
 
         const link = document.createElement("a");
         link.className = "wall-item";
         link.href = item.href || "./exhibitions.html";
-        if(item.id) link.dataset.exhibitionId = String(item.id);
+        if (item.id) link.dataset.exhibitionId = String(item.id);
         link.setAttribute("aria-label",item.title || "ArtWall item");
 
         const img = document.createElement("img");
         img.src = item.artwallSrc;
         img.alt = item.title || "";
-        img.loading = index < 4 ? "eager" : "lazy";
+        img.loading = "eager";
         img.decoding = "async";
-        if(index < 4) img.fetchPriority = "high";
+        try { img.fetchPriority = index < 4 ? "high" : "auto"; } catch (_) {}
 
         link.appendChild(img);
         return link;
       }
     });
+
+    if (token !== renderToken) return {complete:false,count:0,failed:0};
+
+    const ready = await waitForWallImages(grid);
+    if (token !== renderToken) return {complete:false,count:ready.count,failed:ready.failed};
+
+    window.dispatchEvent(new CustomEvent("muuzee:artwall-ready",{
+      detail:{...ready,source:"my-art"}
+    }));
+
+    return ready;
   }
+
+  const startWallRender = () => {
+    const promise = renderWall();
+    window.MuuzeeArtWallReady = promise;
+    return promise;
+  };
+
+  startWallRender();
 
   const readArray = key => {
     try{
@@ -449,7 +512,7 @@
     }).join("");
   }
 
-  renderWall();
+  startWallRender();
 
   /* scroll-resize-redraw-guard:start
      Mobile Safari / PWA can emit window.resize while scrolling because
@@ -482,7 +545,7 @@
       lastWallGridWidth = nextWidth;
 
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(renderWall,120);
+      resizeTimer = setTimeout(startWallRender,120);
     });
   }
   /* scroll-resize-redraw-guard:end */
