@@ -26,22 +26,24 @@
       }))
     : fallbackWall;
 
-  const artwallStore =
-    window.MuuzeeArtWallStore
-    || null;
+  const artwallStore = window.MuuzeeArtWallStore || null;
+  const artwallSettings = artwallStore?.get?.() || {schemaVersion:0,columns:4};
+  const selectedWallItems = artwallStore?.selectItems?.(baseWallItems) || baseWallItems;
+  const hasConfiguredArtWall =
+    Number(artwallSettings.schemaVersion) === 1
+    && Array.isArray(artwallSettings.exhibitionOrder)
+    && artwallSettings.exhibitionOrder.length > 0;
 
-  const artwallSettings =
-    artwallStore?.get?.()
-    || {
-      schemaVersion:0,
-      columns:4
-    };
-
-  const wallItems =
-    artwallStore?.selectItems?.(
-      baseWallItems
-    )
-    || baseWallItems;
+  const wallItems = selectedWallItems
+    .slice(0,hasConfiguredArtWall ? 30 : 20)
+    .map(item => {
+      const imageData = window.Muuzee?.getArtWallImageData?.(item.src);
+      return {
+        ...item,
+        artwallSrc:imageData?.thumb || item.src,
+        artwallRatio:Number(imageData?.ratio) || null
+      };
+    });
   /* shared-artwall-store-consumer:end */
 
   let renderToken = 0;
@@ -50,33 +52,32 @@
     const grid = document.querySelector("[data-mypage-wall-grid]");
     if(!grid || !window.Muuzee?.layoutMasonry) return;
 
-    artwallStore?.applyPresentation?.(
-      grid.closest(".artwall")
-    );
-
+    artwallStore?.applyPresentation?.(grid.closest(".artwall"));
     const token = ++renderToken;
 
     await window.Muuzee.layoutMasonry({
       grid,
       items:wallItems,
-      columns:
-        Number(artwallSettings.columns) === 3
-          ? 3
-          : 4,
+      getSrc:item => item.artwallSrc,
+      getRatio:item => item.artwallRatio,
+      columns:Number(artwallSettings.columns) === 3 ? 3 : 4,
       gapDesktop:8,
       gapMobile:4,
-      renderItem:item => {
+      renderItem:(item,_geometry,index) => {
         if(token !== renderToken) return null;
 
         const link = document.createElement("a");
         link.className = "wall-item";
         link.href = item.href || "./exhibitions.html";
+        if(item.id) link.dataset.exhibitionId = String(item.id);
         link.setAttribute("aria-label",item.title || "ArtWall item");
 
         const img = document.createElement("img");
-        img.src = item.src;
+        img.src = item.artwallSrc;
         img.alt = item.title || "";
-        img.loading = "lazy";
+        img.loading = index < 4 ? "eager" : "lazy";
+        img.decoding = "async";
+        if(index < 4) img.fetchPriority = "high";
 
         link.appendChild(img);
         return link;
@@ -447,31 +448,6 @@
       `;
     }).join("");
   }
-
-  const share = document.querySelector("[data-artwall-share]");
-
-  share?.addEventListener("click",async () => {
-    const data = {
-      title:"ashelry's ArtWall | Muuzee",
-      text:"Muuzeeで作ったArtWall",
-      url:location.href
-    };
-
-    try{
-      if(navigator.share){
-        await navigator.share(data);
-        return;
-      }
-
-      await navigator.clipboard.writeText(location.href);
-      const label = share.querySelector("span");
-      if(label){
-        const original = label.textContent;
-        label.textContent = "コピーしました";
-        setTimeout(() => { label.textContent = original; },1400);
-      }
-    }catch{}
-  });
 
   renderWall();
 

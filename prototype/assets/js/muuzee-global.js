@@ -191,8 +191,8 @@
   /* hamburger-navigation:end */
 
   /* Generic true masonry helper.
-     Important: this calculates masonry item geometry only.
-     It never resizes Hero / exhibition artwork from viewport height.
+     If item ratio is already known, geometry is calculated without waiting
+     for image metadata. Unknown images use metadata loading as fallback.
   */
   const imageMetaCache = new Map();
 
@@ -205,16 +205,14 @@
       const img = new Image();
       img.onload = () => {
         const meta = {
-          width: img.naturalWidth || 1,
-          height: img.naturalHeight || 1,
-          ratio: (img.naturalHeight || 1) / (img.naturalWidth || 1)
+          ratio:(img.naturalHeight || 1) / (img.naturalWidth || 1)
         };
-        imageMetaCache.set(src, meta);
+        imageMetaCache.set(src,meta);
         resolve(meta);
       };
       img.onerror = () => {
-        const meta = {width:1, height:1, ratio:1.25};
-        imageMetaCache.set(src, meta);
+        const meta = {ratio:1.25};
+        imageMetaCache.set(src,meta);
         resolve(meta);
       };
       img.src = src;
@@ -225,6 +223,7 @@
     grid,
     items,
     getSrc = item => item.src,
+    getRatio = item => item?.aspectRatio ?? item?.ratio,
     renderItem,
     columns = 4,
     gapDesktop = 8,
@@ -236,9 +235,19 @@
       return;
     }
 
-    const metas = await Promise.all(items.map(item => loadImageMeta(getSrc(item))));
     const width = grid.clientWidth;
     if(!width) return;
+
+    const knownMetas = items.map(item => {
+      const ratio = Number(getRatio(item));
+      return Number.isFinite(ratio) && ratio > 0 ? {ratio} : null;
+    });
+
+    const metas = knownMetas.every(Boolean)
+      ? knownMetas
+      : await Promise.all(
+          knownMetas.map((meta,index) => meta || loadImageMeta(getSrc(items[index])))
+        );
 
     const mobile = window.matchMedia("(max-width:720px)").matches;
     const gap = mobile ? gapMobile : gapDesktop;
@@ -247,25 +256,25 @@
 
     grid.innerHTML = "";
 
-    items.forEach((item, index) => {
-      const ratio = Math.max(minRatio, Math.min(maxRatio, metas[index].ratio));
+    items.forEach((item,index) => {
+      const ratio = Math.max(minRatio,Math.min(maxRatio,metas[index].ratio));
       const itemHeight = Math.round(columnWidth * ratio);
-
       let column = 0;
-      for(let c = 1; c < columns; c++){
+
+      for(let c = 1; c < columns; c += 1){
         if(columnHeights[c] < columnHeights[column]) column = c;
       }
 
       const geometry = {
-        left: Math.round(column * (columnWidth + gap)),
-        top: Math.round(columnHeights[column]),
-        width: Math.round(columnWidth),
-        height: itemHeight,
+        left:Math.round(column * (columnWidth + gap)),
+        top:Math.round(columnHeights[column]),
+        width:Math.round(columnWidth),
+        height:itemHeight,
         column
       };
-      columnHeights[column] += itemHeight + gap;
 
-      const node = renderItem(item, geometry, index);
+      columnHeights[column] += itemHeight + gap;
+      const node = renderItem(item,geometry,index);
       if(!node) return;
 
       node.classList.add("muuzee-masonry-item");
@@ -279,6 +288,15 @@
 
   window.Muuzee = window.Muuzee || {};
   window.Muuzee.layoutMasonry = layoutMasonry;
+  window.Muuzee.getArtWallImageData = src =>
+    window.MuuzeeArtWallImageData?.[src] || null;
+
+  window.Muuzee.getArtWallImageData =
+    src => (
+      window.MuuzeeArtWallImageData
+        ?.[src]
+      || null
+    );
 
   function initGlobalUI(){
     initHeaderReveal();
