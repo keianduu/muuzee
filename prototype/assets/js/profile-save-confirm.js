@@ -929,4 +929,114 @@
       );
     }
   );
+
+  /* profile-save-dialog-mobile-height:start */
+  const syncSaveDialogViewport =
+    () => {
+      if(!dialog.open){
+        return;
+      }
+
+      const dialogHead =
+        dialog.querySelector(
+          ".profile-save-confirm-head"
+        );
+
+      const dialogBody =
+        dialog.querySelector(
+          ".profile-save-confirm-body"
+        );
+
+      const dialogActions =
+        dialog.querySelector(
+          ".profile-save-confirm-actions"
+        );
+
+      if(!dialogBody){
+        return;
+      }
+
+      /*
+        Clear the previous cap first. This lets small confirmation sets
+        keep their natural content-driven height.
+      */
+      dialogBody.style.maxHeight =
+        "none";
+
+      const viewportHeight =
+        window.visualViewport
+          ?.height
+        || window.innerHeight;
+
+      const headHeight =
+        dialogHead
+          ?.getBoundingClientRect()
+          .height
+        || 0;
+
+      const actionsHeight =
+        dialogActions
+          ?.getBoundingClientRect()
+          .height
+        || 0;
+
+      /* 12px top + 12px bottom breathing room around the dialog. */
+      const outerGap =
+        24;
+
+      const availableBodyHeight =
+        Math.max(
+          120,
+          Math.floor(
+            viewportHeight
+            - headHeight
+            - actionsHeight
+            - outerGap
+          )
+        );
+
+      dialogBody.style.maxHeight =
+        `${availableBodyHeight}px`;
+    };
+
+  const saveDialogSizeObserver =
+    new MutationObserver(
+      mutations => {
+        if(
+          mutations.some(
+            mutation =>
+              mutation.type
+                === "attributes"
+          )
+        ){
+          requestAnimationFrame(
+            syncSaveDialogViewport
+          );
+        }
+      }
+    );
+
+  saveDialogSizeObserver.observe(
+    dialog,
+    {
+      attributes:true,
+      attributeFilter:[
+        "open",
+        "class"
+      ]
+    }
+  );
+
+  window.addEventListener(
+    "resize",
+    syncSaveDialogViewport
+  );
+
+  window.visualViewport
+    ?.addEventListener(
+      "resize",
+      syncSaveDialogViewport
+    );
+  /* profile-save-dialog-mobile-height:end */
+
 })();

@@ -817,3 +817,36 @@ body.profile-settings-has-floating-save{
   min-width:0;
 }
 /* profile-save-confirm-saved-actions-layout:end */
+
+
+/* profile-save-dialog-mobile-height:start */
+.profile-save-confirm-dialog{
+  overflow:hidden;
+}
+
+.profile-save-confirm-panel{
+  display:block;
+  width:100%;
+  min-height:0;
+  max-height:none;
+}
+
+.profile-save-confirm-head,
+.profile-save-confirm-actions{
+  display:flex;
+  flex:none;
+}
+
+.profile-save-confirm-actions{
+  display:grid;
+}
+
+.profile-save-confirm-body{
+  display:block;
+  flex:none;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+/* profile-save-dialog-mobile-height:end */
