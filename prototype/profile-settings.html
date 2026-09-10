@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260908-avatar-ready-02">
   <link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-03">
   <link rel="stylesheet" href="./assets/css/list-filter.css?v=20260828-03">
-  <link rel="stylesheet" href="./assets/css/profile-settings.css?v=20260908-feedback-01">
+  <link rel="stylesheet" href="./assets/css/profile-settings.css?v=20260910-saved-actions-horizontal-01">
   <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
 </head>
 <body class="muuzee-app mypage-page profile-settings-page">
@@ -50,9 +50,8 @@
             <div class="profile-settings-avatar">
               <button
                 class="profile-avatar-upload"
-                type="button"
                 data-avatar-button
-              >
+               type="button" aria-haspopup="dialog">
                 <span class="profile-avatar-thumb">
                   <img
                   src="./assets/images/profile-avatar.jpg"
@@ -69,19 +68,7 @@
               </button>
 
               <!-- profile-avatar-delete:start -->
-              <button
-                class="profile-avatar-delete"
-                type="button"
-                data-avatar-delete
-                aria-label="アイコン画像を削除"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M4 7h16"></path>
-                  <path d="M9 7V4h6v3"></path>
-                  <path d="M7 7l1 13h8l1-13"></path>
-                  <path d="M10 11v5M14 11v5"></path>
-                </svg>
-              </button>
+              
               <!-- profile-avatar-delete:end -->
 
               </button>
@@ -220,44 +207,20 @@
         </div>
       </section>
 
-      <div class="profile-settings-actions">
-        <a class="mypage-artwall-action" href="./my-art.html">My Artに戻る</a>
-        <button class="mypage-artwall-action profile-save-button" type="submit">
+      
+    <button class="mypage-artwall-action profile-save-button" type="submit" data-profile-settings-save disabled aria-disabled="true">
           <span>保存</span>
         </button>
+
+    <div class="profile-settings-actions">
+        <a class="mypage-artwall-action" href="./my-art.html">My Artに戻る</a>
+        
       </div>
     </form>
   </div>
 </main>
 
 <!-- profile-avatar-delete-dialog:start -->
-<dialog class="profile-avatar-delete-dialog" data-avatar-delete-dialog>
-  <div class="profile-avatar-delete-dialog-inner">
-    <div class="profile-avatar-delete-dialog-copy">
-      <small>Profile image</small>
-      <h2>画像を削除しますか？</h2>
-      <p>現在設定している画像を削除し、初期画像に戻します。</p>
-    </div>
-
-    <div class="profile-avatar-delete-dialog-actions">
-      <button
-        class="mypage-artwall-action"
-        type="button"
-        data-avatar-delete-cancel
-      >
-        キャンセル
-      </button>
-
-      <button
-        class="mypage-artwall-action profile-avatar-delete-confirm"
-        type="button"
-        data-avatar-delete-confirm
-      >
-        はい
-      </button>
-    </div>
-  </div>
-</dialog>
 <!-- profile-avatar-delete-dialog:end --><!-- profile-feedback-dialog:start -->
 <dialog
   class="profile-avatar-delete-dialog profile-feedback-dialog"
@@ -346,7 +309,155 @@
 <script src="./assets/js/muuzee-global.js?v=20260901-03"></script>
 <script src="./assets/js/mypage-nav.js?v=20260828-37"></script>
 <script src="./assets/js/list-filter.js?v=20260828-03"></script>
-<script src="./assets/js/profile-settings.js?v=20260908-avatar-source-20mb-01"></script>
+<script src="./assets/js/profile-settings.js?v=20260910-save-dialog-state-02"></script>
   <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>
+
+  <!-- profile-avatar-picker:start -->
+  <dialog
+    class="profile-avatar-picker-dialog"
+    data-profile-avatar-picker
+  >
+    <div class="profile-avatar-picker-panel">
+      <div class="profile-avatar-picker-head">
+        <div>
+          <small>PROFILE ICON</small>
+          <h2>アイコンを選択</h2>
+        </div>
+
+        <button
+          class="profile-avatar-picker-close"
+          type="button"
+          data-profile-avatar-picker-close
+          aria-label="閉じる"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M5 5l14 14M19 5 5 19"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="profile-avatar-picker-body">
+        <button
+          class="profile-avatar-picker-upload"
+          type="button"
+          data-profile-avatar-picker-upload
+        >
+          <span
+            class="profile-avatar-picker-upload-icon"
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M12 16V5"></path>
+              <path d="M8 9l4-4 4 4"></path>
+              <path d="M5 14v4h14v-4"></path>
+            </svg>
+          </span>
+
+          <span class="profile-avatar-picker-upload-copy">
+            <strong>写真をアップロード</strong>
+            <small>PNG / JPG / WebP・20MBまで</small>
+          </span>
+        </button>
+
+        <div class="profile-avatar-picker-section">
+          <div class="profile-avatar-picker-section-head">
+            <strong>サンプルから選ぶ</strong>
+          </div>
+
+          <div
+              class="profile-avatar-preset-scroll"
+              data-profile-avatar-preset-scroll
+            >
+              <div
+                class="profile-avatar-preset-grid"
+                data-profile-avatar-preset-grid
+              ></div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+  <!-- profile-avatar-picker:end -->
+
+  <script defer src="./assets/js/profile-avatar-picker.js?v=20260910-avatar-cleanup-01"></script>
+
+  <!-- profile-save-confirm:start -->
+  <dialog
+    class="profile-save-confirm-dialog"
+    data-profile-save-confirm-dialog
+  >
+    <div class="profile-save-confirm-panel">
+      <div class="profile-save-confirm-head">
+        <div>
+          <small>CONFIRM CHANGES</small>
+          <h2 data-profile-save-confirm-title>更新内容を確認</h2>
+        </div>
+
+        <button
+          class="profile-save-confirm-close"
+          type="button"
+          data-profile-save-confirm-cancel
+          aria-label="閉じる"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 5l14 14M19 5 5 19"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="profile-save-confirm-body">
+        <p class="profile-save-confirm-lead" data-profile-save-confirm-lead>
+          以下の内容を更新します。
+        </p>
+
+        <div
+          class="profile-save-confirm-list"
+          data-profile-save-confirm-list
+        ></div>
+      </div>
+
+      <div class="profile-save-confirm-actions" data-profile-save-confirm-actions>
+        <button
+          class="profile-save-confirm-secondary"
+          type="button"
+          data-profile-save-confirm-cancel
+        >
+          戻る
+        </button>
+
+        <button
+          class="profile-save-confirm-primary"
+          type="button"
+          data-profile-save-confirm-submit
+        >
+          この内容で保存
+        </button>
+
+        <button
+          class="profile-save-confirm-secondary"
+          type="button"
+          data-profile-save-confirm-saved-close
+          hidden
+        >
+          閉じる
+        </button>
+
+        <a
+          class="profile-save-confirm-primary profile-save-confirm-link"
+          href="./my-art.html"
+          data-profile-save-confirm-saved-myart
+          hidden
+        >
+          My Artに戻る
+        </a>
+</div>
+    </div>
+  </dialog>
+  <!-- profile-save-confirm:end -->
+
+  <script defer src="./assets/js/profile-save-confirm.js?v=20260910-saved-actions-01"></script>
 </body>
 </html>

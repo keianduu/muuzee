@@ -307,7 +307,6 @@
     try{
       localStorage.setItem(KEY,JSON.stringify(state));
       window.dispatchEvent(new CustomEvent("muuzee:profile-settings-change",{detail:{...state}}));
-      openFeedback("保存しました","設定を保存しました。");
     }catch{
       alert("保存できませんでした。画像サイズを小さくして再度お試しください。");
     }
@@ -319,25 +318,13 @@
 
 /* profile-avatar-delete-behavior:start */
 (() => {
-  const deleteButton =
-    document.querySelector(
-      "[data-avatar-delete]"
-    );
 
-  const dialog =
-    document.querySelector(
-      "[data-avatar-delete-dialog]"
-    );
 
-  const cancel =
-    document.querySelector(
-      "[data-avatar-delete-cancel]"
-    );
 
-  const confirmDelete =
-    document.querySelector(
-      "[data-avatar-delete-confirm]"
-    );
+
+
+
+
 
   const preview =
     document.querySelector(
@@ -360,40 +347,10 @@
   const DEFAULT_AVATAR =
     "./assets/images/profile-avatar.jpg";
 
-  deleteButton.addEventListener(
-    "click",
-    () => {
-      dialog.showModal();
-    }
-  );
 
-  cancel?.addEventListener(
-    "click",
-    () => {
-      dialog.close();
-    }
-  );
 
-  confirmDelete?.addEventListener(
-    "click",
-    () => {
-      /*
-        Keep final persistence on the existing Save action.
-        This only updates the current draft + preview.
-      */
-      state.avatar =
-        DEFAULT_AVATAR;
 
-      preview.src =
-        DEFAULT_AVATAR;
 
-      if (input) {
-        input.value =
-          "";
-      }
 
-      dialog.close();
-    }
-  );
 })();
 /* profile-avatar-delete-behavior:end */

@@ -11,8 +11,9 @@
 <link rel="stylesheet" href="./assets/css/artwall-edit-reorder.css?v=20260908-setting-groups-01">
 <link rel="stylesheet" href="./assets/css/artwall-edit-collection.css?v=20260907-29">
 <link rel="stylesheet" href="./assets/css/artwall-edit-layout-sync.css?v=20260907-35">
-<link rel="stylesheet" href="./assets/css/muuzee-artwall.css?v=20260908-stats-direct-01">
+<link rel="stylesheet" href="./assets/css/muuzee-artwall.css?v=20260910-show-icon-flow-02">
   <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
+  <link rel="stylesheet" href="./assets/css/artwall-save-confirm.css?v=20260910-header-close-secondary-03">
 </head>
 <body class="muuzee-app mypage-page artwall-edit-page">
   <header class="site-header is-over-sheet">
@@ -41,14 +42,11 @@
         class="mypage-artwall-action artwall-editor-save-button"
         data-artwall-save-all
         disabled
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 4h12l2 2v16H5Z"></path>
-          <path d="M8 4v6h8V4"></path>
-          <path d="M8 22v-7h8v7"></path>
-        </svg>
+       data-artwall-settings-save>
+        
         <span>保存</span>
       </button>
+      <a class="mypage-artwall-action artwall-edit-header-close" href="./my-art.html" data-artwall-edit-header-close>閉じる</a>
     </div>
 
     <div class="artwall-editor-canvas" data-artwall-editor-canvas>
@@ -114,13 +112,7 @@
   </div>
   <!-- artwall-editor-close-page:start -->
   <div class="artwall-editor-close-page">
-    <a class="mypage-artwall-action artwall-editor-close-page-button" href="./my-art.html">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M6 6l12 12"></path>
-        <path d="M18 6 6 18"></path>
-      </svg>
-      <span>閉じる</span>
-    </a>
+    
   </div>
   <!-- artwall-editor-close-page:end -->
 </div>
@@ -137,12 +129,13 @@
       </nav>
     </div>
   </footer>
-  <script src="./assets/js/muuzee-global.js?v=20260901-03"></script>
+  <script src="./assets/js/artwall-image-data.js?v=20260908-02"></script>
+  <script src="./assets/js/muuzee-global.js?v=20260908-artwall-perf-02"></script>
   <script src="./assets/js/mypage-nav.js?v=20260828-37"></script>
 <script defer src="./assets/js/exhibition-data.js?v=20260907-01"></script>
-<script src="./assets/js/mypage-home.js?v=20260907-scrollfix-01"></script>
-<script src="./assets/js/muuzee-artwall-store.js?v=20260908-three-popups-01"></script>
-<script defer src="./assets/js/artwall-edit.js?v=20260908-profile-style-restore-01"></script><script defer src="./assets/js/artwall-edit-profile-position.js?v=20260908-03"></script>
+<script src="./assets/js/mypage-home.js?v=20260908-artwall-perf-02"></script>
+<script src="./assets/js/muuzee-artwall-store.js?v=20260910-show-icon-flow-02"></script>
+<script defer src="./assets/js/artwall-edit.js?v=20260910-show-icon-flow-02"></script><script defer src="./assets/js/artwall-edit-profile-position.js?v=20260908-03"></script>
 <script defer src="./assets/js/artwall-edit-profile-structure.js?v=20260908-01"></script>
 <script defer src="./assets/js/artwall-edit-dummy-data.js?v=20260907-21"></script>
 <script defer src="./assets/js/artwall-edit-collection.js?v=20260907-store-01"></script>
@@ -181,5 +174,87 @@
 <script defer src="./assets/js/artwall-edit-layout-sync.js?v=20260907-35"></script>
   <script defer src="./assets/js/muuzee-artwall-stats-tint.js?v=20260908-08"></script>
   <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>
+
+  <!-- artwall-save-confirm:start -->
+  <dialog
+    class="artwall-save-confirm-dialog"
+    data-artwall-save-confirm-dialog
+  >
+    <div class="artwall-save-confirm-panel">
+      <div class="artwall-save-confirm-head">
+        <div>
+          <small>CONFIRM CHANGES</small>
+          <h2 data-artwall-save-confirm-title>更新内容を確認</h2>
+        </div>
+
+        <button
+          class="artwall-save-confirm-close"
+          type="button"
+          data-artwall-save-confirm-cancel
+          aria-label="閉じる"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 5l14 14M19 5 5 19"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="artwall-save-confirm-body">
+        <p
+          class="artwall-save-confirm-lead"
+          data-artwall-save-confirm-lead
+        >
+          以下の内容を更新します。
+        </p>
+
+        <div
+          class="artwall-save-confirm-list"
+          data-artwall-save-confirm-list
+        ></div>
+      </div>
+
+      <div
+        class="artwall-save-confirm-actions"
+        data-artwall-save-confirm-actions
+      >
+        <button
+          class="artwall-save-confirm-secondary"
+          type="button"
+          data-artwall-save-confirm-cancel
+        >
+          戻る
+        </button>
+
+        <button
+          class="artwall-save-confirm-primary"
+          type="button"
+          data-artwall-save-confirm-submit
+        >
+          この内容で保存
+        </button>
+
+        <button
+          class="artwall-save-confirm-secondary"
+          type="button"
+          data-artwall-save-confirm-saved-close
+          hidden
+        >
+          閉じる
+        </button>
+
+        <a
+          class="artwall-save-confirm-primary artwall-save-confirm-link"
+          href="./my-art.html"
+          data-artwall-save-confirm-saved-myart
+          hidden
+        >
+          My Artに戻る
+        </a>
+      </div>
+    </div>
+  </dialog>
+  <!-- artwall-save-confirm:end -->
+
+  <script defer src="./assets/js/artwall-save-confirm.js?v=20260910-show-icon-flow-02"></script>
 </body>
 </html>

@@ -846,16 +846,45 @@
             : "none";
       }
 
-      if (icon) {
-        icon.style.visibility =
-          state.showIcon
-            ? ""
-            : "hidden";
+            if (icon) {
+        icon.hidden =
+          !state.showIcon;
 
-        icon.style.pointerEvents =
-          state.showIcon
-            ? ""
-            : "none";
+        icon.dataset
+          .muuzeeAvatarCollapsed =
+            state.showIcon
+              ? "false"
+              : "true";
+
+        icon.style.removeProperty(
+          "visibility"
+        );
+
+        icon.style.removeProperty(
+          "pointer-events"
+        );
+
+        icon.style.removeProperty(
+          "display"
+        );
+
+        const image =
+          icon.querySelector(
+            "img"
+          );
+
+        if (image) {
+          image.hidden = false;
+          image.style.removeProperty(
+            "visibility"
+          );
+          image.style.removeProperty(
+            "pointer-events"
+          );
+          image.style.removeProperty(
+            "display"
+          );
+        }
       }
 
       const color =

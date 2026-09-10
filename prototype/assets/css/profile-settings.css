@@ -99,9 +99,7 @@
     min-height:80px;
     padding:12px 14px;
   }
-}
-
-/* profile-avatar-upload-layout:end */
+}/* profile-avatar-upload-layout:end */
 
 /* profile-avatar-delete-action:start */
 
@@ -110,7 +108,7 @@
 */
 .profile-settings-avatar{
   display:grid;
-  grid-template-columns:minmax(0,1fr) 48px;
+  grid-template-columns:minmax(0,1fr);
   align-items:stretch;
   gap:8px;
 }
@@ -273,3 +271,549 @@
 }
 
 /* profile-feedback-dialog:end */
+
+
+/* profile-avatar-picker:start */
+.profile-avatar-picker-dialog{
+  width:min(560px,calc(100vw - 24px));
+  max-height:calc(100dvh - 24px);
+  padding:0;
+  border:0;
+  border-radius:20px;
+  background:#fff;
+  color:var(--ink);
+}
+
+.profile-avatar-picker-dialog::backdrop{
+  background:rgba(0,0,0,.34);
+}
+
+.profile-avatar-picker-panel{
+  max-height:calc(100dvh - 24px);
+  display:flex;
+  flex-direction:column;
+}
+
+.profile-avatar-picker-head{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:16px 18px;
+  border-bottom:1px solid var(--line);
+}
+
+.profile-avatar-picker-head small{
+  display:block;
+  margin:0 0 4px;
+  color:var(--muted2);
+  font-size:10px;
+  line-height:1.4;
+  letter-spacing:.08em;
+}
+
+.profile-avatar-picker-head h2{
+  margin:0;
+  font-size:14px;
+  line-height:1.4;
+  font-weight:650;
+}
+
+.profile-avatar-picker-close{
+  width:36px;
+  height:36px;
+  padding:0;
+  border:0;
+  display:grid;
+  place-items:center;
+  background:transparent;
+  color:var(--ink);
+  cursor:pointer;
+}
+
+.profile-avatar-picker-close svg{
+  width:20px;
+  height:20px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+}
+
+.profile-avatar-picker-body{
+  min-height:0;
+  padding:18px;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.profile-avatar-picker-upload{
+  width:100%;
+  min-height:104px;
+  padding:18px;
+  border:1px dashed rgba(38,37,34,.34);
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  background:transparent;
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+}
+
+.profile-avatar-picker-upload:active{
+  transform:translateY(1px);
+}
+
+.profile-avatar-picker-upload-icon{
+  flex:0 0 36px;
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--line);
+  border-radius:999px;
+}
+
+.profile-avatar-picker-upload-icon svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.6;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.profile-avatar-picker-upload-copy{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.profile-avatar-picker-upload-copy strong,
+.profile-avatar-picker-section-head strong{
+  font-size:12px;
+  line-height:1.5;
+  font-weight:650;
+}
+
+.profile-avatar-picker-upload-copy small{
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.5;
+}
+
+.profile-avatar-picker-section{
+  margin-top:24px;
+}
+
+.profile-avatar-picker-section-head{
+  margin-bottom:12px;
+}
+
+.profile-avatar-preset-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+}
+
+.profile-avatar-preset{
+  position:relative;
+  width:100%;
+  aspect-ratio:1;
+  padding:3px;
+  border:1px solid transparent;
+  border-radius:999px;
+  background:transparent;
+  cursor:pointer;
+}
+
+.profile-avatar-preset img{
+  display:block;
+  width:100%;
+  height:100%;
+  border-radius:999px;
+  object-fit:cover;
+}
+
+.profile-avatar-preset[aria-pressed="true"]{
+  border-color:var(--ink);
+}
+
+.profile-avatar-preset:focus-visible{
+  outline:2px solid var(--ink);
+  outline-offset:2px;
+}
+
+.profile-avatar-preset:disabled{
+  opacity:.55;
+  cursor:wait;
+}
+
+@media(max-width:720px){
+  .profile-avatar-picker-dialog{
+    width:calc(100vw - 16px);
+    max-height:calc(100dvh - 16px);
+  }
+
+  .profile-avatar-picker-panel{
+    max-height:calc(100dvh - 16px);
+  }
+
+  .profile-avatar-picker-body{
+    padding:16px 14px;
+  }
+
+  .profile-avatar-preset-grid{
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:8px;
+  }
+}
+/* profile-avatar-picker:end */
+
+/* profile-avatar-picker-scroll-fix:start */
+.profile-avatar-preset-scroll{
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-right:4px;
+}
+
+.profile-avatar-preset-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+}
+/* profile-avatar-picker-scroll-fix:end */
+
+
+/* profile-save-confirm:start */
+body.profile-settings-has-floating-save{
+  padding-bottom:
+    calc(
+      var(--profile-save-footer-offset,96px)
+      + 76px
+      + env(safe-area-inset-bottom)
+    );
+}
+
+[data-profile-settings-save].profile-settings-save-floating{
+  position:fixed;
+  left:50%;
+  bottom:
+    calc(
+      var(--profile-save-footer-offset,96px)
+      + 32px
+      + env(safe-area-inset-bottom)
+    );
+  z-index:50;
+  width:max-content;
+  max-width:calc(100vw - 32px);
+  margin:0;
+  transform:translateX(-50%);
+  box-shadow: 0 10px 24px rgba(38, 37, 34, .18);
+  transition:
+    opacity .18s ease,
+    box-shadow .18s ease,
+    transform .18s ease;
+}
+.profile-save-confirm-dialog{
+  width:min(520px,calc(100vw - 24px));
+  max-
+  padding:0;
+  border:0;
+  border-radius:20px;
+  background:#fff;
+  color:var(--ink);
+
+  max-height:calc(100dvh - 24px);
+}
+
+.profile-save-confirm-dialog::backdrop{
+  background:rgba(0,0,0,.34);
+}
+
+.profile-save-confirm-panel{
+  width:100%;
+  min-height:0;
+  max-height:calc(100dvh - 24px);
+  display:flex;
+  flex-direction:column;
+}
+
+.profile-save-confirm-head{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:16px 18px;
+  border-bottom:1px solid var(--line);
+}
+
+.profile-save-confirm-head small{
+  display:block;
+  margin:0 0 4px;
+  color:var(--muted2);
+  font-size:10px;
+  line-height:1.4;
+  letter-spacing:.08em;
+}
+
+.profile-save-confirm-head h2{
+  margin:0;
+  font-size:14px;
+  line-height:1.4;
+  font-weight:650;
+}
+
+.profile-save-confirm-close{
+  width:36px;
+  height:36px;
+  padding:0;
+  border:0;
+  display:grid;
+  place-items:center;
+  background:transparent;
+  color:var(--ink);
+  cursor:pointer;
+}
+
+.profile-save-confirm-close svg{
+  width:20px;
+  height:20px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+}
+
+.profile-save-confirm-body{
+  flex:0 1 auto;
+  min-height:0;
+  padding:18px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+.profile-save-confirm-lead{
+  margin:0 0 14px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+}
+
+.profile-save-confirm-list{
+  display:flex;
+  flex-direction:column;
+}
+
+.profile-save-confirm-item{
+  padding:13px 0;
+  border-top:1px solid var(--line);
+}
+
+.profile-save-confirm-item:first-child{
+  padding-top:0;
+  border-top:0;
+}
+
+.profile-save-confirm-label{
+  margin:0 0 6px;
+  font-size:12px;
+  line-height:1.5;
+  font-weight:650;
+}
+
+.profile-save-confirm-values{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  gap:8px;
+}
+
+.profile-save-confirm-before,
+.profile-save-confirm-after{
+  min-width:0;
+  font-size:12px;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+
+.profile-save-confirm-before{
+  color:var(--muted);
+}
+
+.profile-save-confirm-after{
+  color:var(--ink);
+}
+
+.profile-save-confirm-arrow{
+  color:var(--muted2);
+  font-size:12px;
+}
+
+.profile-save-confirm-empty{
+  padding:16px 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+  text-align:center;
+}
+
+.profile-save-confirm-actions{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+}
+
+.profile-save-confirm-secondary,
+.profile-save-confirm-primary{
+  min-height:44px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:650;
+  cursor:pointer;
+}
+
+.profile-save-confirm-secondary{
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--ink);
+}
+
+.profile-save-confirm-primary{
+  border:1px solid #171715;
+  background:#171715;
+  color:#fff;
+}
+
+@media(max-width:720px){
+  .profile-save-confirm-dialog{
+    width:calc(100vw - 16px);
+    max-height:calc(100dvh - 16px);
+  }
+
+  .profile-save-confirm-panel{
+    max-height:calc(100dvh - 16px);
+  }
+
+  .profile-save-confirm-body{
+    padding:16px 14px;
+  }
+}
+/* profile-save-confirm:end */
+
+
+/* profile-save-disabled-state:start */
+[data-profile-settings-save].profile-settings-save-floating:disabled{
+  opacity:1;
+  background:#E8E7E3;
+  border-color:#E8E7E3;
+  color:#9A9892;
+  box-shadow:none;
+  cursor:default;
+  pointer-events:none;
+}
+
+.profile-avatar-upload{
+  width:100%;
+  max-width:none;
+  box-sizing:border-box;
+}
+/* profile-save-disabled-state:end */
+
+
+/* profile-avatar-full-width-fix:start */
+.profile-avatar-upload{
+  display:flex;
+  width:100%;
+  max-width:none;
+  min-width:0;
+  box-sizing:border-box;
+}
+/* profile-avatar-full-width-fix:end */
+
+
+/* profile-save-confirm-scroll:start */
+.profile-save-confirm-dialog{
+  overflow:hidden;
+}
+
+.profile-save-confirm-panel{
+  width:100%;
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+
+.profile-save-confirm-head,
+.profile-save-confirm-actions{
+  flex:0 0 auto;
+}
+
+.profile-save-confirm-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+@media(max-width:720px){
+  .profile-save-confirm-dialog{}
+}
+/* profile-save-confirm-scroll:end */
+
+
+/* profile-save-confirm-saved-state:start */
+.profile-save-confirm-dialog.is-saved .profile-save-confirm-body{
+  padding-top:28px;
+  padding-bottom:28px;
+}
+
+.profile-save-confirm-dialog.is-saved .profile-save-confirm-lead{
+  margin:0;
+  text-align:center;
+}
+
+.profile-save-confirm-dialog.is-saved .profile-save-confirm-list{
+  display:none;
+}
+
+.profile-save-confirm-dialog.is-saved .profile-save-confirm-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+/* profile-save-confirm-saved-state:end */
+
+
+/* profile-save-confirm-saved-actions:start */
+.profile-save-confirm-link{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+}
+
+.profile-save-confirm-link[hidden]{
+  display:none;
+}
+/* profile-save-confirm-saved-actions:end */
+
+
+/* profile-save-confirm-saved-actions-layout:start */
+.profile-save-confirm-dialog.is-saved
+.profile-save-confirm-secondary,
+.profile-save-confirm-dialog.is-saved
+.profile-save-confirm-primary{
+  width:100%;
+  min-width:0;
+}
+/* profile-save-confirm-saved-actions-layout:end */

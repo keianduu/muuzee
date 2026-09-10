@@ -66,8 +66,30 @@
     );
   let state = {...defaults, ...(saved && typeof saved === "object" ? saved : {})};
   state.columns = Number(state.columns) === 4 ? 4 : 3;
-  state.showIcon = state.showIcon !== false;
-  state.hiddenPrototypeItems = Array.isArray(state.hiddenPrototypeItems)
+  /* artwall-show-icon-state-contract:start */
+  const currentArtWallSchemaVersion =
+    Number(
+      window.MuuzeeArtWallStore
+        ?.schemaVersion
+      || 1
+    );
+
+  const hasCommittedShowIcon =
+    Number(
+      saved?.schemaVersion
+    ) === currentArtWallSchemaVersion
+    && Object.prototype
+      .hasOwnProperty.call(
+        saved || {},
+        "showIcon"
+      );
+
+  state.showIcon =
+    hasCommittedShowIcon
+      ? saved.showIcon !== false
+      : true;
+  /* artwall-show-icon-state-contract:end */
+state.hiddenPrototypeItems = Array.isArray(state.hiddenPrototypeItems)
     ? state.hiddenPrototypeItems.map(String)
     : [];
   state.prototypeOrder = Array.isArray(state.prototypeOrder)
@@ -289,8 +311,16 @@
   const iconVisual = discoverIconVisual(
     parts.icon
   );
-
-  const original = {
+  const iconLayoutTarget =
+    preview.querySelector(
+      ".artwall-user-avatar"
+    )
+    || parts.icon
+      ?.closest?.(
+        ".artwall-user-avatar"
+      )
+    || iconVisual;
+const original = {
     title: parts.title?.textContent?.trim() || "",
     comment: parts.comment?.textContent?.trim() || ""
   };
@@ -646,13 +676,53 @@
           : "none";
     }
 
-    if (iconVisual) {
-      iconVisual.style.visibility =
-        state.showIcon ? "" : "hidden";
+        if (iconLayoutTarget) {
+      iconLayoutTarget.hidden =
+        !state.showIcon;
 
-      iconVisual.style.pointerEvents =
-        state.showIcon ? "" : "none";
+      iconLayoutTarget.dataset
+        .muuzeeAvatarCollapsed =
+          state.showIcon
+            ? "false"
+            : "true";
+
+      iconLayoutTarget.style.removeProperty(
+        "visibility"
+      );
+
+      iconLayoutTarget.style.removeProperty(
+        "pointer-events"
+      );
+
+      iconLayoutTarget.style.removeProperty(
+        "display"
+      );
+
+      if (parts.icon) {
+        parts.icon.hidden = false;
+        parts.icon.style.removeProperty(
+          "visibility"
+        );
+        parts.icon.style.removeProperty(
+          "pointer-events"
+        );
+        parts.icon.style.removeProperty(
+          "display"
+        );
+      }
     }
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "muuzee:artwall-draft-change",
+        {
+          detail:{
+            showIcon:
+              state.showIcon
+          }
+        }
+      )
+    );
 
     applyBackground();
     applyColumns();
@@ -686,12 +756,7 @@
           ...state,
           ...patch
         };
-
-        state.showIcon =
-          state.showIcon
-          !== false;
-
-        state.title =
+state.title =
           String(
             state.title
             ?? ""
@@ -821,7 +886,7 @@
 
   const positionButtons = () => {
     const iconRect = rectWithinCanvas(
-      iconVisual
+      iconLayoutTarget
     );
 
     const titleRect = rectWithinCanvas(
@@ -1302,36 +1367,46 @@
     /* three-popup-profile-apply:start */
     if (activeTarget === "profile") {
       const profileSection =
-        dialogBody.parentElement
+        dialog?.querySelector(
+          ".artwall-editor-dialog-profile"
+        )
+        || dialogBody.parentElement
           ?.querySelector(
-            ":scope > .artwall-editor-dialog-profile"
+            ".artwall-editor-dialog-profile"
           );
 
-      const icon =
-        profileSection
-          ?.querySelector(
-            'input[name="dialog-profile-icon"]:checked'
-          )
-          ?.value;
+      if (profileSection) {
+        const iconValue =
+          profileSection
+            .querySelector(
+              'input[name="dialog-profile-icon"]:checked'
+            )
+            ?.value;
 
-      state.showIcon =
-        icon !== "off";
+        if (
+          iconValue === "on"
+          || iconValue === "off"
+        ) {
+          state.showIcon =
+            iconValue === "on";
+        }
 
-      state.title =
-        profileSection
-          ?.querySelector(
-            "[data-dialog-profile-title]"
-          )
-          ?.value
-        || "";
+        state.title =
+          profileSection
+            .querySelector(
+              "[data-dialog-profile-title]"
+            )
+            ?.value
+          || "";
 
-      state.comment =
-        profileSection
-          ?.querySelector(
-            "[data-dialog-profile-comment]"
-          )
-          ?.value
-        ?? "";
+        state.comment =
+          profileSection
+            .querySelector(
+              "[data-dialog-profile-comment]"
+            )
+            ?.value
+          ?? "";
+      }
     }
     /* three-popup-profile-apply:end */
 
