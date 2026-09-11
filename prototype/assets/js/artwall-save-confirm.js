@@ -462,6 +462,8 @@
       key:"exhibitionOrder",
       label:"展示会の並び順",
       equals:sameArray,
+      beforeText:"並び順",
+      afterText:"変更",
       format:
         value =>
           `${cloneArray(value).length}件`
@@ -525,13 +527,15 @@
             label:
               field.label,
             before:
-              field.format(
+              field.beforeText
+              ?? field.format(
                 baseline[
                   field.key
                 ]
               ),
             after:
-              field.format(
+              field.afterText
+              ?? field.format(
                 current[
                   field.key
                 ]
