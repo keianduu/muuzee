@@ -606,3 +606,12 @@ Repository全体、Notion全体、過去Conversation全体を無条件に読み�
 - **特例候補:** 未ログインTOP ArtWallはサービス価値を伝えるSample / Promotion Surfaceのため、将来はShared Seen Data Sourceから切り離し、Curated Sample専用Data Sourceへ変更する可能性がある。その場合もMy Art / ArtWall Edit間の共通Data Sourceは維持する。
 - ProductionではDataSource AdapterをDB/APIへ置換し、各Consumer側に件数取得ロジックを重複させない。
 - ArtWallのmembershipはData Sourceを正本とし、ArtWall Storeはそのmembership内の並び順・非表示・Presentationのみを保持する。過去のPrototype CatalogからData Source外の展示会を復元して件数を増やさない。
+
+## Profile Avatar Presets
+
+- Profile Settingsのサンプルアイコンは `profile-avatar-presets.js` をData Sourceとし、現在30件を明示管理する。
+- `profile-avatar-picker.js` はConfig全件を表示し、画像ロード成功数をPreset件数の正本にしない。
+- Preset画像は `assets/images/avatars/presets/avatar-01.webp` 〜 `avatar-30.webp` を利用し、Base64をJSへ埋め込まない。
+- PickerはPopupを開いた時点で全PresetをRenderし、30件程度のPrototypeでは全画像をeager loadする。
+- Preset選択はFile Inputへ擬似Fileを注入せず、`muuzee:profile-avatar-select` Eventで `profile-settings.js` のProfile stateへ渡す。
+- Scroll高さはDialog表示後に計測する。

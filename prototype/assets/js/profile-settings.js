@@ -144,10 +144,6 @@
     locationSummary.textContent=locationText(state.location);
     [newsletter,notifications,friendSearch].forEach(setToggleLabel);
   };
-
-  document.querySelector("[data-avatar-button]")?.addEventListener("click",()=>avatarInput.click());
-
-
   /* profile-avatar-normalize:start */
   const normalizeAvatarFile=file=>new Promise((resolve,reject)=>{
     const reader=new FileReader();
@@ -207,6 +203,38 @@
     reader.readAsDataURL(file);
   });
   /* profile-avatar-normalize:end */
+
+  /* profile-avatar-preset-selection:start */
+  window.addEventListener(
+    "muuzee:profile-avatar-select",
+    event => {
+      const source =
+        String(
+          event.detail?.src
+          || ""
+        );
+
+      if (!source) {
+        return;
+      }
+
+      state.avatar =
+        source;
+
+      avatar.src =
+        source;
+
+      form.dispatchEvent(
+        new Event(
+          "input",
+          {
+            bubbles:true
+          }
+        )
+      );
+    }
+  );
+  /* profile-avatar-preset-selection:end */
 
   avatarInput?.addEventListener("change",()=>{
     const file=avatarInput.files?.[0];
