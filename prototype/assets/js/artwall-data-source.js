@@ -8,6 +8,13 @@
     adapter:"prototype"
   };
 
+  const normalizeAssetPath = value => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+    if (source.startsWith("/assets/")) return `.${source}`;
+    return source;
+  };
+
   const asArray = value => {
     if (Array.isArray(value)) return value;
     if (value && typeof value === "object") {
@@ -23,21 +30,22 @@
       item.id ?? item.exhibitionId ?? item.exhibition_id ?? item.slug ?? `${namespace}-${index+1}`
     );
 
-    const src = [
+    const rawSrc = [
       item.src,item.image,item.imageUrl,item.image_url,
       item.primaryImage,item.primary_image,item.heroImage,item.hero_image
     ].find(value => typeof value === "string" && value) || "";
 
-    if (!src) return null;
+    const src = normalizeAssetPath(rawSrc);
+
+    if (!src || src.startsWith("data:image/")) return null;
 
     return {
       ...item,
       id,
       title:String(item.title ?? item.name ?? item.title_ja ?? `展示会 ${index+1}`),
       src,
-      href:item.href || item.url || (namespace === "catalog"
-        ? `./exhibition.html?id=${encodeURIComponent(id)}`
-        : "./exhibitions.html"),
+      image:src,
+      href:item.href || item.url || `./exhibition.html?id=${encodeURIComponent(id)}`,
       artwallDataSource:namespace
     };
   };
@@ -46,12 +54,19 @@
     asArray(source).map((item,index) => normalize(item,index,namespace)).filter(Boolean);
 
   const getAllItems = () => {
-    const catalog = normalizeSource(window.MuuzeeExhibitionCatalog,"catalog");
-    const dummy = normalizeSource(window.MuuzeeArtWallDummyExhibitions,"prototype-dummy");
-    const seeds = normalizeSource(window.MuuzeeArtWallReorderSeeds,"prototype-seed");
+    const catalog = normalizeSource(
+      window.MuuzeeExhibitionCatalog,
+      "catalog"
+    );
+
+    const fixtures = normalizeSource(
+      window.MuuzeeArtWallSeenFixtures,
+      "prototype-fixture"
+    );
 
     const byId = new Map();
-    [...catalog,...dummy,...seeds].forEach(item => {
+
+    [...catalog,...fixtures].forEach(item => {
       if (!byId.has(item.id)) byId.set(item.id,item);
     });
 

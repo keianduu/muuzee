@@ -280,6 +280,27 @@
       return link;
     };
 
+  /* artwall-document-url:start */
+  const resolveDocumentUrl = value => {
+    let source = String(value || "").trim();
+    if (!source) return "";
+
+    if (source.startsWith("/assets/")) {
+      source = `.${source}`;
+    }
+
+    if (/^(?:data:|blob:|https?:)/i.test(source)) {
+      return source;
+    }
+
+    try {
+      return new URL(source,document.baseURI).href;
+    } catch (_) {
+      return source;
+    }
+  };
+  /* artwall-document-url:end */
+
   const resolveItems =
     (
       options,
@@ -362,10 +383,12 @@
               ...item,
 
               artwallSrc:
-                imageData?.thumb
-                || item.src
-                || item.image
-                || "",
+                resolveDocumentUrl(
+                  imageData?.thumb
+                  || item.src
+                  || item.image
+                  || ""
+                ),
 
               artwallRatio:
                 Number(

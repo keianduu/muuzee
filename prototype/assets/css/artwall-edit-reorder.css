@@ -376,3 +376,111 @@
 }
 
 /* artwall-reorder-setting-groups:end */
+
+/* artwall-reorder-selection-and-infinite:start */
+.artwall-reorder-row-v2{
+  grid-template-columns:32px 48px minmax(0,1fr) 44px;
+}
+.artwall-reorder-row-v2.is-selected{
+  background:var(--warm);
+}
+.artwall-reorder-select-v2{
+  width:28px;
+  height:28px;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent;
+  cursor:pointer;
+}
+.artwall-reorder-select-v2 span{
+  width:18px;
+  height:18px;
+  border:1px solid var(--line);
+  border-radius:50%;
+  display:block;
+  background:#fff;
+  box-sizing:border-box;
+}
+.artwall-reorder-select-v2[aria-pressed="true"] span{
+  border:5px solid var(--ink);
+}
+.artwall-reorder-select-v2:focus-visible{
+  outline:2px solid var(--terra);
+  outline-offset:2px;
+}
+.artwall-reorder-empty{
+  margin:0;
+  padding:40px 16px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+  text-align:center;
+}
+.artwall-reorder-dialog-actions{
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.artwall-reorder-selection-actions{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.artwall-reorder-selection-actions[hidden]{
+  display:none;
+}
+.artwall-reorder-selected-count{
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.4;
+}
+.artwall-reorder-dialog-actions button.artwall-reorder-bulk-button{
+  min-height:36px;
+  padding:0 12px;
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--ink);
+  font-size:12px;
+}
+.artwall-reorder-dialog-actions-main{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+}
+@media(max-width:720px){
+  .artwall-reorder-dialog-actions{
+    padding-left:16px;
+    padding-right:16px;
+    flex-wrap:wrap;
+  }
+  .artwall-reorder-selection-actions{
+    flex:1 1 100%;
+  }
+  .artwall-reorder-dialog-actions-main{
+    width:100%;
+  }
+}
+/* artwall-reorder-selection-and-infinite:end */
+
+/* artwall-row-selection-only:start */
+.artwall-reorder-row-v2{
+  grid-template-columns:48px minmax(0,1fr) 44px;
+}
+
+.artwall-reorder-select-v2{
+  display:none !important;
+}
+
+.artwall-reorder-row-v2.is-selected{
+  background:var(--warm);
+}
+/* artwall-row-selection-only:end */

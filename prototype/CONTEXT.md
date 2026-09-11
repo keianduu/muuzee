@@ -579,3 +579,19 @@ Repository全体、Notion全体、過去Conversation全体を無条件に読み�
 - URL Parameter / localStorage CredentialはPrototype検証用であり、Production Auth方式としては採用しない。Productionでは正式なAuthentication / Session / User DBへ置換する。
 - Guest SaveをAccountへ引き継ぐ方式はProduction設計時に定義する。
 <!-- login-prototype-exploration:end -->
+
+## ArtWall 「観た」展示会 Editor Test Mode
+
+- `artwall-edit.html?seenCount=N` で、Prototype用の「観た」展示会件数を `0〜100` の任意件数で確認できる。
+- Fixtureは `prototype/assets/js/artwall-seen-fixtures.js` に100件保持する。展示会IDは一意、画像重複は許容する。
+- `seenCount` 指定時はその件数を正確なmembershipとして扱い、最低件数へのダミー補完はしない。
+- 「観た」展示会Popupは全件orderをデータ側で保持し、表示は20件ずつ追加する。
+- 各アイテムはDragで個別並び替えでき、複数選択時はFooterから「先頭へ / 末尾へ」を実行できる。
+- 一括移動時は選択アイテム同士の相対順を維持する。
+
+## Shared ArtWall Prototype Data
+
+- TOPのGuest / Logged-in ArtWallは同じ `MuuzeeArtWallDataSource` を利用する。認証状態で変えるのはCopy / CTA等のPersonal UIであり、展示会Data Sourceは分けない。
+- 通常のArtWall Data Sourceは `MuuzeeExhibitionCatalog` を優先し、不足分を `MuuzeeArtWallSeenFixtures` のfile-backed fixtureで補う。旧Base64 Dummyは通常表示Data Sourceに含めない。
+- Prototype Fixtureの画像は `./assets/...` のpage-relative pathで保持し、Shared ArtWall Component側で `document.baseURI` を基準に解決する。LOCALの `/prototype/` とGitHub PagesのRepository subpathの両方に対応する。
+- 「観た」展示会Editorの選択は専用Checkbox/Circleを表示せず、Row tapによる背景切替で表現する。選択件数と「先頭へ / 末尾へ」はFooterに表示する。
