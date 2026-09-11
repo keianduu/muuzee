@@ -605,3 +605,4 @@ Repository全体、Notion全体、過去Conversation全体を無条件に読み�
 - Popupの追加描画単位もShared Configの `seen.pageSize`（現在20件）を参照する。
 - **特例候補:** 未ログインTOP ArtWallはサービス価値を伝えるSample / Promotion Surfaceのため、将来はShared Seen Data Sourceから切り離し、Curated Sample専用Data Sourceへ変更する可能性がある。その場合もMy Art / ArtWall Edit間の共通Data Sourceは維持する。
 - ProductionではDataSource AdapterをDB/APIへ置換し、各Consumer側に件数取得ロジックを重複させない。
+- ArtWallのmembershipはData Sourceを正本とし、ArtWall Storeはそのmembership内の並び順・非表示・Presentationのみを保持する。過去のPrototype CatalogからData Source外の展示会を復元して件数を増やさない。

@@ -602,9 +602,11 @@
 
   /*
     Consumer behavior:
-    - no committed prototype state -> keep page default items
-    - committed exhibitionOrder -> that order is the ArtWall membership
-    - unresolved prototype-only IDs are skipped safely
+    - DataSource owns ArtWall membership.
+    - Store owns order / hidden / presentation only inside that membership.
+    - Never expand the current DataSource membership with old Prototype cache.
+    - Saved order is applied where IDs still exist, then remaining source
+      items are appended in DataSource order.
   */
   const selectItems =
     baseItems => {
@@ -623,36 +625,8 @@
       if (
         state.schemaVersion
         !== SCHEMA_VERSION
-        || !state.exhibitionOrder.length
       ) {
         return base;
-      }
-
-      const all =
-        [
-          ...base,
-          ...dummyItems(),
-          ...prototypeCatalogItems()
-        ];
-
-      const byId =
-        new Map();
-
-      for (
-        const item
-        of all
-      ) {
-        if (
-          item?.id
-          && !byId.has(
-            item.id
-          )
-        ) {
-          byId.set(
-            item.id,
-            item
-          );
-        }
       }
 
       const hidden =
@@ -660,20 +634,60 @@
           state.hiddenExhibitionIds
         );
 
-      return state.exhibitionOrder
-        .filter(
-          id =>
+      const visibleBase =
+        base.filter(
+          item =>
             !hidden.has(
-              id
+              item.id
             )
-        )
-        .map(
-          id =>
-            byId.get(
-              id
+        );
+
+      if (
+        !state.exhibitionOrder.length
+      ) {
+        return visibleBase;
+      }
+
+      const byId =
+        new Map(
+          visibleBase.map(
+            item => [
+              item.id,
+              item
+            ]
+          )
+        );
+
+      const ordered =
+        state.exhibitionOrder
+          .map(
+            id =>
+              byId.get(
+                id
+              )
+          )
+          .filter(Boolean);
+
+      const orderedIds =
+        new Set(
+          ordered.map(
+            item =>
+              item.id
+          )
+        );
+
+      const remaining =
+        visibleBase.filter(
+          item =>
+            !orderedIds.has(
+              item.id
             )
-        )
-        .filter(Boolean);
+        );
+
+      return [
+        ...ordered,
+        ...remaining
+      ];
     };
 
   const hexToRgb =
