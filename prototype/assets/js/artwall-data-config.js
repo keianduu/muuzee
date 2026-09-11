@@ -2,9 +2,17 @@
   "use strict";
 
   window.MuuzeeArtWallDataConfig = Object.freeze({
-    schemaVersion:1,
-    initialLimit:16,
-    maxItems:30,
-    adapter:"prototype"
+    schemaVersion:2,
+    adapter:"prototype",
+
+    seen:Object.freeze({
+      queryParam:"seenCount",
+      defaultCount:30,
+      maxCount:100,
+      pageSize:20
+    }),
+
+    initialLimit:30,
+    maxItems:100
   });
 })();

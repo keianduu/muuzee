@@ -321,6 +321,8 @@
 
       const all =
         dataSource
+          ?.getSeenItems?.()
+        || dataSource
           ?.getAllItems?.()
         || fallback;
 

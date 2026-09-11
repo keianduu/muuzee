@@ -595,3 +595,13 @@ Repository全体、Notion全体、過去Conversation全体を無条件に読み�
 - 通常のArtWall Data Sourceは `MuuzeeExhibitionCatalog` を優先し、不足分を `MuuzeeArtWallSeenFixtures` のfile-backed fixtureで補う。旧Base64 Dummyは通常表示Data Sourceに含めない。
 - Prototype Fixtureの画像は `./assets/...` のpage-relative pathで保持し、Shared ArtWall Component側で `document.baseURI` を基準に解決する。LOCALの `/prototype/` とGitHub PagesのRepository subpathの両方に対応する。
 - 「観た」展示会Editorの選択は専用Checkbox/Circleを表示せず、Row tapによる背景切替で表現する。選択件数と「先頭へ / 末尾へ」はFooterに表示する。
+
+## ArtWall Seen Count — Shared Prototype Source
+
+- `seenCount` の件数解決は `artwall-data-config.js` / `artwall-data-source.js` に集約する。
+- Prototype defaultは30件、`?seenCount=0..100` で任意件数を検証できる。
+- `artwall-seen-fixtures.js` は100件のData Fixtureだけを保持し、件数判断を持たない。
+- TOP / My Art / ArtWall Edit / 「観た」展示会並び替えPopupは現時点では同じ `MuuzeeArtWallDataSource.getSeenItems()` を利用する。
+- Popupの追加描画単位もShared Configの `seen.pageSize`（現在20件）を参照する。
+- **特例候補:** 未ログインTOP ArtWallはサービス価値を伝えるSample / Promotion Surfaceのため、将来はShared Seen Data Sourceから切り離し、Curated Sample専用Data Sourceへ変更する可能性がある。その場合もMy Art / ArtWall Edit間の共通Data Sourceは維持する。
+- ProductionではDataSource AdapterをDB/APIへ置換し、各Consumer側に件数取得ロジックを重複させない。
