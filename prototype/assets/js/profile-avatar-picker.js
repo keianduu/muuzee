@@ -2,9 +2,9 @@
   Muuzee Profile Avatar Picker
 
   Responsibilities:
-  - open/close the shared avatar picker
-  - render all configured preset items
-  - keep preset membership independent from image load success
+  - open/close the avatar picker
+  - render every configured preset
+  - preload/decode preset images independently from scroll visibility
   - forward preset selection to profile-settings.js
   - open native file chooser only from the upload CTA
 
@@ -69,6 +69,132 @@
 
   let rendered =
     false;
+
+  const presetReady =
+    new Map();
+
+  const preloadPreset =
+    preset => {
+      const src =
+        String(
+          preset?.src
+          || ""
+        );
+
+      if (!src) {
+        return Promise.resolve(
+          false
+        );
+      }
+
+      if (
+        presetReady.has(
+          src
+        )
+      ) {
+        return presetReady.get(
+          src
+        );
+      }
+
+      const promise =
+        new Promise(
+          resolve => {
+            const image =
+              new Image();
+
+            try {
+              image.fetchPriority =
+                "high";
+            } catch (_) {}
+
+            image.decoding =
+              "async";
+
+            let settled =
+              false;
+
+            const finish =
+              async success => {
+                if (settled) {
+                  return;
+                }
+
+                settled =
+                  true;
+
+                if (
+                  success
+                  && typeof image.decode
+                    === "function"
+                ) {
+                  try {
+                    await image.decode();
+                  } catch (_) {}
+                }
+
+                resolve(
+                  success
+                );
+              };
+
+            image.addEventListener(
+              "load",
+              () => {
+                finish(
+                  true
+                );
+              },
+              {
+                once:true
+              }
+            );
+
+            image.addEventListener(
+              "error",
+              () => {
+                finish(
+                  false
+                );
+              },
+              {
+                once:true
+              }
+            );
+
+            image.src =
+              src;
+
+            if (
+              image.complete
+              && image.naturalWidth > 0
+            ) {
+              finish(
+                true
+              );
+            }
+          }
+        );
+
+      presetReady.set(
+        src,
+        promise
+      );
+
+      return promise;
+    };
+
+  /*
+    30 small WebPs are cheap enough for this dedicated settings page.
+    Warm them immediately so first-open rendering does not depend on
+    nested-scroll viewport heuristics.
+  */
+  const presetWarmup =
+    Promise.all(
+      presets.map(
+        preloadPreset
+      )
+    );
 
   const syncPressedState =
     () => {
@@ -196,7 +322,24 @@
             "eager";
 
           image.decoding =
-            "async";
+            "sync";
+
+          try {
+            image.fetchPriority =
+              "high";
+          } catch (_) {}
+
+          image.addEventListener(
+            "load",
+            () => {
+              button.classList.add(
+                "is-image-loaded"
+              );
+            },
+            {
+              once:true
+            }
+          );
 
           image.addEventListener(
             "error",
@@ -212,6 +355,15 @@
               once:true
             }
           );
+
+          if (
+            image.complete
+            && image.naturalWidth > 0
+          ) {
+            button.classList.add(
+              "is-image-loaded"
+            );
+          }
 
           button.appendChild(
             image
@@ -330,16 +482,55 @@
       );
     };
 
+  const refreshDecodedPresetPaint =
+    () => {
+      grid
+        .querySelectorAll(
+          ".profile-avatar-preset img"
+        )
+        .forEach(
+          image => {
+            if (
+              image.complete
+              && image.naturalWidth > 0
+            ) {
+              image
+                .closest(
+                  ".profile-avatar-preset"
+                )
+                ?.classList
+                .add(
+                  "is-image-loaded"
+                );
+            }
+          }
+        );
+
+      void grid.offsetHeight;
+
+      grid.classList.add(
+        "is-preset-ready"
+      );
+
+      syncVisibleLayout();
+    };
+
   const openPicker =
     () => {
+      renderPresets();
+
       if (
         !dialog.open
       ) {
         dialog.showModal();
       }
 
-      renderPresets();
       syncVisibleLayout();
+
+      presetWarmup
+        .finally(
+          refreshDecodedPresetPaint
+        );
     };
 
   const closePicker =
@@ -422,5 +613,5 @@
   document.documentElement
     .dataset
     .profileAvatarPicker =
-      "v20260912-preset-config-01";
+      "v20260912-avatar-render-deletefix-01";
 })();

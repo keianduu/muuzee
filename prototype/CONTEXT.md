@@ -615,3 +615,5 @@ Repository全体、Notion全体、過去Conversation全体を無条件に読み�
 - PickerはPopupを開いた時点で全PresetをRenderし、30件程度のPrototypeでは全画像をeager loadする。
 - Preset選択はFile Inputへ擬似Fileを注入せず、`muuzee:profile-avatar-select` Eventで `profile-settings.js` のProfile stateへ渡す。
 - Scroll高さはDialog表示後に計測する。
+- Profile Avatar Pickerは30件のPreset画像をScroll viewport任せにせず、ページ読み込み後にpreload / decodeする。初回Popupで一部画像だけ描画され、Scroll後に残りが表示されるBrowser描画遅延を避ける。
+- `profile-settings.js` に残っていた旧Avatar削除処理のdead stubは削除する。現在HTMLに削除Button/Dialogが存在しないため、未定義 `deleteButton` / `dialog` を参照しない。

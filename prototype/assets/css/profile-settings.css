@@ -933,3 +933,19 @@ body.profile-save-popup-open{
   }
 }
 /* profile-save-ios-overlay:end */
+
+/* profile-avatar-preset-predecode:start */
+.profile-avatar-preset{
+  background:var(--warm);
+  overflow:hidden;
+}
+
+.profile-avatar-preset.is-image-error::after{
+  content:"";
+  position:absolute;
+  inset:22%;
+  border:1px solid var(--line);
+  border-radius:50%;
+  box-sizing:border-box;
+}
+/* profile-avatar-preset-predecode:end */
