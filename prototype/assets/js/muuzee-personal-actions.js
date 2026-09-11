@@ -162,6 +162,10 @@
 
     syncAll();
 
+    if(action === "save" && active){
+      window.MuuzeeAuth?.notifyAnonymousSave?.();
+    }
+
     window.dispatchEvent(
       new CustomEvent("muuzee:personal-change",{
         detail:{action,type,id,active}

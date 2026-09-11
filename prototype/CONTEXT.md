@@ -558,3 +558,24 @@ Friend Card / Group Card等の具体的な見た目は現在もExploration段階
 Repository全体、Notion全体、過去Conversation全体を無条件に読み込まないでください。
 
 修正時は過去の記憶だけでPatchを作らず、Current FileをSource of Truthとして扱ってください。
+
+<!-- login-prototype-exploration:start -->
+## Login / Guest Save — Approved Product Behavior
+
+- Status: **Approved**（2026-09-11）
+- Product Requirement: https://app.notion.com/p/3d8c2c71037681328744d322da2c851e
+- Design & Implementation Log: https://app.notion.com/p/3d8c2c71037681118960ed5057ee8557
+- Product Behaviorとして、未ログインでもSaveと保存一覧を利用可能とする。
+- Save成功後はFooter付近から会員導線Tooltipを下から静かにSlide Up表示する。Save解除時は表示しない。
+- Footer「保存」は未ログインでも `saved.html` へ遷移する。
+- 未ログインのSavedではProfile Headerと保存 / 観た / 推しのPrimary Navigationを非表示にし、展示会 / 美術館 / アーティスト / 作品のCategory以降を表示する。
+- My Art / Profile Settingsは認証必須。未ログイン直アクセス時はPersonal Contentを表示せずShared Login Popupを開く。
+- Detailの「観た」は未ログイン時のみ非表示。
+- TOP ArtWallは未ログイン時もVisual Previewを表示し、「自分のArtWallを作る」CTAからLogin Popupへ誘導する。
+- Login / RegisterはShared Popup。Radio semantics + Segmented Control visualとし、Register選択時のみ利用規約・プライバシーポリシー同意を表示する。
+- Register成功後はProfile Settingsへ遷移する。
+- ログイン中のHamburger Personal Navigationは My Art / 保存 / ログアウト。ArtWall単独導線は置かない。
+- Prototypeでは認証状態をURL `?loginID=...` で表現し、Static User Config + localStorage Overlayを使用する。不明な `loginID` は未ログイン扱い。
+- URL Parameter / localStorage CredentialはPrototype検証用であり、Production Auth方式としては採用しない。Productionでは正式なAuthentication / Session / User DBへ置換する。
+- Guest SaveをAccountへ引き継ぐ方式はProduction設計時に定義する。
+<!-- login-prototype-exploration:end -->

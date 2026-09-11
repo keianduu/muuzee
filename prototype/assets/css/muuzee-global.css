@@ -241,6 +241,17 @@ svg{display:block}
   .shell{width:min(100% - 40px,820px)}
 }
 
+@keyframes muuzeeSaveLoginTooltipIn{
+  from{
+    opacity:0;
+    transform:translateY(24px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
 @media(max-width:720px){
   body.muuzee-app{padding-bottom:72px}
   .shell{width:calc(100% - 36px)}
@@ -738,3 +749,339 @@ html:not([data-profile-avatar-ready="true"]) .artwall-user-avatar img{
 }
 
 /* profile-avatar-flash-guard:end */
+
+/* muuzee-prototype-auth:start */
+/* Shared prototype auth */
+button.muuzee-menu-link{
+  width:100%;
+  padding:0;
+  border:0;
+  border-bottom:1px solid rgba(38,37,34,.075);
+  background:transparent;
+  text-align:left;
+  cursor:pointer;
+}
+
+.muuzee-menu-link.is-login{
+  color:var(--terra);
+  font-weight:650;
+}
+
+.muuzee-header-login svg{
+  width:21px;
+  height:21px;
+}
+
+.muuzee-auth-dialog{
+  width:min(480px,calc(100vw - 36px));
+  max-height:min(760px,calc(100svh - 36px));
+  padding:0;
+  border:0;
+  border-radius:24px;
+  overflow:auto;
+  background:#fff;
+  color:var(--ink);
+  box-shadow:0 24px 80px rgba(38,37,34,.20);
+}
+
+.muuzee-auth-dialog::backdrop{
+  background:rgba(38,37,34,.38);
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+}
+
+.muuzee-auth-panel{
+  position:relative;
+  padding:32px;
+}
+
+.muuzee-auth-close{
+  position:absolute;
+  top:16px;
+  right:16px;
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:50%;
+  background:var(--warm);
+  color:var(--ink);
+  cursor:pointer;
+}
+
+.muuzee-auth-close svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.6;
+  stroke-linecap:round;
+}
+
+.muuzee-auth-heading{
+  padding-right:42px;
+}
+
+.muuzee-auth-heading small{
+  display:block;
+  margin-bottom:8px;
+  color:var(--terra);
+  font-size:var(--fs-tertiary);
+  font-weight:700;
+  letter-spacing:.11em;
+}
+
+.muuzee-auth-heading h2{
+  margin:0;
+  font-size:24px;
+  line-height:1.15;
+  letter-spacing:-.035em;
+}
+
+.muuzee-auth-heading p{
+  margin:12px 0 0;
+  color:var(--muted);
+  font-size:var(--fs-secondary);
+  line-height:1.7;
+}
+
+.muuzee-auth-form{
+  margin-top:24px;
+}
+
+.muuzee-auth-mode{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  margin:0 0 20px;
+  padding:4px;
+  border:0;
+  border-radius:999px;
+  background:var(--warm);
+}
+
+.muuzee-auth-mode label{
+  position:relative;
+  cursor:pointer;
+}
+
+.muuzee-auth-mode input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.muuzee-auth-mode span{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  color:var(--muted);
+  font-size:var(--fs-secondary);
+  font-weight:650;
+  transition:
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+
+.muuzee-auth-mode input:checked + span{
+  background:#fff;
+  color:var(--ink);
+  box-shadow:0 3px 12px rgba(38,37,34,.07);
+}
+
+.muuzee-auth-field{
+  display:block;
+  margin-top:14px;
+}
+
+.muuzee-auth-field > span{
+  display:block;
+  margin-bottom:7px;
+  color:var(--muted);
+  font-size:var(--fs-secondary);
+}
+
+.muuzee-auth-field input{
+  width:100%;
+  min-height:48px;
+  padding:0 14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  outline:none;
+  background:#fff;
+  color:var(--ink);
+  font:inherit;
+  font-size:var(--fs-primary);
+}
+
+.muuzee-auth-field input:focus{
+  border-color:rgba(185,111,85,.72);
+  box-shadow:0 0 0 3px rgba(185,111,85,.10);
+}
+
+.muuzee-auth-register-only{
+  margin-top:16px;
+}
+
+.muuzee-auth-agreement{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  color:var(--muted);
+  font-size:var(--fs-secondary);
+  line-height:1.6;
+}
+
+.muuzee-auth-agreement input{
+  margin-top:3px;
+}
+
+.muuzee-auth-text-link{
+  display:inline;
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--ink);
+  font:inherit;
+  text-decoration:underline;
+  text-underline-offset:2px;
+  cursor:pointer;
+}
+
+.muuzee-auth-error{
+  min-height:20px;
+  margin:12px 0 0;
+  color:var(--terra);
+  font-size:var(--fs-secondary);
+  line-height:1.6;
+}
+
+.muuzee-auth-submit{
+  width:100%;
+  min-height:48px;
+  margin-top:8px;
+  border:0;
+  border-radius:999px;
+  background:var(--ink);
+  color:#fff;
+  font-size:var(--fs-secondary);
+  font-weight:650;
+  cursor:pointer;
+}
+
+.muuzee-save-login-tooltip{
+  animation:muuzeeSaveLoginTooltipIn .32s cubic-bezier(.22,.61,.36,1) both;
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  z-index:1200;
+  width:min(380px,calc(100vw - 36px));
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:center;
+  gap:12px;
+  padding:14px 14px 14px 16px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:rgba(255,255,255,.98);
+  box-shadow:0 14px 40px rgba(38,37,34,.14);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+
+.muuzee-save-login-tooltip-copy strong{
+  display:block;
+  font-size:var(--fs-secondary);
+  line-height:1.4;
+}
+
+.muuzee-save-login-tooltip-copy span{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:var(--fs-tertiary);
+  line-height:1.5;
+}
+
+.muuzee-save-login-tooltip-action{
+  min-height:34px;
+  padding:0 12px;
+  border:0;
+  border-radius:999px;
+  background:var(--ink);
+  color:#fff;
+  font-size:var(--fs-tertiary);
+  font-weight:650;
+  cursor:pointer;
+}
+
+.muuzee-save-login-tooltip-close{
+  width:28px;
+  height:28px;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:var(--warm);
+  color:var(--muted);
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+}
+
+body.muuzee-auth-protected > main{
+  display:none !important;
+}
+
+@media(max-width:720px){
+  .muuzee-header-login svg{
+    width:18px;
+    height:18px;
+  }
+
+  .muuzee-auth-dialog{
+    width:calc(100vw - 36px);
+    max-height:calc(100svh - 36px);
+    border-radius:22px;
+  }
+
+  .muuzee-auth-panel{
+    padding:26px 20px 22px;
+  }
+
+  .muuzee-auth-close{
+    top:12px;
+    right:12px;
+    width:34px;
+    height:34px;
+  }
+
+  .muuzee-auth-heading h2{
+    font-size:22px;
+  }
+
+  .muuzee-save-login-tooltip{
+    left:18px;
+    right:18px;
+    bottom:calc(84px + env(safe-area-inset-bottom));
+    width:auto;
+    gap:10px;
+    padding:12px 12px 12px 14px;
+    border-radius:16px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .muuzee-auth-mode span{
+    transition:none;
+  }
+
+  .muuzee-save-login-tooltip{
+    animation:none;
+  }
+}
+/* muuzee-prototype-auth:end */

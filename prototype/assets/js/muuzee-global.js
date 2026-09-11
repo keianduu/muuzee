@@ -5,6 +5,33 @@
 (() => {
   "use strict";
 
+  /* muuzee-auth-loader:start */
+  const globalScriptUrl = document.currentScript?.src || "";
+  const sharedJsBaseUrl = globalScriptUrl
+    ? new URL(".",globalScriptUrl)
+    : new URL("./assets/js/",location.href);
+
+  function loadMuuzeeAuth(){
+    if(window.MuuzeeAuth){
+      return Promise.resolve(window.MuuzeeAuth);
+    }
+
+    return new Promise((resolve,reject) => {
+      const node = document.createElement("script");
+      node.src = new URL(
+        "muuzee-auth.js?v=20260911-login-prototype-02",
+        sharedJsBaseUrl
+      ).href;
+      node.async = true;
+      node.onload = () => resolve(window.MuuzeeAuth || null);
+      node.onerror = () => reject(new Error("muuzee-auth-load-failed"));
+      document.head.appendChild(node);
+    });
+  }
+
+  const muuzeeAuthLoadPromise = loadMuuzeeAuth();
+  /* muuzee-auth-loader:end */
+
   /* Header Reveal
      A page opts in by adding data-muuzee-sheet to the rising content surface.
   */
@@ -59,6 +86,11 @@
       .querySelector('button[aria-label="お知らせ"], a[aria-label="お知らせ"]')
       ?.remove();
 
+    /* auth-aware-menu-items:start */
+    const loggedIn = Boolean(
+      window.MuuzeeAuth?.isLoggedIn?.()
+    );
+
     const menuItems = [
       {label:"ホーム",href:"./index.html"},
       {label:"展示会を探す",href:"./exhibitions.html"},
@@ -66,14 +98,26 @@
       {label:"美術館を探す",href:"./museums.html"},
       {label:"地図から探す",href:"./map.html"},
 
-      {label:"マイページ",href:"./my-art.html",auth:true,authFirst:true},
-      {label:"保存",href:"./saved.html",auth:true},
-      {label:"ArtWall",href:"./my-art.html#artwall",auth:true},
+      ...(loggedIn
+        ? [
+            {label:"My Art",href:"./my-art.html",auth:true,authFirst:true},
+            {label:"保存",href:"./saved.html",auth:true},
+            {label:"ログアウト",action:"logout",auth:true}
+          ]
+        : [
+            {
+              label:"ログイン / 新規登録",
+              action:"login",
+              auth:true,
+              authFirst:true
+            }
+          ]),
 
       {label:"免責事項",href:"./disclaimer.html",secondary:true,secondaryFirst:true},
       {label:"プライバシーポリシー",href:"./privacy-policy.html",secondary:true},
       {label:"お問い合わせ",href:"./contact.html",secondary:true}
     ];
+    /* auth-aware-menu-items:end */
 
     const toggle = document.createElement("button");
     toggle.className = "icon-button muuzee-menu-toggle";
@@ -125,10 +169,17 @@
       location.pathname.split("/").pop()
       || "index.html";
 
+    /* auth-aware-menu-renderer:start */
     menuItems.forEach(item => {
-      const link = document.createElement("a");
+      const isLoginAction = item.action === "login";
+      const isLogoutAction = item.action === "logout";
+      const isAction = isLoginAction || isLogoutAction;
+
+      const link = document.createElement(
+        isAction ? "button" : "a"
+      );
+
       link.className = "muuzee-menu-link";
-      link.href = item.href;
       link.textContent = item.label;
 
       if(item.auth) link.classList.add("is-auth");
@@ -136,21 +187,38 @@
       if(item.secondary) link.classList.add("is-secondary");
       if(item.secondaryFirst) link.classList.add("is-secondary-first");
 
-      const hrefPath =
-        item.href
-          .split("#")[0]
-          .replace("./","");
+      if(isAction){
+        link.type = "button";
 
-      if(
-        hrefPath === currentPath
-        && !item.href.includes("#")
-      ){
-        link.classList.add("is-current");
-        link.setAttribute("aria-current","page");
+        if(isLoginAction){
+          link.classList.add("is-login");
+          link.dataset.muuzeeLoginTrigger = "";
+        }
+
+        if(isLogoutAction){
+          link.classList.add("is-logout");
+          link.dataset.muuzeeLogoutTrigger = "";
+        }
+      }else{
+        link.href = item.href;
+
+        const hrefPath =
+          item.href
+            .split("#")[0]
+            .replace("./","");
+
+        if(
+          hrefPath === currentPath
+          && !item.href.includes("#")
+        ){
+          link.classList.add("is-current");
+          link.setAttribute("aria-current","page");
+        }
       }
 
       nav.appendChild(link);
     });
+    /* auth-aware-menu-renderer:end */
 
     drawer.append(noticeCta,nav);
     document.body.append(scrim,drawer);
@@ -181,7 +249,13 @@
     scrim.addEventListener("click",() => setOpen(false));
 
     drawer.addEventListener("click",event => {
-      if(event.target.closest("a")) setOpen(false);
+      if(
+        event.target.closest(
+          "a,button[data-muuzee-login-trigger],button[data-muuzee-logout-trigger]"
+        )
+      ){
+        setOpen(false);
+      }
     });
 
     document.addEventListener("keydown",event => {
@@ -298,14 +372,89 @@
       || null
     );
 
-  function initGlobalUI(){
-    initHeaderReveal();
+  /* auth-aware-global-ui:start */
+  function syncHeaderAuthUI(){
+    const actions = document.querySelector(
+      ".site-header .header-actions"
+    );
+
+    if(!actions) return;
+
+    const avatar = actions.querySelector(".avatar");
+    let login = actions.querySelector("[data-muuzee-header-login]");
+    const loggedIn = Boolean(
+      window.MuuzeeAuth?.isLoggedIn?.()
+    );
+
+    if(loggedIn){
+      avatar?.removeAttribute("hidden");
+      login?.remove();
+      return;
+    }
+
+    if(avatar) avatar.hidden = true;
+
+    if(login) return;
+
+    login = document.createElement("button");
+    login.className = "icon-button muuzee-header-login";
+    login.type = "button";
+    login.dataset.muuzeeHeaderLogin = "";
+    login.dataset.muuzeeLoginTrigger = "";
+    login.setAttribute("aria-label","ログイン");
+    login.title = "ログイン";
+    login.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8" r="3.2"></circle>
+        <path d="M5.5 20c.7-4.1 3-6.2 6.5-6.2s5.8 2.1 6.5 6.2"></path>
+      </svg>
+    `;
+
+    actions.prepend(login);
+  }
+
+  function rebuildHamburgerNavigation(){
+    document.querySelector("[data-muuzee-menu-toggle]")?.remove();
+    document.querySelector(".muuzee-menu-scrim")?.remove();
+    document.querySelector(".muuzee-menu-drawer")?.remove();
+
+    document.body.classList.remove("is-hamburger-open");
+    document.querySelector(".site-header")?.classList.remove("is-menu-open");
+
     initHamburgerNavigation();
   }
 
+  function handleAuthStateChange(){
+    syncHeaderAuthUI();
+    rebuildHamburgerNavigation();
+  }
+  /* auth-aware-global-ui:end */
+
+  /* auth-aware-global-init:start */
+  async function initGlobalUI(){
+    try{
+      await muuzeeAuthLoadPromise;
+      await window.MuuzeeAuth?.ready;
+    }catch(_){}
+
+    syncHeaderAuthUI();
+    initHeaderReveal();
+    initHamburgerNavigation();
+
+    window.addEventListener(
+      "muuzee:auth-change",
+      handleAuthStateChange
+    );
+  }
+
   if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", initGlobalUI, {once:true});
+    document.addEventListener(
+      "DOMContentLoaded",
+      initGlobalUI,
+      {once:true}
+    );
   }else{
     initGlobalUI();
   }
+  /* auth-aware-global-init:end */
 })();

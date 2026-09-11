@@ -406,3 +406,13 @@
 }
 
 /* personal-category-pill-buttons:end */
+
+/* guest-saved-layout:start */
+/* Guest Saved page:
+   Saved remains available without login.
+   Personal profile header and Saved / Seen / Favorites navigation are account-only. */
+.saved-page.muuzee-auth-guest .mypage-profile-shell,
+.saved-page.muuzee-auth-guest .mypage-nav-shell{
+  display:none;
+}
+/* guest-saved-layout:end */

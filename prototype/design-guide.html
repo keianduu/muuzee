@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Muuzee — Global Design Guide</title>
 
-<link href="./assets/css/muuzee-global.css?v=20260902-02" rel="stylesheet"/><link href="./assets/css/design-guide.css?v=20260828-06" rel="stylesheet"/><link rel="stylesheet" href="./assets/css/muuzee-save-control.css?v=20260828-24">
+<link href="./assets/css/muuzee-global.css?v=20260911-login-prototype-02" rel="stylesheet"/><link href="./assets/css/design-guide.css?v=20260828-06" rel="stylesheet"/><link rel="stylesheet" href="./assets/css/muuzee-save-control.css?v=20260828-24">
 <style id="muuzee-current-prototype-reference-style">
 
 .dg-current-reference{
@@ -567,7 +567,7 @@ Breakpoints: 980px / 720px</pre></div>
 <div class="section dg-side-margin-shell">
 <div class="global-rule">
   <strong>Shared Hamburger Navigation</strong>
-  <p>Global HeaderはLogo / MyPage Avatar / Hamburgerを共通利用する。NoticeはHeaderに置かず、Hamburger Drawer上部の独立CTAとして扱う。Hamburgerは円形の静かなHeader Actionとし、Drawerは右から左へ開く。Global実装は <code>muuzee-global.css / muuzee-global.js</code> を利用し、ページごとに複製しない。</p>
+  <p>Global HeaderはLogo / Account Action / Hamburgerを共通利用する。ログイン時はProfile Avatar、未ログイン時はLogin Iconを表示する。NoticeはHeaderに置かず、Hamburger Drawer上部の独立CTAとして扱う。Hamburgerは円形の静かなHeader Actionとし、Drawerは右から左へ開く。Global実装は <code>muuzee-global.css / muuzee-global.js</code> を利用し、ページごとに複製しない。</p>
 </div>
 </div>
 <!-- hamburger-navigation-rule:end -->
@@ -583,10 +583,19 @@ Breakpoints: 980px / 720px</pre></div>
 <div class="section dg-side-margin-shell">
 <div class="global-rule">
   <strong>Hamburger Navigation Groups</strong>
-  <p>Notice CTAはDrawer上部に置き、Warm Surface + Radiusを使用する。Border / Box Shadowは持たない。Personal Navigation（MyPage / 保存 / ArtWall）は通常Navと同じWhite Surface / Dividerを使い、左側の短い太いTerracotta Markerのみで区別する。</p>
+  <p>Notice CTAはDrawer上部に置き、Warm Surface + Radiusを使用する。Border / Box Shadowは持たない。ログイン時のPersonal Navigation（My Art / 保存 / ログアウト）は通常Navと同じWhite Surface / Dividerを使い、左側の短い太いTerracotta Markerのみで区別する。未ログイン時はPersonal Navigationを表示せず、同じ位置にLogin / Register導線を置く。</p>
 </div>
 </div>
 <!-- hamburger-menu-group-rule:end -->
+<!-- guest-login-prototype-rule:start -->
+<div class="section dg-side-margin-shell">
+<div class="global-rule">
+  <strong>Guest / Login Prototype</strong>
+  <p>Prototypeのログイン状態はURLの <code>?loginID=...</code> とPrototype User Storeで判定する。未ログインでもCard / DetailのSaveと保存一覧は利用可能とし、Save成功後にBottom Navigation付近から会員導線を静かにSlide Up表示する。Footerの保存は未ログインでもSavedへ遷移する。Savedの未ログイン表示ではProfile HeaderとSaved / Seen / Favorites Navigationを表示せず、展示会 / 美術館 / アーティスト / 作品のCategory以降を表示する。My Art / Profile Settingsはログイン導線を開き、DetailのSeenは未ログイン時に表示しない。Login / Register PopupはShared ComponentとしてGlobal実装し、ページごとに複製しない。ログイン中のHamburger Personal NavigationはMy Art / 保存 / ログアウトとする。</p>
+</div>
+</div>
+<!-- guest-login-prototype-rule:end -->
+
 <!-- personal-actions-and-section-cta:start -->
 <div class="section dg-side-margin-shell">
 <div class="global-rule">
@@ -765,5 +774,5 @@ Breakpoints: 980px / 720px</pre></div>
   }
 }
 </script>
-<script src="./assets/js/muuzee-global.js?v=20260901-01"></script></body>
+<script src="./assets/js/muuzee-global.js?v=20260911-login-prototype-02"></script></body>
 </html>

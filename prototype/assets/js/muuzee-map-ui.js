@@ -252,9 +252,13 @@
       const type = button.dataset.popupType;
       const id = button.dataset.popupId;
 
-      toggleSaved(type,id);
+      const nowSaved = toggleSaved(type,id);
       syncPopupSaveButton(button);
       refreshMarker(markerLayer,type,id);
+
+      if(nowSaved){
+        window.MuuzeeAuth?.notifyAnonymousSave?.();
+      }
     });
   }
 

@@ -283,6 +283,7 @@
 
       if(nowSaved){
         celebrateSave(control);
+        window.MuuzeeAuth?.notifyAnonymousSave?.();
       }
     });
 
@@ -384,11 +385,12 @@
 
         if(!wasSaved && nowSaved){
           celebrateSave(current);
+          window.MuuzeeAuth?.notifyAnonymousSave?.();
         }
 
         refreshAll();
       },0);
-    });
+    },true);
 
     window.addEventListener("storage",refreshAll);
   };
