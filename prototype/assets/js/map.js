@@ -1,9 +1,16 @@
 /* Muuzee Map Discovery — page specific */
-(() => {
+(async () => {
   "use strict";
 
-  const exhibitions = window.MuuzeeExhibitionCatalog || [];
-  const museums = window.MuuzeeMuseumCatalog || [];
+  const [exhibitions,museums] = window.MuuzeeDataSource
+    ? await Promise.all([
+      window.MuuzeeDataSource.loadExhibitions(),
+      window.MuuzeeDataSource.loadMuseums()
+    ])
+    : [
+      window.MuuzeeExhibitionCatalog || [],
+      window.MuuzeeMuseumCatalog || []
+    ];
 
   const mapEl = document.getElementById("discoveryMap");
   if(!mapEl || typeof L === "undefined") return;
@@ -40,7 +47,7 @@
   let draftFilters = JSON.parse(JSON.stringify(state.filters));
   let markerLayer = L.layerGroup();
   let currentLocationMarker = null;
-const map = L.map(mapEl,{
+  const map = L.map(mapEl,{
     scrollWheelZoom:true,
     zoomControl:true,
     attributionControl:true
@@ -127,6 +134,7 @@ const map = L.map(mapEl,{
       }
     }
   }
+
   function renderModeButtons(){
     modeButtons.forEach(button => {
       const active = button.dataset.mapMode === state.mode;

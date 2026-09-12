@@ -1,8 +1,10 @@
 /* Muuzee Museum List — dynamic prototype data and filtering */
-(() => {
+(async () => {
   "use strict";
 
-  const MUSEUMS = window.MuuzeeMuseumCatalog || [];
+  const MUSEUMS = window.MuuzeeDataSource
+    ? await window.MuuzeeDataSource.loadMuseums()
+    : (window.MuuzeeMuseumCatalog || []);
 
   const grid = document.querySelector("[data-museum-grid]");
   const countEl = document.querySelector("[data-museum-count]");

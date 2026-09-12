@@ -1,8 +1,10 @@
 /* Muuzee Artist List — page specific */
-(() => {
+(async () => {
   "use strict";
 
-  const ARTISTS = window.MuuzeeArtistCatalog || [];
+  const ARTISTS = window.MuuzeeDataSource
+    ? await window.MuuzeeDataSource.loadArtists()
+    : (window.MuuzeeArtistCatalog || []);
 
   const grid = document.querySelector("[data-artist-grid]");
   const count = document.querySelector("[data-artist-count]");

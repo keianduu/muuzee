@@ -1,8 +1,10 @@
 /* Muuzee Exhibition List — page specific */
-(() => {
+(async () => {
   "use strict";
 
-  const SOURCE = window.MuuzeeExhibitionCatalog || [];
+  const SOURCE = window.MuuzeeDataSource
+    ? await window.MuuzeeDataSource.loadExhibitions()
+    : (window.MuuzeeExhibitionCatalog || []);
   const grid = document.querySelector("[data-exhibition-grid]");
   const sentinel = document.querySelector("[data-infinite-sentinel]");
   const statusEl = document.querySelector("[data-infinite-status]");
