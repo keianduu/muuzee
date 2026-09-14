@@ -23,7 +23,7 @@
     const image = item.image || item.img || "";
     const meta = item.country || (item.category || []).slice(0,1).join("");
     return `
-      <a class="artist" data-save-type="artist" data-save-id="${esc(item.id)}" href="./artist.html?name=${encodeURIComponent(item.name)}">
+      <a class="artist" data-save-type="artist" data-save-id="${esc(item.name)}" href="./artist.html?name=${encodeURIComponent(item.name)}">
         <img src="${esc(image)}" alt="${esc(item.name)}" loading="lazy" style="object-position:${esc(item.position || "center")}">
         <strong>${esc(item.name)}</strong>
         <span>${esc(meta)}</span>
@@ -32,38 +32,45 @@
   };
 
   const museumCard = item => {
-    const location = item.scope === "jp"
+    const place = item.scope === "jp"
       ? [item.prefecture,item.location].filter(Boolean).join(" · ")
       : [item.city,item.country].filter(Boolean).join(" · ");
     return `
       <a class="museum-card" data-save-type="museum" data-save-id="${esc(item.id)}" href="./museum.html?id=${encodeURIComponent(item.id)}">
         <span class="museum-thumb" aria-hidden="true" style="background-image:url('${esc(item.image || "")}');background-size:cover;background-position:center"></span>
-        <span><strong>${esc(item.name)}</strong><p>${esc(location)}</p></span>
+        <span><strong>${esc(item.name)}</strong><p>${esc(place)}</p></span>
       </a>
     `;
   };
 
   const relatedArtistCard = item => `
-    <a class="related-artist" data-save-type="artist" data-save-id="${esc(item.id)}" href="./artist.html?name=${encodeURIComponent(item.name)}">
+    <a class="related-artist" data-save-type="artist" data-save-id="${esc(item.name)}" href="./artist.html?name=${encodeURIComponent(item.name)}">
       <img src="${esc(item.image || item.img || "")}" alt="${esc(item.name)}" loading="lazy" style="object-position:${esc(item.position || "center")}">
       <strong>${esc(item.name)}</strong>
       <span>${esc((item.category || []).slice(0,2).join(" / "))}</span>
     </a>
   `;
 
+  const exhibitionCatalog = () => window.MuuzeeExhibitionCatalog || [];
+  const artistCatalog = () => window.MuuzeeArtistCatalog || [];
+  const museumCatalog = () => window.MuuzeeMuseumCatalog || [];
+
   function currentExhibition(){
+    const catalog = exhibitionCatalog();
     const id = new URLSearchParams(location.search).get("id");
-    return (window.MuuzeeExhibitionCatalog || []).find(item => item.id === id) || null;
+    return catalog.find(item => item.id === id) || catalog[0] || null;
   }
 
   function currentArtist(){
+    const catalog = artistCatalog();
     const name = new URLSearchParams(location.search).get("name");
-    return (window.MuuzeeArtistCatalog || []).find(item => item.name === name) || null;
+    return catalog.find(item => item.name === name) || catalog[0] || null;
   }
 
   function currentMuseum(){
+    const catalog = museumCatalog();
     const id = new URLSearchParams(location.search).get("id");
-    return (window.MuuzeeMuseumCatalog || []).find(item => item.id === id) || null;
+    return catalog.find(item => item.id === id) || catalog[0] || null;
   }
 
   async function renderHome(){
@@ -84,13 +91,87 @@
     return true;
   }
 
+  function bindExhibitionSummary(item){
+    document.title = `${item.title} | Muuzee`;
+    const hero = document.querySelector(".exhibition-hero img");
+    const title = document.querySelector(".exhibition-sheet-title");
+    const venue = document.querySelector(".exhibition-sheet-venue");
+    const meta = [...document.querySelectorAll(".exhibition-sheet-meta .muuzee-pill")];
+    const lead = document.querySelector(".lead-grid p");
+    const mapTitle = document.querySelector(".map-copy h3");
+    const mapLocation = document.querySelector(".map-copy p");
+
+    if(hero){ hero.src = item.src || ""; hero.alt = item.title; }
+    if(title) title.textContent = item.title;
+    if(venue) venue.textContent = item.venue || "";
+    if(meta[0]) meta[0].textContent = item.category || "";
+    if(meta[1]){
+      meta[1].textContent = item.statusLabel || "";
+      meta[1].classList.toggle("muuzee-pill--status",item.status === "now");
+      meta[1].classList.toggle("muuzee-pill--neutral",item.status !== "now");
+    }
+    if(lead) lead.textContent = item.description || "";
+    if(mapTitle) mapTitle.textContent = item.venue || "";
+    if(mapLocation) mapLocation.textContent = [item.city,item.area].filter(Boolean).join("・");
+  }
+
+  function renderExhibitionArtists(item){
+    const root = document.querySelector("[data-exhibition-artists]");
+    const toggle = document.querySelector("[data-exhibition-artists-toggle]");
+    if(!root) return;
+
+    const artists = (item.artistIds || [])
+      .map(id => artistCatalog().find(artist => artist.id === id))
+      .filter(Boolean);
+    const savedKey = "muuzee:saved-artists";
+    let saved = [];
+    try{ saved = JSON.parse(localStorage.getItem(savedKey) || "[]"); }catch{}
+
+    root.innerHTML = artists.map(artist => {
+      const metadata = [
+        (artist.category || []).slice(0,2).join(" / "),
+        artist.place || artist.country || ""
+      ].filter(Boolean);
+      const isSaved = saved.includes(artist.name);
+      return `
+        <article class="exhibition-artist-row">
+          <a class="exhibition-artist-main" href="./artist.html?name=${encodeURIComponent(artist.name)}">
+            <img class="exhibition-artist-avatar" src="${esc(artist.image || artist.img || "")}" alt="${esc(artist.name)}" loading="lazy" style="object-position:${esc(artist.position || "center")}">
+            <span class="exhibition-artist-copy"><strong>${esc(artist.name)}</strong><span class="exhibition-artist-meta">${metadata.map(value => `<span>${esc(value)}</span>`).join('<i aria-hidden="true">·</i>')}</span></span>
+          </a>
+          <button class="exhibition-artist-save${isSaved ? " is-saved" : ""}" type="button" data-surface-save-artist="${esc(artist.name)}" aria-label="${esc(artist.name)}を保存" aria-pressed="${isSaved}">
+            <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4Z"></path></svg><span>${isSaved ? "保存済み" : "保存"}</span>
+          </button>
+        </article>
+      `;
+    }).join("");
+
+    if(toggle) toggle.remove();
+    root.onclick = event => {
+      const button = event.target.closest("[data-surface-save-artist]");
+      if(!button) return;
+      event.preventDefault();
+      const name = button.dataset.surfaceSaveArtist;
+      let current = [];
+      try{ current = JSON.parse(localStorage.getItem(savedKey) || "[]"); }catch{}
+      const next = current.includes(name) ? current.filter(value => value !== name) : [...current,name];
+      localStorage.setItem(savedKey,JSON.stringify(next));
+      button.classList.toggle("is-saved",next.includes(name));
+      button.setAttribute("aria-pressed",String(next.includes(name)));
+      const label = button.querySelector("span");
+      if(label) label.textContent = next.includes(name) ? "保存済み" : "保存";
+    };
+  }
+
   async function renderExhibitionDetail(){
     const item = currentExhibition();
     if(!item?.venueId) return false;
 
-    const rails = [...document.querySelectorAll(".exhibition-page .poster-rail, .detail-sheet .poster-rail")];
-    const rail = rails[0] || null;
-    if(!rail) return false;
+    bindExhibitionSummary(item);
+    renderExhibitionArtists(item);
+
+    const rail = document.querySelector(".exhibition-page .poster-rail, .detail-sheet .poster-rail, .poster-rail");
+    if(!rail) return true;
 
     const result = await source.resolve("exhibitionDetail","sameVenueExhibitions",{
       exhibitionId:item.id,
@@ -103,7 +184,6 @@
   async function renderArtistDetail(){
     const artist = currentArtist();
     if(!artist?.id) return false;
-
     const exhibitionsEl = document.querySelector("[data-current-exhibitions]");
     const relatedEl = document.querySelector("[data-related-artists]");
     if(!exhibitionsEl || !relatedEl) return false;
@@ -112,13 +192,11 @@
       source.resolve("artistDetail","currentExhibitions",{artistId:artist.id}),
       source.resolve("artistDetail","relatedArtists",{artistId:artist.id})
     ]);
-
     exhibitionsEl.innerHTML = currentExhibitions.items.map(posterCard).join("");
     relatedEl.innerHTML = relatedArtists.items.map(relatedArtistCard).join("");
     return true;
   }
 
-  function monthKey(dateString){ return dateString ? dateString.slice(0,7) : ""; }
   function monthLabel(key){
     const [year,month] = key.split("-").map(Number);
     return {year:String(year),month:new Intl.DateTimeFormat("ja-JP",{month:"short"}).format(new Date(year,month - 1,1))};
@@ -137,9 +215,7 @@
     const [year,month] = key.split("-").map(Number);
     const monthStart = new Date(year,month - 1,1);
     const monthEnd = new Date(year,month,0,23,59,59);
-    const start = new Date(item.start);
-    const end = new Date(item.end);
-    return start <= monthEnd && end >= monthStart;
+    return new Date(item.start) <= monthEnd && new Date(item.end) >= monthStart;
   }
 
   function renderMuseumCalendar(items){
@@ -205,9 +281,8 @@
     else if(document.querySelector("[data-museum-exhibitions]")) rendered = await renderMuseumDetail();
     else if(document.querySelector(".exhibition-hero")) rendered = await renderExhibitionDetail();
 
-    if(rendered){
-      window.dispatchEvent(new CustomEvent("muuzee:surface-rendered"));
-    }
+    window.MuuzeeSurfaceRuntimeReady = true;
+    if(rendered) window.dispatchEvent(new CustomEvent("muuzee:surface-rendered"));
   }
 
   init().catch(error => console.warn("Muuzee surface runtime failed",error));
