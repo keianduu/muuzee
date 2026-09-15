@@ -121,6 +121,23 @@ Use local files for:
 
 Within the prototype, `prototype/design-guide.html` is the source of truth for the **current prototype Global Design Rules**. It may still be exploratory and does not by itself promote a rule into an approved product specification.
 
+
+### Generated implementation documentation
+
+Generated technical documentation must stay synchronized with the implementation that owns it.
+
+For database schema changes:
+
+- `supabase/migrations/*.sql` is the database Source of Truth.
+- `docs/database/schema.dbml` and `docs/database/er-diagram.html` are generated views of the current migration-derived schema.
+- Never edit the generated database documentation manually.
+- Whenever a task adds, removes, renames, or changes a database table, column, primary key, foreign key, or relevant constraint, regenerate the database documentation in the same task with `npm run db:docs`.
+- Before completing the task, verify synchronization with `npm run db:docs:check`.
+- Include the migration, related application changes, and regenerated database documentation in the same task and commit / pull request whenever practical.
+- Do not require a Notion update merely because generated implementation documentation changed.
+- Update Notion only when the schema change also represents an approved product, architecture, operational, or other meaningful decision that belongs in the project specification or `Decisions`.
+- More generally, when a generated or derived implementation document has an explicit Source of Truth, update that generated document within the same task whenever its Source of Truth changes.
+
 ### External-source AI transformation
 
 - AI is never the content source. Preserve the actual source type and field-level source URL; CSV is only transport.
