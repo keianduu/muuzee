@@ -17,6 +17,8 @@ npm run db:docs
 
 The generator applies migration files in filename order and reconstructs the current `public` schema from supported `CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, and simple index statements.
 
+After adding or changing a migration, regenerate these files in the same change.
+
 ## Verify generated files are current
 
 ```bash
@@ -24,6 +26,8 @@ npm run db:docs:check
 ```
 
 `--check` exits non-zero when either generated file differs from the migration-derived result.
+
+`.github/workflows/database-docs.yml` runs this check on pull requests that change migrations, the generator, generated database documentation, or its npm scripts. This keeps schema documentation drift visible during review without making the generated files a second Source of Truth.
 
 ## HTML explorer
 
