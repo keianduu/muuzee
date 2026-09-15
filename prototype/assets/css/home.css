@@ -860,6 +860,7 @@
 }
 
 .home-page #artwall{
+  --home-artwall-heading-type:32px;
   --home-artwall-label-type:8px;
   --home-artwall-copy-type:9.5px;
   --home-artwall-avatar-type:9px;
@@ -891,6 +892,10 @@
   padding:22px 18px 18px;
   gap:0;
   border-radius:22px;
+}
+
+.home-page #artwall .artwall-copy h2{
+  font-size:var(--home-artwall-heading-type);
 }
 
 .home-page #artwall .artwall-copy > p{
