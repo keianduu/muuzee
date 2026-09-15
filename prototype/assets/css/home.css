@@ -985,11 +985,11 @@
 
 @media(min-width:481px) and (prefers-reduced-motion:no-preference){
   .home-artwall-section.is-reveal-ready .home-artwall-window{
-    transform:translateY(80px);
+    transform:translateY(100px);
     opacity:0;
     transition:
-      transform 400ms cubic-bezier(.22,1,.36,1),
-      opacity 320ms ease-out;
+      transform 320ms cubic-bezier(.22,1,.36,1),
+      opacity 280ms ease-out;
     will-change:transform,opacity;
   }
 
@@ -1011,6 +1011,12 @@
   .home-artwall-section{
     padding:96px 0;
     background-attachment:scroll,fixed;
+  }
+}
+
+@media(min-width:721px){
+  body.muuzee-app.home-page{
+    padding-bottom:0;
   }
 }
 /* home-artwall-window-presentation:end */

@@ -17,13 +17,13 @@
 
   const observer = new IntersectionObserver(
     entries => {
-      if (!entries.some(entry => entry.intersectionRatio >= 0.3)) return;
+      if (!entries.some(entry => entry.intersectionRatio >= 0.5)) return;
       reveal();
       observer.disconnect();
     },
     {
       rootMargin: "0px",
-      threshold: 0.3,
+      threshold: 0.5,
     },
   );
 
