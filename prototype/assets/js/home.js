@@ -1,19 +1,5 @@
 /* Muuzee Home — page-specific JS */
 
-/* home-artwall-hero-background:start */
-(() => {
-  const mainVisual = document.querySelector(".hero-bg img");
-  const artwallSection = document.querySelector(".home-artwall-section");
-  if (!mainVisual || !artwallSection) return;
-
-  const backgroundVisual = mainVisual.cloneNode();
-  backgroundVisual.className = "home-artwall-main-visual";
-  backgroundVisual.alt = "";
-  backgroundVisual.setAttribute("aria-hidden", "true");
-  artwallSection.prepend(backgroundVisual);
-})();
-/* home-artwall-hero-background:end */
-
 const ARTISTS = (() => {
   const catalog = window.MuuzeeArtistCatalog || [];
   const featured = catalog.filter(artist => artist.featured);

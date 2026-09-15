@@ -859,10 +859,6 @@
   z-index:1;
 }
 
-.home-artwall-main-visual{
-  display:none;
-}
-
 @media(min-width:481px){
   .home-artwall-section{
     position:relative;
@@ -870,31 +866,15 @@
     overflow:hidden;
     padding:72px 0;
     background-color:var(--ink);
-  }
-
-  .home-artwall-section::before{
-    content:"";
-    position:absolute;
-    inset:0;
-    z-index:1;
-    pointer-events:none;
-    background:linear-gradient(rgba(24,23,21,.28),rgba(24,23,21,.38));
-  }
-
-  .home-artwall-main-visual{
-    display:block;
-    position:absolute;
-    inset:0;
-    z-index:0;
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    object-position:center 56%;
-    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(24,23,21,.28),rgba(24,23,21,.38)),
+      url("../images/home-hero.png");
+    background-position:center,center 56%;
+    background-repeat:no-repeat;
+    background-size:cover;
   }
 
   .home-artwall-stage{
-    z-index:2;
     display:flex;
     justify-content:center;
   }
@@ -947,13 +927,7 @@
   .home-artwall-section{
     min-height:760px;
     padding:96px 0;
-    clip-path:inset(0);
-  }
-
-  .home-artwall-main-visual{
-    position:fixed;
-    width:100vw;
-    height:100vh;
+    background-attachment:scroll,fixed;
   }
 }
 /* home-artwall-window-presentation:end */
