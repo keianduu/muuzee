@@ -4,7 +4,6 @@
 
   const exhibitions = window.MuuzeeExhibitionCatalog || [];
   const artists = window.MuuzeeArtistCatalog || [];
-  const museums = window.MuuzeeMuseumCatalog || [];
 
   const artistFixtures = [
     {id:"yayoi-kusama",name:"草間彌生",tagIds:["contemporary","installation","japan"]},
@@ -44,7 +43,7 @@
   };
 
   const dateStatus = (start,end) => {
-    const today = "2026-09-14";
+    const today = "2026-09-15";
     if(start && start > today) return ["upcoming","開催予定"];
     if(end && end < today) return ["past","終了"];
     return ["now","開催中"];
@@ -152,10 +151,6 @@
     if(!existingIds.has(item.id)) exhibitions.push(item);
   });
 
-  museums.forEach(museum => {
-    if("exhibitions" in museum) delete museum.exhibitions;
-  });
-
   window.MuuzeeSurfaceConfig = {
     ...(window.MuuzeeSurfaceConfig || {}),
     home:{
@@ -171,4 +166,6 @@
       ],limit:6}
     }
   };
+
+  window.MuuzeeSurfaceFixturesReady = true;
 })();
