@@ -246,8 +246,8 @@
     }
 
     section.classList.add("is-muuzee-auth-guest");
-    title.textContent = "自分だけのArtWallをつくろう";
-    cta.textContent = "自分のArtWallを作る →";
+    title.textContent = "ArtWallを作ろう";
+    cta.textContent = "ログイン →";
     cta.setAttribute("href","#");
     cta.setAttribute("role","button");
     cta.dataset.muuzeeLoginTrigger = "";
@@ -256,8 +256,8 @@
     copy.innerHTML = `
       <div class="muuzee-artwall-guest-copy">
         <span class="artwall-owner-label">YOUR ART PROFILE</span>
-        <h2>観たアートを、自分だけの壁に。</h2>
-        <p>訪れた展示や出会った作品が少しずつ積み上がり、あなただけのArtWallになります。</p>
+        <h2>お気に入りの展示会がまとめられる</h2>
+        <p>出会った展示が少しずつ積み上がり、あなただけのプロフィールになります</p>
       </div>
     `;
   };
