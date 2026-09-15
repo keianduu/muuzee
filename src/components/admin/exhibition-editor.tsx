@@ -24,7 +24,7 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
     <section className="card">
       <h2>Publication requirements</h2>
       <ul className="requirements">{requirements.map((item) => <li key={item.key} className={item.met ? "met" : ""}>{item.met ? "✓" : "×"} {item.label}</li>)}</ul>
-      <div className="actions"><button className="button secondary" disabled={busy || !canPublish} onClick={() => publication("ready")}>Readyにする</button><button className="button" disabled={busy || !canPublish} onClick={() => publication("publish")}>Publish</button>{exhibition.publication_status === "published" && <button className="button danger" disabled={busy} onClick={() => publication("unpublish")}>Unpublish</button>}</div>
+      <div className="actions"><button className="button secondary" disabled={busy || !canPublish} onClick={() => publication("ready")}>Readyにする</button><button className="button" disabled={busy || !canPublish} onClick={() => publication("publish")}>Publish</button>{exhibition.publication_status === "published" && <button className="button secondary" disabled={busy} onClick={() => publication("unpublish")}>Unpublish</button>}</div>
     </section>
     <form className="card" onSubmit={save}>
       <h2>Basic information</h2><div className="form-grid">

@@ -113,6 +113,10 @@ Venue, Artist, and Work publication uses `draft / ready / published / archived`.
 
 Bulk Publish / Unpublish applies the same server validation. UI disabled states are convenience only, never the validation boundary.
 
+### Admin Common Visual System v1
+
+Admin uses one shared visual system for controls, type, and spacing. Primary, Secondary, Tertiary, Danger, and Disabled are interaction variants; selected tabs are selection state; status badges are passive data state. Disabled styling must not rely on opacity alone, and a static state must not be presented as a button. Operational typography uses 24px Page Titles, 17px Section Headings, 14px body text, and 12px metadata. Layout spacing follows the shared 4/8/12/24/32 Admin scale. These rules apply to Dashboard, Imports, Exhibitions, master lists, drawers, and forms without changing Admin information architecture or backend behavior.
+
 ## 8. Delete safety
 
 Delete always requires browser confirmation and server relation checks.
