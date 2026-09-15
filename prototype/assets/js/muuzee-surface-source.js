@@ -119,7 +119,6 @@
 
     const entityNames = new Set([config.entity]);
     if(config.resolver === "relatedArtists") entityNames.add("exhibitions");
-    if(config.resolver === "artistCurrentExhibitions") entityNames.add("artists");
 
     const entities = {};
     await Promise.all([...entityNames].map(async entity => {
@@ -129,13 +128,29 @@
     return resolver({config,context:context || {},entities,loadEntity});
   }
 
-  async function load(group,key,context={}){
-    const config = getConfig(group,key);
-    if(!config) return [];
+  function normalizeResult(value){
+    if(Array.isArray(value)) return {items:value};
+    if(!value || typeof value !== "object") return {items:[]};
 
-    if(config.mode === "curated") return resolveCurated(config);
-    if(config.mode === "derived" || config.mode === "ranked") return resolveDerived(config,context);
-    return [];
+    const ongoing = asArray(value.ongoing);
+    const upcoming = asArray(value.upcoming);
+    const items = Array.isArray(value.items)
+      ? value.items
+      : [...ongoing,...upcoming];
+
+    return {
+      ...value,
+      items
+    };
+  }
+
+  async function resolve(group,key,context={}){
+    const config = getConfig(group,key);
+    if(!config) return {items:[]};
+
+    if(config.mode === "curated") return normalizeResult(await resolveCurated(config));
+    if(config.mode === "derived" || config.mode === "ranked") return normalizeResult(await resolveDerived(config,context));
+    return {items:[]};
   }
 
   function registerResolver(name,resolver){
@@ -146,17 +161,19 @@
 
   window.MuuzeeSurfaceSource = {
     getConfig,
-    load,
-    loadHome(){
-      return Promise.all([
-        load("home","recommendedExhibitions"),
-        load("home","featuredArtists"),
-        load("home","popularMuseums")
-      ]).then(([recommendedExhibitions,featuredArtists,popularMuseums]) => ({
-        recommendedExhibitions,
-        featuredArtists,
-        popularMuseums
-      }));
+    resolve,
+    load:resolve,
+    async loadHome(){
+      const [recommendedExhibitions,featuredArtists,popularMuseums] = await Promise.all([
+        resolve("home","recommendedExhibitions"),
+        resolve("home","featuredArtists"),
+        resolve("home","popularMuseums")
+      ]);
+      return {
+        recommendedExhibitions:recommendedExhibitions.items,
+        featuredArtists:featuredArtists.items,
+        popularMuseums:popularMuseums.items
+      };
     },
     registerResolver
   };
