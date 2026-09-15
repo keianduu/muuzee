@@ -305,12 +305,130 @@
         .filter(Boolean);
     };
 
+  const isHomeArtWall =
+    context =>
+      Boolean(
+        context?.wall
+          ?.closest?.(
+            "#artwall"
+          )
+      );
+
+  const waitForAuth =
+    async () => {
+      if (
+        !window.MuuzeeAuth
+        && document.readyState === "loading"
+      ) {
+        await new Promise(
+          resolve => {
+            document.addEventListener(
+              "DOMContentLoaded",
+              resolve,
+              {once:true}
+            );
+          }
+        );
+      }
+
+      const auth =
+        window.MuuzeeAuth
+        || null;
+
+      if (auth?.ready) {
+        await auth.ready;
+      }
+
+      return auth;
+    };
+
+  const getGuestPreviewItems =
+    async context => {
+      if (
+        !isHomeArtWall(
+          context
+        )
+      ) {
+        return null;
+      }
+
+      const auth =
+        await waitForAuth();
+
+      if (
+        auth?.isLoggedIn?.()
+      ) {
+        return null;
+      }
+
+      try {
+        const resolved =
+          await window.MuuzeeSurfaceSource
+            ?.resolve?.(
+              "home",
+              "guestArtWall"
+            );
+
+        const items =
+          normalizeSource(
+            resolved?.items,
+            "guest-surface"
+          );
+
+        if (items.length) {
+          return items;
+        }
+      } catch (_) {
+        // Fall through to the synchronous prototype config fallback.
+      }
+
+      const surfaceConfig =
+        window.MuuzeeSurfaceSource
+          ?.getConfig?.(
+            "home",
+            "guestArtWall"
+          )
+        || window.MuuzeeSurfaceConfig
+          ?.home
+          ?.guestArtWall
+        || null;
+
+      const configured =
+        getByIds(
+          surfaceConfig?.ids
+        );
+
+      if (configured.length) {
+        const limit =
+          Number(
+            surfaceConfig?.limit
+          );
+
+        return Number.isFinite(limit)
+          && limit >= 0
+          ? configured.slice(
+              0,
+              limit
+            )
+          : configured;
+      }
+
+      return getAllItems().slice(
+        0,
+        Number(
+          config.initialLimit
+        )
+        || 30
+      );
+    };
+
   window.MuuzeeArtWallDataSource = {
     config,
     getSeenCount,
     getSeenItems,
     getAllItems,
     getInitialItems,
-    getByIds
+    getByIds,
+    getGuestPreviewItems
   };
 })();
