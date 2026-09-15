@@ -654,7 +654,7 @@
     font-size:10px;
   }.more, .poster-card p, .museum-card p, .artwall-copy p, .cta{
     font-size:12px;
-  }.hero p, .artist strong, .poster-card h3, .museum-card strong, .muuzee-popup-title{
+  }.hero p, .artist strong, .poster-card h3, .museum-card strong, .artwall-copy p, .muuzee-popup-title{
     font-size:14px;
   }.section-head h2{
     font-size:22px;
@@ -852,3 +852,65 @@
 }
 
 /* home-section-cta:end */
+
+/* home-pc-map-artwall-split:start */
+@media(min-width:721px){
+  .home-page .main-surface{
+    display:grid;
+    grid-template-columns:minmax(0,2fr) minmax(0,1fr);
+    align-items:stretch;
+  }
+
+  .home-page .main-surface > .section{
+    grid-column:1 / -1;
+    min-width:0;
+  }
+
+  .home-page .main-surface > #map{
+    grid-column:1;
+  }
+
+  .home-page .main-surface > #artwall{
+    grid-column:2;
+    min-width:0;
+    padding:40px 0;
+  }
+
+  .home-page #artwall .artwall{
+    display:block;
+    padding:22px 18px 18px;
+    border-radius:22px;
+  }
+
+  .home-page #artwall .artwall-copy h2{
+    font-size:32px;
+  }
+
+  .home-page #artwall .artwall-copy p{
+    margin-bottom:14px;
+  }
+
+  .home-page #artwall .stats{
+    gap:18px;
+    margin-bottom:14px;
+  }
+
+  .home-page #artwall .stat strong{
+    font-size:19px;
+  }
+
+  .home-page #artwall .wall{
+    height:260px;
+    margin-top:20px;
+    border-radius:0;
+  }
+
+  .home-page #artwall .wall-item{
+    border-radius:0;
+  }
+
+  .home-page #artwall .wall-fade{
+    height:76px;
+  }
+}
+/* home-pc-map-artwall-split:end */
