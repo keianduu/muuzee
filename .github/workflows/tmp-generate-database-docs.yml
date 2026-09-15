@@ -1,0 +1,32 @@
+name: Temporary database docs generator
+
+on:
+  push:
+    branches:
+      - chore/database-er-diagram
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/database-er-diagram
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/generate-database-docs.mjs
+      - name: Commit generated documentation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/database/schema.dbml docs/database/er-diagram.html
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "docs: regenerate database ER artifacts"
+          git push origin HEAD:chore/database-er-diagram
