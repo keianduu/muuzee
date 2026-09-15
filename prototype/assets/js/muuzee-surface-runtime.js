@@ -139,7 +139,7 @@
             <img class="exhibition-artist-avatar" src="${esc(artist.image || artist.img || "")}" alt="${esc(artist.name)}" loading="lazy" style="object-position:${esc(artist.position || "center")}">
             <span class="exhibition-artist-copy"><strong>${esc(artist.name)}</strong><span class="exhibition-artist-meta">${metadata.map(value => `<span>${esc(value)}</span>`).join('<i aria-hidden="true">·</i>')}</span></span>
           </a>
-          <button class="exhibition-artist-save${isSaved ? " is-saved" : ""}" type="button" data-surface-save-artist="${esc(artist.name)}" aria-label="${esc(artist.name)}を保存" aria-pressed="${isSaved}">
+          <button class="exhibition-artist-save${isSaved ? " is-saved" : ""}" type="button" data-save-artist="${esc(artist.name)}" aria-label="${esc(artist.name)}を保存" aria-pressed="${isSaved}">
             <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4Z"></path></svg><span>${isSaved ? "保存済み" : "保存"}</span>
           </button>
         </article>
@@ -148,10 +148,10 @@
 
     if(toggle) toggle.remove();
     root.onclick = event => {
-      const button = event.target.closest("[data-surface-save-artist]");
+      const button = event.target.closest("[data-save-artist]");
       if(!button) return;
       event.preventDefault();
-      const name = button.dataset.surfaceSaveArtist;
+      const name = button.dataset.saveArtist;
       let current = [];
       try{ current = JSON.parse(localStorage.getItem(savedKey) || "[]"); }catch{}
       const next = current.includes(name) ? current.filter(value => value !== name) : [...current,name];
@@ -192,8 +192,12 @@
       source.resolve("artistDetail","currentExhibitions",{artistId:artist.id}),
       source.resolve("artistDetail","relatedArtists",{artistId:artist.id})
     ]);
-    exhibitionsEl.innerHTML = currentExhibitions.items.map(posterCard).join("");
-    relatedEl.innerHTML = relatedArtists.items.map(relatedArtistCard).join("");
+    exhibitionsEl.innerHTML = currentExhibitions.items.length
+      ? currentExhibitions.items.map(posterCard).join("")
+      : '<div class="artist-empty-copy">現在登録されている開催展覧会はありません。</div>';
+    relatedEl.innerHTML = relatedArtists.items.length
+      ? relatedArtists.items.map(relatedArtistCard).join("")
+      : '<div class="artist-empty-copy">関連アーティストはまだ登録されていません。</div>';
     return true;
   }
 
@@ -229,7 +233,11 @@
     }
 
     const valid = items.filter(item => item.start && item.end);
-    if(!valid.length) return;
+    if(!valid.length){
+      monthsEl.innerHTML = "";
+      eventsEl.innerHTML = '<div class="museum-calendar-empty">日付情報のある展覧会Scheduleはありません。</div>';
+      return;
+    }
     const starts = valid.map(item => new Date(item.start));
     const ends = valid.map(item => new Date(item.end));
     const months = monthsBetween(
@@ -282,7 +290,10 @@
     else if(document.querySelector(".exhibition-hero")) rendered = await renderExhibitionDetail();
 
     window.MuuzeeSurfaceRuntimeReady = true;
-    if(rendered) window.dispatchEvent(new CustomEvent("muuzee:surface-rendered"));
+    if(rendered){
+      window.Muuzee?.saveControl?.scan?.();
+      window.dispatchEvent(new CustomEvent("muuzee:surface-rendered"));
+    }
   }
 
   init().catch(error => console.warn("Muuzee surface runtime failed",error));
