@@ -22,6 +22,14 @@ Path:
 
 /Users/kei.ando/Documents/my-project/muuzee
 
+## Git Workflow
+
+Repository operating rule:
+
+./docs/git-workflow.md
+
+Read it before any task that will create commits, push, merge, rebase, rewrite history, or delete branches. Keep local `main` and `origin/main` synchronized, use one temporary task branch, and remove completed local/remote branches after integration.
+
 ## Project Structure
 
 ### Documentation
