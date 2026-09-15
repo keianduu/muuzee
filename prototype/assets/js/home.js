@@ -2,21 +2,15 @@
 
 /* home-artwall-hero-background:start */
 (() => {
-  const heroImage = document.querySelector(".hero-bg img");
+  const mainVisual = document.querySelector(".hero-bg img");
   const artwallSection = document.querySelector(".home-artwall-section");
-  if (!heroImage || !artwallSection) return;
+  if (!mainVisual || !artwallSection) return;
 
-  const syncBackground = () => {
-    const source = heroImage.currentSrc || heroImage.src;
-    if (!source) return;
-    artwallSection.style.setProperty(
-      "--home-artwall-hero-image",
-      `url(${JSON.stringify(source)})`
-    );
-  };
-
-  if (heroImage.complete) syncBackground();
-  else heroImage.addEventListener("load", syncBackground, { once:true });
+  const backgroundVisual = mainVisual.cloneNode();
+  backgroundVisual.className = "home-artwall-main-visual";
+  backgroundVisual.alt = "";
+  backgroundVisual.setAttribute("aria-hidden", "true");
+  artwallSection.prepend(backgroundVisual);
 })();
 /* home-artwall-hero-background:end */
 
