@@ -19,6 +19,30 @@
       recommendedExhibitions:surface("home","recommendedExhibitions",{
         mode:"curated",entity:"exhibitions",ids:[],limit:6
       }),
+      guestArtWall:surface("home","guestArtWall",{
+        mode:"curated",entity:"exhibitions",ids:[
+          "storytelling",
+          "noise",
+          "light-path",
+          "urushi-body",
+          "dream-river",
+          "mori-future-city",
+          "nmwa-impressionism-dialogue",
+          "mot-contemporary-signals",
+          "uchiuchi",
+          "nact-immersive-lines",
+          "threshold",
+          "yumeji",
+          "storytelling-afterimage",
+          "artizon-modern-dialogue",
+          "mot-material-memory",
+          "storytelling-paper-memory",
+          "mori-light-space",
+          "nmwa-modern-lines",
+          "nact-color-fields",
+          "mori-pop-dialogue"
+        ],limit:30
+      }),
       featuredArtists:surface("home","featuredArtists",{
         mode:"curated",entity:"artists",ids:[],limit:8
       }),
