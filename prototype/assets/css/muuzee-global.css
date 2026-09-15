@@ -1085,3 +1085,52 @@ body.muuzee-auth-protected > main{
   }
 }
 /* muuzee-prototype-auth:end */
+
+/* shared-pc-footer-reveal:start */
+.footer{
+  margin-top:0;
+}
+
+@media(min-width:721px){
+  body.muuzee-app{
+    padding-bottom:92px;
+  }
+
+  .footer{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:80;
+    margin:0;
+    background:rgba(255,255,255,.96);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    transform:translateY(calc(100% + 1px));
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:
+      transform var(--motion-ui) ease,
+      opacity var(--motion-ui) ease,
+      visibility var(--motion-ui) step-end;
+  }
+
+  body.muuzee-app:has(.site-header.is-over-sheet) .footer{
+    transform:translateY(0);
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+    transition:
+      transform var(--motion-ui) ease,
+      opacity var(--motion-ui) ease,
+      visibility 0s step-start;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .footer{
+    transition:none !important;
+  }
+}
+/* shared-pc-footer-reveal:end */
