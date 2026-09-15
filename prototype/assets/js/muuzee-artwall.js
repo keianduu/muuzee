@@ -302,9 +302,10 @@
   /* artwall-document-url:end */
 
   const resolveItems =
-    (
+    async (
       options,
-      settings
+      settings,
+      wall
     ) => {
       const store =
         window.MuuzeeArtWallStore
@@ -319,15 +320,32 @@
           options.fallbackItems
         );
 
+      const guestPreview =
+        await dataSource
+          ?.getGuestPreviewItems?.({
+            context:options.context,
+            wall
+          });
+
+      const hasGuestPreview =
+        Array.isArray(
+          guestPreview
+        );
+
       const all =
-        dataSource
-          ?.getSeenItems?.()
-        || dataSource
-          ?.getAllItems?.()
-        || fallback;
+        hasGuestPreview
+          ? guestPreview
+          : (
+              dataSource
+                ?.getSeenItems?.()
+              || dataSource
+                ?.getAllItems?.()
+              || fallback
+            );
 
       const committed =
-        Number(
+        !hasGuestPreview
+        && Number(
           settings?.schemaVersion
         )
         === Number(
@@ -341,19 +359,21 @@
           .length > 0;
 
       const selected =
-        committed
-          ? (
-              store
-                ?.selectItems?.(
-                  all
-                )
-              || all
-            )
-          : (
-              dataSource
-                ?.getInitialItems?.()
-              || fallback
-            );
+        hasGuestPreview
+          ? all
+          : committed
+            ? (
+                store
+                  ?.selectItems?.(
+                    all
+                  )
+                || all
+              )
+            : (
+                dataSource
+                  ?.getInitialItems?.()
+                || fallback
+              );
 
       const maxItems =
         Number(
@@ -515,10 +535,25 @@
             };
 
           const items =
-            resolveItems(
+            await resolveItems(
               options,
-              settings
+              settings,
+              wall
             );
+
+          if(
+            destroyed
+            || token
+              !== renderToken
+          ){
+            return {
+              complete:false,
+              count:0,
+              failed:0,
+              source:
+                options.context
+            };
+          }
 
           store
             ?.applyPresentation?.(
@@ -731,6 +766,11 @@
           scheduleRender();
         };
 
+      const handleAuthChange =
+        () => {
+          scheduleRender();
+        };
+
       if(
         options.observeResize
       ){
@@ -748,6 +788,11 @@
           handleStoreChange
         );
       }
+
+      window.addEventListener(
+        "muuzee:auth-change",
+        handleAuthChange
+      );
 
       instance.render =
         startRender;
@@ -775,6 +820,11 @@
           window.removeEventListener(
             "muuzee:artwall-store-change",
             handleStoreChange
+          );
+
+          window.removeEventListener(
+            "muuzee:auth-change",
+            handleAuthChange
           );
 
           if(
