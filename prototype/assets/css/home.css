@@ -861,6 +861,9 @@
 
 @media(min-width:481px){
   .home-artwall-section{
+    --home-artwall-copy-title-size:32px;
+    --home-artwall-stat-value-size:19px;
+    --home-artwall-avatar-type:9px;
     position:relative;
     isolation:isolate;
     overflow:hidden;
@@ -887,6 +890,18 @@
     box-shadow:var(--shadow);
   }
 
+  .home-page #artwall .section-head{
+    margin-bottom:17px;
+  }
+
+  .home-page #artwall .section-head h2{
+    font-size:22px;
+  }
+
+  .home-page #artwall .section-head .cta{
+    padding:9px 12px;
+  }
+
   .home-page #artwall .artwall{
     display:block;
     width:100%;
@@ -896,7 +911,28 @@
   }
 
   .home-page #artwall .artwall-copy p{
+    font-size:14px;
     margin-bottom:14px;
+  }
+
+  .home-page #artwall .artwall-copy h2{
+    font-size:var(--home-artwall-copy-title-size);
+  }
+
+  .home-page #artwall .artwall-owner{
+    gap:8px;
+    margin-bottom:12px;
+  }
+
+  .home-page #artwall .artwall-owner-label{
+    margin-bottom:5px;
+  }
+
+  .home-page #artwall .artwall-user-avatar{
+    flex-basis:48px;
+    width:48px !important;
+    height:48px !important;
+    font-size:var(--home-artwall-avatar-type);
   }
 
   .home-page #artwall .stats{
@@ -905,7 +941,7 @@
   }
 
   .home-page #artwall .stat strong{
-    font-size:22px;
+    font-size:var(--home-artwall-stat-value-size);
   }
 
   .home-page #artwall .wall{
@@ -920,6 +956,21 @@
 
   .home-page #artwall .wall-fade{
     height:76px;
+  }
+}
+
+@media(min-width:481px) and (prefers-reduced-motion:no-preference){
+  .home-artwall-window{
+    transform:translateY(var(--home-artwall-reveal-offset,0px));
+    opacity:var(--home-artwall-reveal-opacity,1);
+    will-change:transform,opacity;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .home-artwall-window{
+    transform:none;
+    opacity:1;
   }
 }
 

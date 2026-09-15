@@ -1,5 +1,48 @@
 /* Muuzee Home — page-specific JS */
 
+/* home-artwall-scroll-reveal:start */
+(() => {
+  const section = document.querySelector(".home-artwall-section");
+  const artwallWindow = section?.querySelector(".home-artwall-window");
+  if (!section || !artwallWindow) return;
+
+  let ticking = false;
+
+  const update = () => {
+    ticking = false;
+
+    const sectionRect = section.getBoundingClientRect();
+    const entryDistance = window.innerHeight - sectionRect.top;
+    const revealStart = sectionRect.height * 0.18;
+    const revealDistance = Math.max(1, sectionRect.height - revealStart);
+    const progress = Math.min(
+      1,
+      Math.max(0, (entryDistance - revealStart) / revealDistance),
+    );
+    const startOffset = Math.min(120, window.innerHeight * 0.14);
+
+    artwallWindow.style.setProperty(
+      "--home-artwall-reveal-offset",
+      `${((1 - progress) * startOffset).toFixed(2)}px`,
+    );
+    artwallWindow.style.setProperty(
+      "--home-artwall-reveal-opacity",
+      (0.9 + progress * 0.1).toFixed(3),
+    );
+  };
+
+  const requestUpdate = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  };
+
+  update();
+  window.addEventListener("scroll", requestUpdate, { passive: true });
+  window.addEventListener("resize", requestUpdate);
+})();
+/* home-artwall-scroll-reveal:end */
+
 const ARTISTS = (() => {
   const catalog = window.MuuzeeArtistCatalog || [];
   const featured = catalog.filter(artist => artist.featured);
