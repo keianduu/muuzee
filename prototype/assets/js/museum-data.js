@@ -26,12 +26,6 @@
     {id:"prado",name:"Museo del Prado",scope:"overseas",country:"スペイン",city:"マドリード",location:"Madrid",category:"西洋美術 / 古典",image:"https://images.unsplash.com/photo-1500039436846-25ae2f11882e?auto=format&fit=crop&fm=jpg&q=82&w=1200",lat:40.4138,lng:-3.6921}
   ];
 
-  const SHARED_EXHIBITIONS = [
-    {title:"光と色、その向こうへ",date:"2026.08.08 — 10.12",start:"2026-08-08",end:"2026-10-12",status:"now",statusLabel:"開催中",src:"./assets/images/exhibitions/exhibition-03.jpg",href:"./exhibition.html"},
-    {title:"Modern Visions 2026",date:"2026.09.05 — 11.08",start:"2026-09-05",end:"2026-11-08",status:"upcoming",statusLabel:"開催予定",src:"./assets/images/exhibitions/exhibition-06.jpg",href:"./exhibition.html"},
-    {title:"コレクションから見る20世紀",date:"2026.10.17 — 12.20",start:"2026-10-17",end:"2026-12-20",status:"upcoming",statusLabel:"開催予定",src:"./assets/images/exhibitions/exhibition-08.jpg",href:"./exhibition.html"}
-  ];
-
   const DETAILS = {
     nact:{
       description:"六本木の文化拠点として、多彩な企画展・公募展を開催する美術館。波打つガラスファサードを持つ建築空間も大きな特徴で、特定のコレクションを持たず、展覧会活動そのものを中心に据えています。",
@@ -42,8 +36,7 @@
       openingNote:"展覧会によって金・土曜の夜間開館があります。",
       collectionNote:"国立新美術館は特定のコレクションを持たない美術館です。",
       collectionWorks:[],
-      artists:[],
-      exhibitions:SHARED_EXHIBITIONS
+      artists:[]
     },
     mori:{
       description:"六本木ヒルズ森タワー最上層に位置し、現代美術を軸に世界各地のアート、建築、デザインを紹介する美術館。都市と文化を横断する国際的な展覧会を継続的に展開しています。",
@@ -52,7 +45,6 @@
       hours:"10:00 — 22:00",
       closed:"会期中無休を基本",
       openingNote:"火曜日など一部曜日は閉館時刻が異なる場合があります。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"MAM Collection 01",artist:"草間彌生",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-10.jpg"},
         {title:"MAM Collection 02",artist:"ゲルハルト・リヒター",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-02.jpg"}
@@ -66,7 +58,6 @@
       hours:"9:30 — 17:30",
       closed:"月曜日",
       openingNote:"曜日・展覧会により夜間開館があります。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"睡蓮",artist:"クロード・モネ",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-03.jpg"},
         {title:"印象派の風景",artist:"ピエール＝オーギュスト・ルノワール",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-05.jpg"},
@@ -81,7 +72,6 @@
       hours:"10:00 — 18:00",
       closed:"月曜日",
       openingNote:"展覧会によって開館日・時間が変更される場合があります。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"印象派コレクション",artist:"クロード・モネ",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-03.jpg"},
         {title:"セザンヌと近代",artist:"ポール・セザンヌ",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-07.jpg"}
@@ -95,7 +85,6 @@
       hours:"10:00 — 18:00",
       closed:"月曜日",
       openingNote:"交流ゾーンは展覧会ゾーンと開館時間が異なります。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"Collection / Space",artist:"草間彌生",year:"Collection view",image:"./assets/images/exhibitions/exhibition-10.jpg"},
         {title:"Collection / Contemporary",artist:"ゲルハルト・リヒター",year:"Collection view",image:"./assets/images/exhibitions/exhibition-02.jpg"}
@@ -109,7 +98,6 @@
       hours:"10:00 — 18:00",
       closed:"月曜日",
       openingNote:"季節によって開館時間が異なります。日時指定予約制の場合があります。",
-      exhibitions:[],
       collectionWorks:[
         {title:"睡蓮",artist:"クロード・モネ",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-03.jpg"}
       ],
@@ -122,7 +110,6 @@
       hours:"9:00 — 18:00",
       closed:"火曜日",
       openingNote:"曜日により夜間開館があります。最新情報は公式案内を確認してください。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"European Painting",artist:"クロード・モネ",year:"Collection view",image:"./assets/images/exhibitions/exhibition-03.jpg"},
         {title:"Modern Reference",artist:"エドガー・ドガ",year:"Collection view",image:"./assets/images/exhibitions/exhibition-04.jpg"}
@@ -136,7 +123,6 @@
       hours:"10:30 — 17:30",
       closed:"原則毎日開館",
       openingNote:"特別開館・イベント日は時間が変更される場合があります。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"The Starry Night",artist:"フィンセント・ファン・ゴッホ",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-06.jpg"},
         {title:"Modern Masters",artist:"パブロ・ピカソ",year:"Collection highlight",image:"./assets/images/exhibitions/exhibition-08.jpg"},
@@ -151,7 +137,6 @@
       hours:"10:00 — 18:00",
       closed:"原則毎日開館",
       openingNote:"特別日を除き入館無料のコレクション展示があります。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"Modern Collection",artist:"パブロ・ピカソ",year:"Collection view",image:"./assets/images/exhibitions/exhibition-08.jpg"},
         {title:"Contemporary Collection",artist:"ゲルハルト・リヒター",year:"Collection view",image:"./assets/images/exhibitions/exhibition-02.jpg"}
@@ -165,7 +150,6 @@
       hours:"10:00 — 20:00",
       closed:"季節・曜日により異なる",
       openingNote:"開館日は時期によって変わるため公式案内を確認してください。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"Contemporary Masters",artist:"ゲルハルト・リヒター",year:"Collection view",image:"./assets/images/exhibitions/exhibition-02.jpg"}
       ],
@@ -178,7 +162,6 @@
       hours:"11:00 — 21:00",
       closed:"火曜日",
       openingNote:"改修・運営状況により公開範囲が変わる場合があります。",
-      exhibitions:SHARED_EXHIBITIONS,
       collectionWorks:[
         {title:"Modern Collection",artist:"パブロ・ピカソ",year:"Collection view",image:"./assets/images/exhibitions/exhibition-08.jpg"},
         {title:"Modern Painting",artist:"フリーダ・カーロ",year:"Collection view",image:"./assets/images/exhibitions/exhibition-09.jpg"}
@@ -204,7 +187,6 @@
     hours:"施設情報を確認",
     closed:"施設情報を確認",
     openingNote:"開館情報は変更される場合があります。",
-    exhibitions:SHARED_EXHIBITIONS,
     collectionWorks:[],
     artists:[],
     ...DETAILS[museum.id]
