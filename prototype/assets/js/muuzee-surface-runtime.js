@@ -33,12 +33,14 @@
 
   const museumCard = item => {
     const place = item.scope === "jp"
-      ? [item.prefecture,item.location].filter(Boolean).join(" · ")
-      : [item.city,item.country].filter(Boolean).join(" · ");
+      ? [item.prefecture,item.location].filter(Boolean).join("・")
+      : [item.city,item.country].filter(Boolean).join("・");
     return `
-      <a class="museum-card" data-save-type="museum" data-save-id="${esc(item.id)}" href="./museum.html?id=${encodeURIComponent(item.id)}">
-        <span class="museum-thumb" aria-hidden="true" style="background-image:url('${esc(item.image || "")}');background-size:cover;background-position:center"></span>
-        <span><strong>${esc(item.name)}</strong><p>${esc(place)}</p></span>
+      <a class="popular-museum-card" data-save-type="museum" data-save-id="${esc(item.id)}" href="./museum.html?id=${encodeURIComponent(item.id)}">
+        <div class="popular-museum-image"><img src="${esc(item.image || "")}" alt="${esc(item.name)}" loading="lazy"></div>
+        <small>${esc(place)}</small>
+        <h3>${esc(item.name)}</h3>
+        <p>${esc(item.category || "")}</p>
       </a>
     `;
   };
@@ -75,7 +77,7 @@
 
   async function renderHome(){
     const artistRail = document.querySelector(".artist-rail");
-    const museumList = document.querySelector(".museum-list");
+    const museumList = document.querySelector("[data-popular-museums]");
     const posterRail = document.querySelector(".main-surface .poster-rail") || document.querySelector(".poster-rail");
     if(!artistRail || !museumList || !posterRail) return false;
 

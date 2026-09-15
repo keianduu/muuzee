@@ -78,7 +78,7 @@
       id:"mori-future-city",title:"Future City / 身体と都市",venue:"森美術館",venueId:"mori",
       city:"東京",area:"六本木・青山",date:"2026.08.28 — 10.25",start:"2026-08-28",end:"2026-10-25",
       category:"企画展",expressionCategory:"現代美術",status:"now",statusLabel:"開催中",
-      artistIds:["yayoi-kusama","takashi-murakami","chiharu-shiota"],src:"./assets/images/exhibitions/exhibition-10.jpg",href:"./exhibition.html?id=mori-future-city",
+      artistIds:["yayoi-kusama","takashi-murakami","chiharu-shiota"],src:"./assets/images/exhibitions/exhibition-04.jpg",href:"./exhibition.html?id=mori-future-city",
       description:"都市、身体、反復を横断するPrototype relation fixture。"
     },
     {
