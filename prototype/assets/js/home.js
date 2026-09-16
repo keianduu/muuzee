@@ -6,9 +6,6 @@
   const sentinel = section?.querySelector(".home-artwall-reveal-sentinel");
   if (!section || !sentinel) return;
 
-  const presentation = window.matchMedia("(min-width: 481px)");
-  if (!presentation.matches) return;
-
   if (!("IntersectionObserver" in window)) {
     section.classList.add("is-artwall-visible");
     return;
@@ -37,7 +34,8 @@
 (() => {
   const section = document.querySelector(".home-artwall-section");
   const revealGroups = section?.querySelectorAll(".home-footer-reveal-group");
-  if (!section || !revealGroups?.length) return;
+  const brand = section?.querySelector(".home-footer-brand");
+  if (!section || !brand || !revealGroups?.length) return;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   if (reducedMotion.matches || !("IntersectionObserver" in window)) {
@@ -46,14 +44,17 @@
   }
 
   section.classList.add("is-brand-reveal-ready");
+  const widePresentation = window.matchMedia("(min-width: 481px)").matches;
+  const revealTarget = widePresentation ? section : brand;
+  const revealThreshold = widePresentation ? 0.18 : 0.12;
   const observer = new IntersectionObserver(entries => {
     const entry = entries[0];
-    if (!entry?.isIntersecting || entry.intersectionRatio < 0.18) return;
+    if (!entry?.isIntersecting || entry.intersectionRatio < revealThreshold) return;
     section.classList.add("is-brand-visible");
     observer.disconnect();
-  },{threshold:0.18});
+  },{threshold:revealThreshold});
 
-  observer.observe(section);
+  observer.observe(revealTarget);
 })();
 /* home-footer-brand-reveal:end */
 
