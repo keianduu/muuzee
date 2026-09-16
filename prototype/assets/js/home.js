@@ -4,56 +4,29 @@
 (() => {
   const section = document.querySelector(".home-artwall-section");
   const sentinel = section?.querySelector(".home-artwall-reveal-sentinel");
-  const artwallWindow = section?.querySelector(".home-artwall-window");
-  if (!section || !sentinel || !artwallWindow) return;
+  if (!section || !sentinel) return;
 
   const presentation = window.matchMedia("(min-width: 481px)");
-  if (!presentation.matches) {
-    section.classList.add("is-artwall-revealed");
-    return;
-  }
-
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let isPinned = false;
-
-  const pin = () => {
-    if (isPinned) return;
-    isPinned = true;
-    artwallWindow.removeEventListener("transitionend", handleRevealEnd);
-    section.classList.add("is-artwall-pinned");
-  };
-
-  function handleRevealEnd(event) {
-    if (event.target !== artwallWindow || event.propertyName !== "transform") return;
-    pin();
-  }
-
-  const reveal = observer => {
-    section.classList.add("is-artwall-revealed");
-    observer?.disconnect();
-    if (reducedMotion.matches) {
-      pin();
-      return;
-    }
-    artwallWindow.addEventListener("transitionend", handleRevealEnd);
-  };
+  if (!presentation.matches) return;
 
   if (!("IntersectionObserver" in window)) {
-    section.classList.add("is-artwall-revealed");
-    pin();
-    return;
-  }
-
-  if (!reducedMotion.matches) section.classList.add("is-artwall-reveal-ready");
-
-  if (sentinel.getBoundingClientRect().top <= window.innerHeight) {
-    reveal();
+    section.classList.add("is-artwall-visible");
     return;
   }
 
   const observer = new IntersectionObserver(entries => {
-    if (!entries[0]?.isIntersecting) return;
-    reveal(observer);
+    const entry = entries[0];
+    if (!entry) return;
+
+    if (entry.isIntersecting) {
+      section.classList.add("is-artwall-visible");
+      return;
+    }
+
+    const viewportBottom = entry.rootBounds?.bottom ?? window.innerHeight;
+    if (entry.boundingClientRect.top >= viewportBottom) {
+      section.classList.remove("is-artwall-visible");
+    }
   },{threshold:0,rootMargin:"0px"});
 
   observer.observe(sentinel);
