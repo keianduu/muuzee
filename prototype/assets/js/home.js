@@ -4,22 +4,47 @@
 (() => {
   const section = document.querySelector(".home-artwall-section");
   const sentinel = section?.querySelector(".home-artwall-reveal-sentinel");
-  if (!section || !sentinel) return;
+  const artwallWindow = section?.querySelector(".home-artwall-window");
+  if (!section || !sentinel || !artwallWindow) return;
 
-  const revealMotion = window.matchMedia(
-    "(min-width: 481px) and (prefers-reduced-motion: no-preference)",
-  );
-  if (!revealMotion.matches || !("IntersectionObserver" in window)) {
+  const presentation = window.matchMedia("(min-width: 481px)");
+  if (!presentation.matches) {
     section.classList.add("is-artwall-revealed");
     return;
+  }
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let isPinned = false;
+
+  const pin = () => {
+    if (isPinned) return;
+    isPinned = true;
+    artwallWindow.removeEventListener("transitionend", handleRevealEnd);
+    section.classList.add("is-artwall-pinned");
+  };
+
+  function handleRevealEnd(event) {
+    if (event.target !== artwallWindow || event.propertyName !== "transform") return;
+    pin();
   }
 
   const reveal = observer => {
     section.classList.add("is-artwall-revealed");
     observer?.disconnect();
+    if (reducedMotion.matches) {
+      pin();
+      return;
+    }
+    artwallWindow.addEventListener("transitionend", handleRevealEnd);
   };
 
-  section.classList.add("is-artwall-reveal-ready");
+  if (!("IntersectionObserver" in window)) {
+    section.classList.add("is-artwall-revealed");
+    pin();
+    return;
+  }
+
+  if (!reducedMotion.matches) section.classList.add("is-artwall-reveal-ready");
 
   if (sentinel.getBoundingClientRect().top <= window.innerHeight) {
     reveal();
