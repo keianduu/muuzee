@@ -1,36 +1,56 @@
 /* Muuzee Home — page-specific JS */
 
-/* home-artwall-reveal:start */
+/* home-artwall-scroll-scrub:start */
 (() => {
   const section = document.querySelector(".home-artwall-section");
-  if (!section) return;
+  const stage = section?.querySelector(".home-artwall-stage");
+  const windowElement = section?.querySelector(".home-artwall-window");
+  if (!section || !stage || !windowElement) return;
 
-  const trigger = section.querySelector(".home-artwall-reveal-trigger");
-  const reveal = () => section.classList.add("is-revealed");
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-  if (reducedMotion.matches || !("IntersectionObserver" in window) || !trigger) {
-    reveal();
-    return;
-  }
-
-  section.classList.add("is-reveal-ready");
-
-  const observer = new IntersectionObserver(
-    entries => {
-      if (!entries.some(entry => entry.isIntersecting)) return;
-      reveal();
-      observer.disconnect();
-    },
-    {
-      rootMargin: "0px",
-      threshold: 0,
-    },
+  const scrubMotion = window.matchMedia(
+    "(min-width: 481px) and (prefers-reduced-motion: no-preference)",
   );
+  if (!scrubMotion.matches) return;
 
-  observer.observe(trigger);
+  const sectionStyles = getComputedStyle(section);
+  const revealDistance =
+    parseFloat(sectionStyles.getPropertyValue("--home-artwall-reveal-distance")) || 220;
+  const revealOffset =
+    parseFloat(sectionStyles.getPropertyValue("--home-artwall-reveal-offset")) || 56;
+  let frameRequested = false;
+
+  const clamp = value => Math.min(1,Math.max(0,value));
+  const smoothstep = value => value * value * (3 - 2 * value);
+
+  const update = () => {
+    frameRequested = false;
+    const stickyTop = parseFloat(getComputedStyle(stage).top) || 0;
+    const rawProgress = clamp(
+      (stickyTop - section.getBoundingClientRect().top) / revealDistance,
+    );
+    const easedProgress = smoothstep(rawProgress);
+
+    section.style.setProperty(
+      "--home-artwall-reveal-y",
+      `${(revealOffset * (1 - easedProgress)).toFixed(3)}px`,
+    );
+    section.style.setProperty(
+      "--home-artwall-reveal-opacity",
+      easedProgress.toFixed(4),
+    );
+  };
+
+  const requestUpdate = () => {
+    if (frameRequested) return;
+    frameRequested = true;
+    requestAnimationFrame(update);
+  };
+
+  update();
+  section.classList.add("is-scrub-ready");
+  window.addEventListener("scroll",requestUpdate,{passive:true});
 })();
-/* home-artwall-reveal:end */
+/* home-artwall-scroll-scrub:end */
 
 const ARTISTS = (() => {
   const catalog = window.MuuzeeArtistCatalog || [];

@@ -859,10 +859,6 @@
   z-index:1;
 }
 
-.home-artwall-reveal-trigger{
-  display:none;
-}
-
 .home-page #artwall{
   --home-artwall-heading-type:32px;
   --home-artwall-label-type:8px;
@@ -961,7 +957,9 @@
   }
 
   .home-artwall-section{
-    --home-artwall-sticky-distance:120px;
+    --home-artwall-sticky-distance:220px;
+    --home-artwall-reveal-distance:220px;
+    --home-artwall-reveal-offset:56px;
     position:relative;
     isolation:isolate;
     overflow:visible;
@@ -976,16 +974,6 @@
     background-position:center,center 56%;
     background-repeat:no-repeat;
     background-size:cover;
-  }
-
-  .home-artwall-reveal-trigger{
-    display:block;
-    position:absolute;
-    top:85svh;
-    right:0;
-    bottom:0;
-    width:1px;
-    pointer-events:none;
   }
 
   .home-artwall-stage{
@@ -1007,18 +995,11 @@
 }
 
 @media(min-width:481px) and (prefers-reduced-motion:no-preference){
-  .home-artwall-section.is-reveal-ready .home-artwall-window{
-    transform:translateY(140px);
-    opacity:0;
-    transition:
-      transform 320ms cubic-bezier(.22,1,.36,1),
-      opacity 280ms ease-out;
+  .home-artwall-section.is-scrub-ready .home-artwall-window{
+    transform:translateY(var(--home-artwall-reveal-y,var(--home-artwall-reveal-offset)));
+    opacity:var(--home-artwall-reveal-opacity,0);
+    transition:none;
     will-change:transform,opacity;
-  }
-
-  .home-artwall-section.is-reveal-ready.is-revealed .home-artwall-window{
-    transform:translateY(0);
-    opacity:1;
   }
 }
 
