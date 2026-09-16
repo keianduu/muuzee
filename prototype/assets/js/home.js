@@ -5,10 +5,11 @@
   const section = document.querySelector(".home-artwall-section");
   if (!section) return;
 
+  const trigger = section.querySelector(".home-artwall-reveal-trigger");
   const reveal = () => section.classList.add("is-revealed");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  if (reducedMotion.matches || !("IntersectionObserver" in window)) {
+  if (reducedMotion.matches || !("IntersectionObserver" in window) || !trigger) {
     reveal();
     return;
   }
@@ -17,17 +18,17 @@
 
   const observer = new IntersectionObserver(
     entries => {
-      if (!entries.some(entry => entry.intersectionRatio >= 0.5)) return;
+      if (!entries.some(entry => entry.isIntersecting)) return;
       reveal();
       observer.disconnect();
     },
     {
       rootMargin: "0px",
-      threshold: 0.5,
+      threshold: 0,
     },
   );
 
-  observer.observe(section);
+  observer.observe(trigger);
 })();
 /* home-artwall-reveal:end */
 
