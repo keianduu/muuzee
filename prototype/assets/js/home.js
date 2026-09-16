@@ -52,6 +52,30 @@
 })();
 /* home-artwall-scroll-scrub:end */
 
+/* home-footer-brand-reveal:start */
+(() => {
+  const section = document.querySelector(".home-artwall-section");
+  const revealGroups = section?.querySelectorAll(".home-footer-reveal-group");
+  if (!section || !revealGroups?.length) return;
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  if (reducedMotion.matches || !("IntersectionObserver" in window)) {
+    section.classList.add("is-brand-visible");
+    return;
+  }
+
+  section.classList.add("is-brand-reveal-ready");
+  const observer = new IntersectionObserver(entries => {
+    const entry = entries[0];
+    if (!entry?.isIntersecting || entry.intersectionRatio < 0.18) return;
+    section.classList.add("is-brand-visible");
+    observer.disconnect();
+  },{threshold:0.18});
+
+  observer.observe(section);
+})();
+/* home-footer-brand-reveal:end */
+
 const ARTISTS = (() => {
   const catalog = window.MuuzeeArtistCatalog || [];
   const featured = catalog.filter(artist => artist.featured);
