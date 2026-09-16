@@ -1062,12 +1062,12 @@
   }
 
   .home-artwall-section{
-    --home-artwall-sticky-distance:220px;
     --home-artwall-reveal-offset:48px;
     overflow:visible;
-    display:block;
-    height:calc(100svh + var(--home-artwall-sticky-distance));
-    min-height:calc(100svh + var(--home-artwall-sticky-distance));
+    display:flex;
+    align-items:center;
+    height:auto;
+    min-height:100svh;
     padding:0;
   }
 
@@ -1081,9 +1081,9 @@
   }
 
   .home-artwall-stage{
-    position:sticky;
-    top:15svh;
-    height:70svh;
+    position:relative;
+    top:auto;
+    height:auto;
     align-items:center;
     justify-content:center;
   }
@@ -1106,6 +1106,7 @@
 
 @media(min-width:481px) and (max-width:767px){
   .home-artwall-section{
+    display:block;
     height:auto;
     min-height:0;
     padding:88px 0 112px;
