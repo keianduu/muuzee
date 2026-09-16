@@ -1063,13 +1063,21 @@
 
   .home-artwall-section{
     --home-artwall-sticky-distance:220px;
-    --home-artwall-reveal-distance:220px;
-    --home-artwall-reveal-offset:56px;
+    --home-artwall-reveal-offset:48px;
     overflow:visible;
     display:block;
     height:calc(100svh + var(--home-artwall-sticky-distance));
     min-height:calc(100svh + var(--home-artwall-sticky-distance));
     padding:0;
+  }
+
+  .home-artwall-reveal-sentinel{
+    position:absolute;
+    top:85svh;
+    left:0;
+    width:1px;
+    height:1px;
+    pointer-events:none;
   }
 
   .home-artwall-stage{
@@ -1169,11 +1177,17 @@
 }
 
 @media(min-width:481px) and (prefers-reduced-motion:no-preference){
-  .home-artwall-section.is-scrub-ready .home-artwall-window{
-    transform:translateY(var(--home-artwall-reveal-y,var(--home-artwall-reveal-offset)));
-    opacity:var(--home-artwall-reveal-opacity,0);
-    transition:none;
-    will-change:transform,opacity;
+  .home-artwall-section.is-artwall-reveal-ready .home-artwall-window{
+    transform:translateY(var(--home-artwall-reveal-offset));
+    opacity:0;
+    transition:
+      transform 620ms cubic-bezier(.22,1,.36,1),
+      opacity 620ms cubic-bezier(.22,1,.36,1);
+  }
+
+  .home-artwall-section.is-artwall-revealed .home-artwall-window{
+    transform:translateY(0);
+    opacity:1;
   }
 }
 
