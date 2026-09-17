@@ -77,7 +77,10 @@
   }
 
   function init(){
-    scan();
+    const posterMounts = Array.from(document.querySelectorAll(".poster-rail"));
+    if(!posterMounts.length) return;
+
+    posterMounts.forEach(mount => scan(mount));
 
     const observer = new MutationObserver(records => {
       records.forEach(record => {
@@ -93,9 +96,11 @@
       });
     });
 
-    observer.observe(document.body,{
-      childList:true,
-      subtree:true
+    posterMounts.forEach(mount => {
+      observer.observe(mount,{
+        childList:true,
+        subtree:true
+      });
     });
   }
 
