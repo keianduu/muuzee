@@ -1,9 +1,45 @@
 /*
-  Muuzee Exhibition Card — Shared behavior
-  Detect poster orientation from the actual image dimensions.
+  Muuzee Exhibition Card — Shared renderer and behavior
+  Owns list-card markup and poster orientation detection.
 */
 (() => {
   "use strict";
+
+  const esc = value => String(value ?? "").replace(/[&<>"']/g,char => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[char]));
+
+  function renderListCard(item){
+    if(!item) return "";
+
+    const statusClass = item.status === "now" ? "muuzee-pill--status" : "muuzee-pill--neutral";
+    const fallbackHref = item.id
+      ? `./exhibition.html?id=${encodeURIComponent(item.id)}`
+      : "#";
+    const href = item.href || fallbackHref;
+    const linkAttrs = href === "#"
+      ? 'href="#" data-no-nav="true"'
+      : `href="${esc(href)}"`;
+
+    return `
+      <article class="exhibition-list-card" data-save-type="exhibition" data-save-id="${esc(item.id || item.title)}">
+        <a class="exhibition-card-link" ${linkAttrs}>
+          <div class="exhibition-card-image">
+            <img src="${esc(item.src)}" alt="${esc(item.title)}" loading="lazy">
+          </div>
+          <div class="exhibition-card-body">
+            <div class="exhibition-card-topline">
+              <span class="muuzee-pill ${statusClass}">${esc(item.statusLabel)}</span>
+              <span class="exhibition-card-category">${esc(item.category)}</span>
+              <span class="exhibition-card-area">${esc(item.area)}</span>
+            </div>
+            <h2>${esc(item.title)}</h2>
+            <p class="exhibition-card-venue">${esc(item.venue)}</p>
+            <p class="exhibition-card-date">${esc(item.date)}</p>
+          </div>
+        </a>
+      </article>`;
+  }
 
   function classifyImage(img){
     if(!img || !img.closest) return;
@@ -62,6 +98,11 @@
       subtree:true
     });
   }
+
+  window.MuuzeeExhibitionCard = {
+    ...(window.MuuzeeExhibitionCard || {}),
+    renderListCard
+  };
 
   if(document.readyState === "loading"){
     document.addEventListener("DOMContentLoaded",init,{once:true});

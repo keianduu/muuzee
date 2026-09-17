@@ -92,8 +92,8 @@
 
 .exhibition-grid{
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:56px 28px;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:42px 20px;
 }
 .exhibition-list-card{
   min-width:0;
@@ -102,7 +102,7 @@
   display:block;
 }
 .exhibition-card-image{
-  height:440px;
+  height:230px;
   display:flex;
   align-items:flex-end;
   justify-content:center;
@@ -120,29 +120,28 @@
   transform:scale(1.012);
 }
 .exhibition-card-body{
-  padding-top:14px;
+  padding-top:10px;
 }
 .exhibition-card-topline{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-bottom:8px;
+  display:block;
+  margin-bottom:6px;
 }
 .exhibition-card-category{
+  margin-left:6px;
   font-size:10px;
   color:var(--muted);
 }
 .exhibition-list-card h2{
-  margin:0 0 8px;
+  margin:0 0 6px;
   font-size:14px;
-  line-height:1.5;
+  line-height:1.45;
   letter-spacing:-.018em;
   font-weight:650;
 }
 .exhibition-card-venue{
   margin:0;
   font-size:12px;
-  line-height:1.55;
+  line-height:1.45;
   color:var(--muted);
 }
 .exhibition-card-date{
@@ -152,7 +151,7 @@
   color:var(--muted2);
 }
 .exhibition-card-area{
-  margin-left:auto;
+  display:none;
   color:var(--muted2);
   font-size:10px;
 }
@@ -397,7 +396,9 @@ body.filter-sheet-open{
 }
 
 @media(max-width:980px){
-  .exhibition-card-image{height:360px}
+  .exhibition-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
 }
 
 @media(max-width:720px){
@@ -425,35 +426,6 @@ body.filter-sheet-open{
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:36px 12px;
   }
-  .exhibition-card-image{
-    height:230px;
-  }
-  .exhibition-card-body{
-    padding-top:10px;
-  }
-  .exhibition-card-topline{
-    display:block;
-    margin-bottom:6px;
-  }
-  .exhibition-card-category{
-    margin-left:6px;
-  }
-  .exhibition-card-area{
-    display:none;
-  }
-  .exhibition-list-card h2{
-    margin-bottom:6px;
-    font-size:14px;
-    line-height:1.45;
-  }
-  .exhibition-card-venue{
-    font-size:12px;
-    line-height:1.45;
-  }
-  .exhibition-card-date{
-    font-size:10px;
-  }
-
   .search-fab{
     right:18px;
     bottom:calc(84px + env(safe-area-inset-bottom));
@@ -487,4 +459,3 @@ body.filter-sheet-open{
   .sheet-backdrop,
   .exhibition-card-image img{transition:none}
 }
-

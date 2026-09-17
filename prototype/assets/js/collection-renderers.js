@@ -47,28 +47,7 @@
 
   function exhibitionCard(item,{removable=false} = {}){
     if(!item) return "";
-
-    const statusClass = item.status === "now" ? "muuzee-pill--status" : "muuzee-pill--neutral";
-    const href = item.href || `./exhibition.html?id=${encodeURIComponent(item.id)}`;
-
-    const card = `
-      <article class="exhibition-list-card">
-        <a class="exhibition-card-link" href="${esc(href)}">
-          <div class="exhibition-card-image">
-            <img src="${esc(item.src)}" alt="${esc(item.title)}" loading="lazy">
-          </div>
-          <div class="exhibition-card-body">
-            <div class="exhibition-card-topline">
-              <span class="muuzee-pill ${statusClass}">${esc(item.statusLabel)}</span>
-              <span class="exhibition-card-category">${esc(item.category)}</span>
-              <span class="exhibition-card-area">${esc(item.area)}</span>
-            </div>
-            <h2>${esc(item.title)}</h2>
-            <p class="exhibition-card-venue">${esc(item.venue)}</p>
-            <p class="exhibition-card-date">${esc(item.date)}</p>
-          </div>
-        </a>
-      </article>`;
+    const card = window.MuuzeeExhibitionCard?.renderListCard(item) || "";
 
     if(!removable) return card;
 

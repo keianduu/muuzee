@@ -10,6 +10,7 @@
   const statusEl = document.querySelector("[data-infinite-status]");
   const countEl = document.querySelector("[data-result-count]");
   const activeFiltersEl = document.querySelector("[data-active-filters]");
+  const renderCard = window.MuuzeeExhibitionCard?.renderListCard;
 
   const openButton = document.querySelector("[data-filter-open]");
   const closeButton = document.querySelector("[data-filter-close]");
@@ -52,31 +53,6 @@
     return {...item, virtualId:`${state.batch}-${index}`};
   }
 
-  function cardHTML(item){
-    const statusClass = item.status === "now" ? "muuzee-pill--status" : "muuzee-pill--neutral";
-    const linkAttrs = item.href && item.href !== "#"
-      ? `href="${esc(item.href)}"` : `href="#" data-no-nav="true"`;
-
-    return `
-      <article class="exhibition-list-card" data-save-type="exhibition" data-save-id="${esc(item.id || item.title)}">
-        <a class="exhibition-card-link" ${linkAttrs}>
-          <div class="exhibition-card-image">
-            <img src="${esc(item.src)}" alt="${esc(item.title)}" loading="lazy">
-          </div>
-          <div class="exhibition-card-body">
-            <div class="exhibition-card-topline">
-              <span class="muuzee-pill ${statusClass}">${esc(item.statusLabel)}</span>
-              <span class="exhibition-card-category">${esc(item.category)}</span>
-              <span class="exhibition-card-area">${esc(item.area)}</span>
-            </div>
-            <h2>${esc(item.title)}</h2>
-            <p class="exhibition-card-venue">${esc(item.venue)}</p>
-            <p class="exhibition-card-date">${esc(item.date)}</p>
-          </div>
-        </a>
-      </article>`;
-  }
-
   function updateCount(){
     if(countEl) countEl.textContent = grid.children.length;
   }
@@ -95,7 +71,7 @@
 
     for(let i=0;i<state.batchSize;i++){
       const item = virtualItem(filtered[(state.batch * state.batchSize + i) % filtered.length], i);
-      holder.innerHTML = cardHTML(item);
+      holder.innerHTML = renderCard(item);
       fragment.appendChild(holder.firstElementChild);
     }
 
@@ -192,6 +168,10 @@
       appendBatch();
     }
   }, {rootMargin:"900px 0px 900px 0px"});
+
+  if(typeof renderCard !== "function"){
+    throw new Error("MuuzeeExhibitionCard.renderListCard is unavailable");
+  }
 
   appendBatch();
   appendBatch();

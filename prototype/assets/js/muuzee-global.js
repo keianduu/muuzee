@@ -122,6 +122,25 @@
     window.addEventListener("resize", requestUpdate);
   }
 
+  /* Desktop footer reveal
+     List pages opt in through a body attribute. The class is applied once
+     after the initial frame and is intentionally independent from scrolling.
+  */
+  function initFooterOnLoad(){
+    if(!document.body.hasAttribute("data-muuzee-footer-on-load")) return;
+
+    const reveal = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.body.classList.add("is-muuzee-footer-visible");
+        });
+      });
+    };
+
+    if(document.readyState === "complete") reveal();
+    else window.addEventListener("load",reveal,{once:true});
+  }
+
   /* hamburger-navigation:start */
   function initHamburgerNavigation(){
     const header = document.querySelector(".site-header");
@@ -353,6 +372,8 @@
   }
 
   async function initGlobalUI(){
+    initFooterOnLoad();
+
     try{
       await muuzeeAuthLoadPromise;
       await window.MuuzeeAuth?.ready;
