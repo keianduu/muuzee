@@ -520,6 +520,24 @@
   margin-bottom:0;
 }
 
+.artwall-editor-topbar-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.artwall-editor-topbar-actions .artwall-editor-save-button{
+  position:static;
+  min-width:112px;
+  margin:0;
+  border-color:var(--ink);
+  background:var(--ink);
+  color:#fff;
+  transform:none;
+  box-shadow:none;
+}
+
 .artwall-editor-save-button:disabled{
   background:var(--line);
   color:var(--muted);
@@ -534,10 +552,14 @@
 @media(max-width:720px){
   .artwall-editor-topbar{
     align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
   }
 
-  
+  .artwall-editor-topbar-actions{
+    margin-left:auto;
   }
+}
 
 /* artwall-editor-refined-controls:end */
 

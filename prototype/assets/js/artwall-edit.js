@@ -41,7 +41,6 @@
     title: "",
     comment: "",
     background: "default",
-    columns: 3,
     showIcon: true,
     hiddenPrototypeItems: [],
     prototypeOrder: []
@@ -65,7 +64,8 @@
       "comment"
     );
   let state = {...defaults, ...(saved && typeof saved === "object" ? saved : {})};
-  state.columns = Number(state.columns) === 4 ? 4 : 3;
+  delete state.columns;
+  delete state.artwallColumnsVersion;
   /* artwall-show-icon-state-contract:start */
   const currentArtWallSchemaVersion =
     Number(
@@ -604,29 +604,9 @@ const original = {
     syncActualWallFade(color);
   };
 
-  const applyColumns = () => {
-    if (!grid) return;
-
-    const style = getComputedStyle(grid);
-
-    if (
-      style.display === "grid"
-      || style.display === "inline-grid"
-    ) {
-      grid.style.setProperty(
-        "grid-template-columns",
-        `repeat(${state.columns},minmax(0,1fr))`,
-        "important"
-      );
-    }
-
-    grid.style.setProperty(
-      "column-count",
-      String(state.columns)
-    );
-  };
-
-  const renderPrototypeItems = () => {
+  const renderGridMembership = (
+    reason = "membership"
+  ) => {
     if (!grid || !snapshotItems.length) return;
 
     const byId = new Map(snapshotItems.map(item => [item.id, item]));
@@ -648,9 +628,22 @@ const original = {
       node.dataset.exhibitionId = item.id;
       grid.appendChild(node);
     }
+
+    grid.dispatchEvent(
+      new CustomEvent(
+        "muuzee:artwall-grid-changed",
+        {
+          bubbles:true,
+          detail:{
+            source:"artwall-edit",
+            reason
+          }
+        }
+      )
+    );
   };
 
-  const applyState = () => {
+  const applyProfilePresentation = () => {
     if (parts.title) parts.title.textContent = state.title || original.title;
     if (
       parts.comment
@@ -723,10 +716,11 @@ const original = {
         }
       )
     );
+  };
 
+  const applyState = () => {
+    applyProfilePresentation();
     applyBackground();
-    applyColumns();
-    renderPrototypeItems();
     positionButtons();
   };
 
@@ -752,6 +746,14 @@ const original = {
           );
         }
 
+        const previousMembership =
+          JSON.stringify({
+            hidden:
+              state.hiddenPrototypeItems,
+            order:
+              state.prototypeOrder
+          });
+
         state = {
           ...state,
           ...patch
@@ -768,7 +770,41 @@ state.title =
             ?? ""
           );
 
+        state.hiddenPrototypeItems =
+          Array.isArray(
+            state.hiddenPrototypeItems
+          )
+            ? state.hiddenPrototypeItems
+                .map(String)
+            : [];
+
+        state.prototypeOrder =
+          Array.isArray(
+            state.prototypeOrder
+          )
+            ? state.prototypeOrder
+                .map(String)
+            : [];
+
         applyState();
+
+        const nextMembership =
+          JSON.stringify({
+            hidden:
+              state.hiddenPrototypeItems,
+            order:
+              state.prototypeOrder
+          });
+
+        if (
+          previousMembership
+          !== nextMembership
+        ) {
+          renderGridMembership(
+            "editor-patch"
+          );
+        }
+
         setDirty(
           isDirty()
         );
@@ -1192,23 +1228,6 @@ state.title =
       `;
     }
 
-    if (target === "columns") {
-      dialogTitle.textContent = "展示会の列数";
-
-      dialogBody.innerHTML = `
-        <div class="artwall-editor-dialog-options">
-          <label class="artwall-editor-dialog-option">
-            <input type="radio" name="dialog-columns" value="3" ${state.columns === 3 ? "checked" : ""}>
-            <span>3列</span>
-          </label>
-          <label class="artwall-editor-dialog-option">
-            <input type="radio" name="dialog-columns" value="4" ${state.columns === 4 ? "checked" : ""}>
-            <span>4列</span>
-          </label>
-        </div>
-      `;
-    }
-
     if (target === "items") {
       dialogTitle.textContent = "展示会写真を編集";
       buildItemEditor();
@@ -1220,9 +1239,31 @@ state.title =
 
   const closeDialog = restore => {
     if (restore && activeDraft) {
+      const membershipChanged =
+        JSON.stringify({
+          hidden:
+            state.hiddenPrototypeItems,
+          order:
+            state.prototypeOrder
+        })
+        !== JSON.stringify({
+          hidden:
+            activeDraft
+              .hiddenPrototypeItems,
+          order:
+            activeDraft
+              .prototypeOrder
+        });
+
       state = clone(activeDraft);
       captureWallFadeGradient();
-  applyState();
+      applyState();
+
+      if (membershipChanged) {
+        renderGridMembership(
+          "dialog-cancel"
+        );
+      }
     }
 
     activeTarget = null;
@@ -1275,8 +1316,9 @@ state.title =
         else hidden.add(id);
 
         state.hiddenPrototypeItems = Array.from(hidden);
-        renderPrototypeItems();
-        positionButtons();
+        renderGridMembership(
+          "item-visibility"
+        );
         setDirty(true);
       });
 
@@ -1306,8 +1348,9 @@ state.title =
           list.querySelectorAll("article")
         ).map(node => node.dataset.itemId);
 
-        renderPrototypeItems();
-        positionButtons();
+        renderGridMembership(
+          "item-reorder"
+        );
         setDirty(true);
       });
     }
@@ -1342,8 +1385,9 @@ state.title =
         list.querySelectorAll("article")
       ).map(node => node.dataset.itemId);
 
-      renderPrototypeItems();
-      positionButtons();
+      renderGridMembership(
+        "item-reorder"
+      );
       setDirty(true);
     });
 
@@ -1412,12 +1456,6 @@ state.title =
 
     if (activeTarget === "background") {
       state.background = $('input[name="dialog-background"]:checked', dialogBody)?.value || "default";
-    }
-
-    if (activeTarget === "columns") {
-      state.columns = Number(
-        $('input[name="dialog-columns"]:checked', dialogBody)?.value
-      ) === 4 ? 4 : 3;
     }
 
     applyState();
