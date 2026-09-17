@@ -6,6 +6,23 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
+  const editToolbar = window.MuuzeePersonalEditToolbar?.mount(
+    "[data-artwall-edit-toolbar]",
+    {
+      eyebrow:"ArtWall Edit",
+      title:"＋から編集できます",
+      closeHref:"./my-art.html",
+      closeLabel:"閉じる",
+      saveAttributes:{
+        "data-artwall-save-all":"",
+        "data-artwall-settings-save":""
+      },
+      closeAttributes:{
+        "data-artwall-edit-header-close":""
+      }
+    }
+  );
+
   const preview = $("[data-artwall-editor-preview]") || $(".artwall");
   const canvas = $("[data-artwall-editor-canvas]");
   const overlay = $("[data-artwall-editor-overlay]");
@@ -334,7 +351,9 @@ const original = {
   }
 
   const setDirty = dirty => {
-    if (saveAll) {
+    if (editToolbar) {
+      editToolbar.setDirty(dirty);
+    } else if (saveAll) {
       saveAll.disabled = !dirty;
       saveAll.setAttribute(
         "aria-disabled",

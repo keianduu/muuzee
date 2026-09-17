@@ -443,6 +443,15 @@
         getChanges()
           .length > 0;
 
+      const toolbar =
+        window.MuuzeePersonalEditToolbar
+          ?.get(saveButton);
+
+      if (toolbar) {
+        toolbar.setDirty(hasChanges);
+        return;
+      }
+
       saveButton.disabled =
         !hasChanges;
 
@@ -813,8 +822,16 @@
       allowNextSave =
         true;
 
-      saveButton.disabled =
-        false;
+      const toolbar =
+        window.MuuzeePersonalEditToolbar
+          ?.get(saveButton);
+
+      if (toolbar) {
+        toolbar.setDirty(true);
+      } else {
+        saveButton.disabled =
+          false;
+      }
 
       /*
         Reuse every existing ArtWall module's Save listener.

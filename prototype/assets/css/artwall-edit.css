@@ -506,63 +506,6 @@
 
 /* artwall-editor-overlay-ui:end */
 
-/* artwall-editor-refined-controls:start */
-
-.artwall-editor-topbar{
-  margin-bottom:14px;
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:16px;
-}
-
-.artwall-editor-topbar .artwall-editor-instruction{
-  margin-bottom:0;
-}
-
-.artwall-editor-topbar-actions{
-  flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
-.artwall-editor-topbar-actions .artwall-editor-save-button{
-  position:static;
-  min-width:112px;
-  margin:0;
-  border-color:var(--ink);
-  background:var(--ink);
-  color:#fff;
-  transform:none;
-  box-shadow:none;
-}
-
-.artwall-editor-save-button:disabled{
-  background:var(--line);
-  color:var(--muted);
-  cursor:default;
-  opacity:.72;
-}
-
-/*
-  Quiet edit affordance:
-  translucent white surface + subtle shadow, smaller than before.
-*/
-@media(max-width:720px){
-  .artwall-editor-topbar{
-    align-items:center;
-    flex-wrap:wrap;
-    gap:12px;
-  }
-
-  .artwall-editor-topbar-actions{
-    margin-left:auto;
-  }
-}
-
-/* artwall-editor-refined-controls:end */
-
 /* artwall-plus-position-final:start */
 
 .artwall-editor-plus{
@@ -747,19 +690,6 @@
 
 /* artwall-editor-button-polish:start */
 
-/*
-  Save reuses the My Art action component.
-  When disabled, remove the visible border entirely.
-*/
-.artwall-editor-save-button:disabled{
-  border:0;
-}
-
-/*
-  Close also reuses the same action component.
-  Only the requested secondary appearance and wider horizontal padding
-  are page-specific.
-*/
 .artwall-editor-close-page-button.mypage-artwall-action{
   padding-inline:48px;
 }

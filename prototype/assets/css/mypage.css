@@ -1,4 +1,8 @@
 /* Muuzee MyPage — shared shell */
+:root{
+  --mypage-compact-max:780px;
+}
+
 .mypage-page{
   width:100%;
   max-width:100%;
@@ -204,6 +208,23 @@
   color:var(--muted);
   font-size:12px;
   line-height:1.75;
+}
+
+/*
+  Personal Area compact composition is opt-in. Keep Saved wide for its
+  Order 651 collection grid, and keep SP on the existing full-width shell.
+*/
+@media(min-width:721px){
+  .mypage-compact-page .site-header .header-inner,
+  .mypage-compact-page .mypage-profile,
+  .mypage-compact-page .mypage-nav-shell > .shell,
+  .mypage-compact-page .mypage-content-shell,
+  .mypage-compact-page .mypage-home,
+  .mypage-compact-page .artwall-editor-shell,
+  .mypage-compact-page .mypage-head-inner,
+  .mypage-compact-page .mypage-body{
+    max-width:var(--mypage-compact-max);
+  }
 }
 
 /* MyPage TOP */

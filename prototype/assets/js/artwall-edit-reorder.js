@@ -220,6 +220,16 @@
 
   const markDirty = () => {
     if (!saveButton) return;
+
+    const toolbar =
+      window.MuuzeePersonalEditToolbar
+        ?.get(saveButton);
+
+    if (toolbar) {
+      toolbar.setDirty(true);
+      return;
+    }
+
     saveButton.disabled = false;
     saveButton.setAttribute("aria-disabled", "false");
   };

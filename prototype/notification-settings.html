@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>通知設定 — Muuzee</title>
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260911-login-prototype-02">
-  <link rel="stylesheet" href="./assets/css/mypage.css?v=20260902-02">
+  <link rel="stylesheet" href="./assets/css/mypage.css?v=20260918-order652-personal-compact-02">
   <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
 </head>
-<body class="muuzee-app mypage-page">
+<body class="muuzee-app mypage-page mypage-compact-page">
   <header class="site-header is-over-sheet">
     <div class="shell header-inner">
       <a class="logo" href="./index.html">Muuzee</a>
@@ -20,36 +20,23 @@
     </div>
   </header>
   <main>
-    <section class="mypage-head">
-      <div class="shell mypage-head-inner">
-        <div>
-          <div class="mypage-eyebrow">Personal archive</div>
-          <h1>MyPage</h1>
-        </div>
-        <a class="mypage-account" href="./my-art.html">
-          <img alt="ashelry" src="./assets/images/profile-avatar.jpg">
-          <span class="mypage-account-copy">
-            <strong>ashelry</strong>
-            <span>Art Profile</span>
-          </span>
-        </a>
-      </div>
+    <section class="mypage-profile-shell">
+      <div class="shell mypage-profile" data-mypage-profile></div>
     </section>
-
-    <div class="shell mypage-body">
-      <aside data-mypage-nav data-mypage-active="notification-settings"></aside>
-      <section class="mypage-content">
-        <header class="mypage-content-head">
-          <div class="mypage-content-kicker">Notification settings</div>
-          <h2>通知設定</h2>
-          <p>Muuzeeから受け取る通知の種類を設定するページです。</p>
-        </header>
-        <div class="mypage-placeholder">
-          <small>Notification settings</small>
-          <h3>通知設定</h3>
-          <p>このページの詳細UIは次のPrototype設計で追加します。MyPage共通ナビゲーションとページ構造は共通化済みです。</p>
-        </div>
-      </section>
+    <section class="mypage-nav-shell">
+      <div class="shell" data-mypage-nav data-mypage-active="notification-settings"></div>
+    </section>
+    <div class="shell mypage-content-shell">
+      <header class="mypage-content-head">
+        <small>Notification settings</small>
+        <h1>通知設定</h1>
+        <p>Muuzeeから受け取る通知の種類を設定するページです。</p>
+      </header>
+      <div class="mypage-placeholder">
+        <small>Notification settings</small>
+        <h2>通知設定</h2>
+        <p>このページの詳細UIは次のPrototype設計で追加します。MyPage共通ナビゲーションとページ構造は共通化済みです。</p>
+      </div>
     </div>
   </main>
   <footer class="footer">

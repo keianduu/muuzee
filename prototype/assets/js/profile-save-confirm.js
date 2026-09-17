@@ -112,112 +112,9 @@
     return;
   }
 
-  document.body.classList.add(
-    "profile-settings-has-floating-save"
-  );
-
-  saveButton.classList.add(
-    "profile-settings-save-floating"
-  );
-
-  const findBottomNavigation =
-    () => {
-      const explicitSelectors = [
-        "[data-footer-nav]",
-        ".muuzee-footer-nav",
-        ".footer-nav",
-        ".bottom-nav",
-        ".mobile-footer-nav",
-        ".global-footer-nav",
-        ".footer-menu",
-        ".footer-fixed"
-      ];
-
-      for(
-        const selector
-        of explicitSelectors
-      ){
-        const element =
-          document.querySelector(
-            selector
-          );
-
-        if(element){
-          return element;
-        }
-      }
-
-      const candidates =
-        Array.from(
-          document.querySelectorAll(
-            "nav,"
-            + "footer,"
-            + "[role='navigation'],"
-            + "[class*='footer'],"
-            + "[class*='bottom']"
-          )
-        )
-          .map(
-            element => ({
-              element,
-              rect:
-                element
-                  .getBoundingClientRect()
-            })
-          )
-          .filter(
-            ({rect}) =>
-              rect.height >= 40
-              && rect.height <= 220
-              && rect.top
-                > window.innerHeight * .5
-              && rect.bottom
-                >= window.innerHeight - 4
-          )
-          .sort(
-            (a,b) =>
-              b.rect.top
-              - a.rect.top
-          );
-
-      return candidates[0]
-        ?.element
-        || null;
-    };
-
-  const syncFooterOffset =
-    () => {
-      const footer =
-        findBottomNavigation();
-
-      const rect =
-        footer
-          ?.getBoundingClientRect();
-
-      const offset =
-        rect
-          ? Math.max(
-              0,
-              Math.ceil(
-                window.innerHeight
-                - rect.top
-              )
-            )
-          : 96;
-
-      document.documentElement
-        .style.setProperty(
-          "--profile-save-footer-offset",
-          `${offset}px`
-        );
-    };
-
-  syncFooterOffset();
-
-  window.addEventListener(
-    "resize",
-    syncFooterOffset
-  );
+  const editToolbar =
+    window.MuuzeePersonalEditToolbar
+      ?.get(saveButton);
 
   const normalizeText =
     value =>
@@ -464,6 +361,18 @@
         }
       );
 
+      state.set(
+        "__location__",
+        {
+          label:"居住地域",
+          value:normalizeText(
+            document.querySelector(
+              "[data-location-summary]"
+            )?.textContent
+          )
+        }
+      );
+
       return state;
     };
 
@@ -500,6 +409,14 @@
         element =
           form.querySelector(
             ".profile-avatar-upload"
+          );
+      } else if(
+        key
+        === "__location__"
+      ){
+        element =
+          form.querySelector(
+            "[data-location-summary]"
           );
       } else {
         const escaped =
@@ -624,6 +541,14 @@
       const hasChanges =
         getChanges()
           .length > 0;
+
+      if(editToolbar){
+        editToolbar.setDirty(
+          hasChanges
+        );
+
+        return;
+      }
 
       saveButton.disabled =
         !hasChanges;
@@ -912,19 +837,9 @@
     }
   );
 
-  let allowNextSave =
-    false;
-
   saveButton.addEventListener(
     "click",
     event => {
-      if(allowNextSave){
-        allowNextSave =
-          false;
-
-        return;
-      }
-
       const changes =
         getChanges();
 
@@ -932,6 +847,12 @@
         event.preventDefault();
         event.stopImmediatePropagation();
         syncSaveState();
+        return;
+      }
+
+      if(!form.reportValidity()){
+        event.preventDefault();
+        event.stopImmediatePropagation();
         return;
       }
 
@@ -962,18 +883,24 @@
         return;
       }
 
-      allowNextSave =
-        true;
+      editToolbar?.setBusy(true);
 
-      saveButton.click();
+      form.requestSubmit();
+    }
+  );
 
-      setTimeout(
-        () => {
-          captureInitialState();
-          setSavedState();
-        },
-        0
-      );
+  window.addEventListener(
+    "muuzee:profile-settings-save-result",
+    event => {
+      editToolbar?.setBusy(false);
+
+      if(!event.detail?.ok){
+        syncSaveState();
+        return;
+      }
+
+      captureInitialState();
+      setSavedState();
     }
   );
 

@@ -490,35 +490,6 @@
 
 
 /* profile-save-confirm:start */
-body.profile-settings-has-floating-save{
-  padding-bottom:
-    calc(
-      var(--profile-save-footer-offset,96px)
-      + 76px
-      + env(safe-area-inset-bottom)
-    );
-}
-
-[data-profile-settings-save].profile-settings-save-floating{
-  position:fixed;
-  left:50%;
-  bottom:
-    calc(
-      var(--profile-save-footer-offset,96px)
-      + 32px
-      + env(safe-area-inset-bottom)
-    );
-  z-index:50;
-  width:max-content;
-  max-width:calc(100vw - 32px);
-  margin:0;
-  transform:translateX(-50%);
-  box-shadow: 0 10px 24px rgba(38, 37, 34, .18);
-  transition:
-    opacity .18s ease,
-    box-shadow .18s ease,
-    transform .18s ease;
-}
 .profile-save-confirm-dialog{
   width:min(520px,calc(100vw - 24px));
   max-
@@ -712,16 +683,6 @@ body.profile-settings-has-floating-save{
 
 
 /* profile-save-disabled-state:start */
-[data-profile-settings-save].profile-settings-save-floating:disabled{
-  opacity:1;
-  background:#E8E7E3;
-  border-color:#E8E7E3;
-  color:#9A9892;
-  box-shadow:none;
-  cursor:default;
-  pointer-events:none;
-}
-
 .profile-avatar-upload{
   width:100%;
   max-width:none;

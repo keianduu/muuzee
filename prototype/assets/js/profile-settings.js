@@ -34,6 +34,20 @@
   const form=document.querySelector("[data-profile-form]");
   if(!form) return;
 
+  const editToolbar=window.MuuzeePersonalEditToolbar?.mount(
+    "[data-profile-edit-toolbar]",
+    {
+      eyebrow:"Profile",
+      title:"プロフィール設定",
+      saveType:"submit",
+      closeHref:"./my-art.html",
+      closeLabel:"My Artに戻る",
+      saveAttributes:{
+        "data-profile-settings-save":""
+      }
+    }
+  );
+
   const feedbackDialog=document.querySelector("[data-profile-feedback-dialog]");
   const feedbackTitle=document.querySelector("[data-profile-feedback-title]");
   const feedbackMessage=document.querySelector("[data-profile-feedback-message]");
@@ -306,6 +320,7 @@
   document.querySelector("[data-location-apply]")?.addEventListener("click",()=>{
     state.location={...locationDraft};
     locationSummary.textContent=locationText(state.location);
+    form.dispatchEvent(new Event("input",{bubbles:true}));
     window.Muuzee?.filterSheet?.close?.();
   });
 
@@ -335,7 +350,10 @@
     try{
       localStorage.setItem(KEY,JSON.stringify(state));
       window.dispatchEvent(new CustomEvent("muuzee:profile-settings-change",{detail:{...state}}));
+      window.dispatchEvent(new CustomEvent("muuzee:profile-settings-save-result",{detail:{ok:true}}));
     }catch{
+      editToolbar?.setBusy(false);
+      window.dispatchEvent(new CustomEvent("muuzee:profile-settings-save-result",{detail:{ok:false}}));
       alert("保存できませんでした。画像サイズを小さくして再度お試しください。");
     }
   });
