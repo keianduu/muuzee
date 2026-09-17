@@ -95,6 +95,17 @@ document.querySelector('[data-posters]').innerHTML = EXHIBITIONS.map(x=>{
 
 
 /* home-shared-artwall-store:start */
+const homeArtWallSurface =
+  window.MuuzeeArtWall
+    ?.mountSurface?.({
+      mount:
+        "[data-muuzee-artwall-surface-mount]",
+
+      context:
+        "home"
+    })
+  || null;
+
 const getHomeArtWallFallbackItems =
   () =>
     EXHIBITIONS.map(
@@ -135,7 +146,10 @@ const homeArtWall =
         "home",
 
       grid:
-        "[data-wall-grid]",
+        homeArtWallSurface
+          ?.querySelector(
+            "[data-artwall-grid]"
+          ),
 
       fallbackItems:
         getHomeArtWallFallbackItems,

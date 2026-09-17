@@ -195,6 +195,284 @@
       };
     };
 
+  const createSurface =
+    rawOptions => {
+      const options = {
+        context:"member",
+        ownerLabel:"ASHELRY'S ARTWALL",
+        ownerTitle:"ashelry ArtWall",
+        ownerName:"ashelry",
+        avatarSrc:"./assets/images/profile-avatar.jpg",
+        comment:"訪れた展示が、自分だけのアートの履歴として少しずつ積み上がっていきます。",
+        stats:[
+          ["12","Exhibitions"],
+          ["7","Museums"],
+          ["18","Artists"]
+        ],
+        ...rawOptions
+      };
+
+      const surface =
+        document.createElement(
+          "div"
+        );
+
+      surface.className =
+        "artwall muuzee-artwall-surface";
+
+      surface.dataset
+        .muuzeeArtwallSurface =
+          "shared";
+
+      surface.dataset
+        .artwallContext =
+          String(
+            options.context
+          );
+
+      if(
+        options.context
+        === "artwall-edit-preview"
+      ){
+        surface.dataset
+          .artwallEditorPreview =
+            "";
+      }
+
+      const copy =
+        document.createElement(
+          "div"
+        );
+
+      copy.className =
+        "artwall-copy";
+
+      const owner =
+        document.createElement(
+          "div"
+        );
+
+      owner.className =
+        "artwall-owner";
+
+      const avatar =
+        document.createElement(
+          "span"
+        );
+
+      avatar.className =
+        "artwall-user-avatar";
+
+      avatar.setAttribute(
+        "aria-label",
+        `${options.ownerName} profile`
+      );
+
+      avatar.title =
+        options.ownerName;
+
+      const avatarImage =
+        document.createElement(
+          "img"
+        );
+
+      avatarImage.src =
+        options.avatarSrc;
+
+      avatarImage.alt =
+        options.ownerName;
+
+      avatarImage.loading =
+        "lazy";
+
+      avatar.appendChild(
+        avatarImage
+      );
+
+      const ownerCopy =
+        document.createElement(
+          "div"
+        );
+
+      ownerCopy.className =
+        "artwall-owner-copy";
+
+      const ownerLabel =
+        document.createElement(
+          "span"
+        );
+
+      ownerLabel.className =
+        "artwall-owner-label";
+
+      ownerLabel.textContent =
+        options.ownerLabel;
+
+      const ownerTitle =
+        document.createElement(
+          "h2"
+        );
+
+      ownerTitle.className =
+        "artwall-owner-title";
+
+      ownerTitle.textContent =
+        options.ownerTitle;
+
+      ownerCopy.append(
+        ownerLabel,
+        ownerTitle
+      );
+
+      owner.append(
+        avatar,
+        ownerCopy
+      );
+
+      const comment =
+        document.createElement(
+          "p"
+        );
+
+      comment.textContent =
+        options.comment;
+
+      const stats =
+        document.createElement(
+          "div"
+        );
+
+      stats.className =
+        "stats";
+
+      options.stats
+        .forEach(
+          ([value,label]) => {
+            const stat =
+              document.createElement(
+                "div"
+              );
+
+            stat.className =
+              "stat";
+
+            const strong =
+              document.createElement(
+                "strong"
+              );
+
+            strong.textContent =
+              String(value);
+
+            const span =
+              document.createElement(
+                "span"
+              );
+
+            span.textContent =
+              label;
+
+            stat.append(
+              strong,
+              span
+            );
+
+            stats.appendChild(
+              stat
+            );
+          }
+        );
+
+      copy.append(
+        owner,
+        comment,
+        stats
+      );
+
+      const wall =
+        document.createElement(
+          "div"
+        );
+
+      wall.className =
+        "wall";
+
+      wall.dataset.wall =
+        "";
+
+      const grid =
+        document.createElement(
+          "div"
+        );
+
+      grid.className =
+        "wall-grid muuzee-masonry-grid";
+
+      grid.dataset
+        .artwallGrid =
+          "";
+
+      grid.dataset
+        .wallGrid =
+          "";
+
+      grid.dataset
+        .mypageWallGrid =
+          "";
+
+      const fade =
+        document.createElement(
+          "div"
+        );
+
+      fade.className =
+        "wall-fade";
+
+      fade.setAttribute(
+        "aria-hidden",
+        "true"
+      );
+
+      wall.append(
+        grid,
+        fade
+      );
+
+      surface.append(
+        copy,
+        wall
+      );
+
+      return surface;
+    };
+
+  const mountSurface =
+    rawOptions => {
+      const options =
+        rawOptions
+        || {};
+
+      const mountPoint =
+        asElement(
+          options.mount
+        );
+
+      if(!mountPoint){
+        return null;
+      }
+
+      const surface =
+        createSurface(
+          options
+        );
+
+      mountPoint.replaceChildren(
+        surface
+      );
+
+      return surface;
+    };
+
   const createWallItem =
     (
       item,
@@ -853,6 +1131,8 @@
     };
 
   window.MuuzeeArtWall = {
+    createSurface,
+    mountSurface,
     mount
   };
 })();

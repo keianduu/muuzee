@@ -90,8 +90,8 @@
 
 .artwall-image-preview-frame img{
   display:block;
-  width:auto;
-  max-width:100%;
+  width:100%;
+  max-width:390px;
   height:auto;
   border-radius:12px;
   -webkit-touch-callout:default;

@@ -307,12 +307,8 @@
 
   const isHomeArtWall =
     context =>
-      Boolean(
-        context?.wall
-          ?.closest?.(
-            "#artwall"
-          )
-      );
+      context?.context
+      === "home";
 
   const waitForAuth =
     async () => {

@@ -668,9 +668,15 @@
   stroke-linejoin:round;
 }
 
-.mypage-page .artwall{
-  width:100%;
-  max-width:100%;
+.mypage-artwall-section [data-muuzee-artwall-surface-mount],
+.artwall-editor-canvas [data-muuzee-artwall-surface-mount]{
+  display:flex;
+  justify-content:center;
+}
+
+.mypage-page .artwall.muuzee-artwall-surface{
+  width:min(100%,390px);
+  max-width:390px;
 }
 
 .mypage-page .wall,
@@ -697,6 +703,23 @@
   .mypage-artwall-action svg{
     width:14px;
     height:14px;
+  }
+
+  .mypage-page .muuzee-artwall-surface .artwall-owner-label{
+    margin-bottom:5px;
+    font-size:10px;
+  }
+
+  .mypage-page .muuzee-artwall-surface .artwall-owner-title{
+    font-size:28px;
+  }
+
+  .mypage-page .muuzee-artwall-surface .artwall-copy > p{
+    font-size:14px;
+  }
+
+  .mypage-page .muuzee-artwall-surface .stat span{
+    font-size:10px;
   }
 }
 /* mypage-artwall-shared:end */

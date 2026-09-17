@@ -550,8 +550,8 @@ Breakpoints: 980px / 720px</pre></div>
 <!-- semantic-save-rule:end -->
 <!-- shared-artwall-rule:start -->
 <div class="global-rule">
-  <strong>Shared ArtWall</strong>
-  <p>ArtWallは現在のMyPage / HOMEで利用している既存Markup・CSS・JSをそのまま共通利用する。ArtWall EditではArtWall本体のVisual Ruleを再実装せず、Checkbox / Drag / Drop Placeholderなど編集時だけ必要な差分UIのみpage-specificに追加する。</p>
+  <strong>Shared Member ArtWall Surface</strong>
+  <p>HOME Member / My Art / ArtWall Edit PreviewのOwner・Avatar・Title・Comment・Stats・Wall DOMは、<code>muuzee-artwall.js</code>が生成する同一Surfaceを利用する。Tablet / PCは最大390pxのCanonical Surfaceとし、Data / Store / Masonryは既存のShared ArtWallへmountする。HOMEは外側のshowcase・Guest表現、My Art / Editは各ページ固有の操作だけを所有し、SPの既存Presentationはpage scopeで維持する。</p>
 </div>
 <!-- shared-artwall-rule:end -->
 

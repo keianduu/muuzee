@@ -972,11 +972,7 @@
 
 .home-page #artwall{
   --home-artwall-heading-type:32px;
-  --home-artwall-label-type:8px;
-  --home-artwall-copy-type:9.5px;
-  --home-artwall-avatar-type:9px;
-  --home-artwall-stat-type:19px;
-  --home-artwall-stat-label-type:7px;
+  --home-artwall-section-label-type:8px;
 }
 
 .home-page #artwall .section-head{
@@ -985,7 +981,7 @@
 
 .home-page #artwall .section-title-wrap small{
   margin-bottom:6px;
-  font-size:var(--home-artwall-label-type);
+  font-size:var(--home-artwall-section-label-type);
 }
 
 .home-page #artwall .section-head h2{
@@ -994,72 +990,15 @@
 
 .home-page #artwall .section-head .cta{
   padding:9px 12px;
-  font-size:var(--home-artwall-label-type) !important;
+  font-size:var(--home-artwall-section-label-type) !important;
 }
 
-.home-page #artwall .artwall{
-  display:block;
-  width:100%;
-  padding:22px 18px 18px;
-  gap:0;
-  border-radius:22px;
-}
-
-.home-page #artwall .artwall-copy h2{
+.home-page #artwall .muuzee-artwall-guest-copy h2{
   font-size:var(--home-artwall-heading-type);
 }
 
-.home-page #artwall .artwall-copy > p{
-  margin-bottom:14px;
-  font-size:var(--home-artwall-copy-type);
-}
-
-.home-page #artwall .artwall-owner{
-  gap:8px;
-  margin-bottom:12px;
-}
-
-.home-page #artwall .artwall-owner-label{
-  margin-bottom:5px;
-  font-size:var(--home-artwall-label-type);
-}
-
-.home-page #artwall .artwall-owner-title{
-  font-size:24px;
-}
-
-.home-page #artwall .artwall-user-avatar{
-  flex-basis:48px;
-  width:48px !important;
-  height:48px !important;
-  font-size:var(--home-artwall-avatar-type);
-}
-
-.home-page #artwall .stats{
-  gap:0;
-  margin-bottom:14px;
-}
-
-.home-page #artwall .stat strong{
-  font-size:var(--home-artwall-stat-type);
-}
-
-.home-page #artwall .stat span{
-  font-size:var(--home-artwall-stat-label-type);
-}
-
-.home-page #artwall .wall{
-  height:260px;
-  margin-top:20px;
-  border-radius:0;
-}
-
-.home-page #artwall .wall-item{
-  border-radius:0;
-}
-
-.home-page #artwall .wall-fade{
-  height:76px;
+.home-page #artwall .muuzee-artwall-surface .artwall-owner-title{
+  margin:0;
 }
 
 @media(max-width:480px){

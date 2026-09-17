@@ -40,16 +40,33 @@
       "artwall-edit-page"
     );
 
+  const artWallContext =
+    isArtWallEditor
+      ? "artwall-edit-preview"
+      : "my-art";
+
+  const artWallSurface =
+    window.MuuzeeArtWall
+      ?.mountSurface?.({
+        mount:
+          "[data-muuzee-artwall-surface-mount]",
+
+        context:
+          artWallContext
+      })
+    || null;
+
   const myArtWall =
     window.MuuzeeArtWall
       ?.mount?.({
         context:
-          isArtWallEditor
-            ? "artwall-edit-preview"
-            : "my-art",
+          artWallContext,
 
         grid:
-          "[data-mypage-wall-grid]",
+          artWallSurface
+            ?.querySelector(
+              "[data-artwall-grid]"
+            ),
 
         fallbackItems:
           getMyArtWallFallbackItems,

@@ -1,14 +1,32 @@
 /*
   Muuzee Shared ArtWall
   ---------------------
-  Shared visual contract for the ArtWall copy area.
+  Shared visual contract for the Member ArtWall surface.
 
   Important:
-  - Typography stays owned by the current Design Guide / existing ArtWall CSS.
-  - Avatar sizing stays owned by the current ArtWall implementation.
   - Comment/avatar visibility stays owned by the existing JS state.
-  - This file only stabilizes layout and the approved Stats surface.
+  - HOME owns only its outer showcase wrapper and Guest presentation.
 */
+
+[data-muuzee-artwall-surface-mount]{
+  width:100%;
+  min-width:0;
+}
+
+.muuzee-artwall-surface{
+  --muuzee-artwall-label-type:8px;
+  --muuzee-artwall-copy-type:9.5px;
+  --muuzee-artwall-stat-type:19px;
+  --muuzee-artwall-stat-label-type:7px;
+  width:min(100%,390px);
+  max-width:390px;
+  padding:22px 18px 18px;
+  display:block;
+  overflow:hidden;
+  gap:0;
+  border-radius:22px;
+  background:var(--greige);
+}
 
 /* artwall-copy-final-layout:start */
 
@@ -101,9 +119,57 @@
 }
 
 
-.artwall .artwall-owner-title{
-  font-size:28px;
+.muuzee-artwall-surface .artwall-owner{
+  gap:8px;
+  margin-bottom:12px;
+}
+
+.muuzee-artwall-surface .artwall-owner-label{
+  margin-bottom:5px;
+  font-size:var(--muuzee-artwall-label-type);
+}
+
+.muuzee-artwall-surface .artwall-owner-title{
+  font-size:24px;
   line-height:1.2;
+}
+
+.muuzee-artwall-surface .artwall-user-avatar{
+  width:48px !important;
+  height:48px !important;
+  flex:0 0 48px;
+}
+
+.muuzee-artwall-surface .artwall-copy > p{
+  margin-bottom:14px;
+  font-size:var(--muuzee-artwall-copy-type);
+}
+
+.muuzee-artwall-surface .stats{
+  gap:0;
+  margin-bottom:14px;
+}
+
+.muuzee-artwall-surface .stat strong{
+  font-size:var(--muuzee-artwall-stat-type);
+}
+
+.muuzee-artwall-surface .stat span{
+  font-size:var(--muuzee-artwall-stat-label-type);
+}
+
+.muuzee-artwall-surface .wall{
+  height:260px;
+  margin-top:20px;
+  border-radius:0;
+}
+
+.muuzee-artwall-surface .wall-item{
+  border-radius:0;
+}
+
+.muuzee-artwall-surface .wall-fade{
+  height:76px;
 }
 
 /* artwall-copy-final-layout:end */
