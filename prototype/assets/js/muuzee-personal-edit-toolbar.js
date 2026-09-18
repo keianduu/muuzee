@@ -20,23 +20,26 @@
     if (instances.has(root)) return instances.get(root);
 
     root.dataset.muuzeePersonalEditToolbar = "";
-    root.classList.add("muuzee-personal-edit-toolbar");
+    root.classList.add(
+      "muuzee-personal-edit-toolbar",
+      "muuzee-personal-section-head"
+    );
 
     const copy = document.createElement("div");
-    copy.className = "muuzee-personal-edit-toolbar-copy";
+    copy.className = "muuzee-personal-edit-toolbar-copy muuzee-personal-section-head-copy";
 
     const eyebrow = document.createElement("small");
     eyebrow.textContent = options.eyebrow || "Edit";
 
-    const title = document.createElement("strong");
+    const title = document.createElement("h2");
     title.textContent = options.title || "編集";
 
     const actions = document.createElement("div");
-    actions.className = "muuzee-personal-edit-toolbar-actions";
+    actions.className = "muuzee-personal-edit-toolbar-actions muuzee-personal-section-head-actions";
 
     const saveButton = document.createElement("button");
     saveButton.type = options.saveType || "button";
-    saveButton.className = "muuzee-personal-edit-toolbar-action muuzee-personal-edit-toolbar-save";
+    saveButton.className = "muuzee-personal-edit-toolbar-action muuzee-personal-edit-toolbar-save muuzee-personal-section-head-action is-primary";
     saveButton.textContent = options.saveLabel || "保存";
     saveButton.disabled = true;
     saveButton.setAttribute("aria-disabled", "true");
@@ -46,7 +49,7 @@
     });
 
     const closeLink = document.createElement("a");
-    closeLink.className = "muuzee-personal-edit-toolbar-action muuzee-personal-edit-toolbar-close";
+    closeLink.className = "muuzee-personal-edit-toolbar-action muuzee-personal-edit-toolbar-close muuzee-personal-section-head-action is-secondary";
     closeLink.href = options.closeHref || "./my-art.html";
     closeLink.textContent = options.closeLabel || "閉じる";
 

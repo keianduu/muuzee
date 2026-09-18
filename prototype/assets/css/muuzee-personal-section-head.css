@@ -1,0 +1,110 @@
+/* Shared visual contract for Personal Area section heads. */
+.muuzee-personal-section-head-shell{
+  padding-top:36px;
+}
+
+.muuzee-personal-section-head{
+  margin-bottom:22px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.muuzee-personal-section-head-copy{
+  min-width:0;
+}
+
+.muuzee-personal-section-head-copy small{
+  display:block;
+  margin-bottom:8px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+}
+
+.muuzee-personal-section-head-copy h2{
+  margin:0;
+  color:var(--ink);
+  font-size:28px;
+  line-height:1.04;
+  letter-spacing:-.048em;
+  font-weight:650;
+}
+
+.muuzee-personal-section-head-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+
+.muuzee-personal-section-head-action{
+  min-height:36px;
+  padding:0 12px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  background:#fff;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.muuzee-personal-section-head-action.is-primary{
+  border-color:var(--ink);
+  background:var(--ink);
+  color:#fff;
+}
+
+.muuzee-personal-section-head-action svg{
+  width:15px;
+  height:15px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.55;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+@media(max-width:720px){
+  .muuzee-personal-section-head-shell{
+    padding-top:28px;
+  }
+
+  .muuzee-personal-section-head{
+    margin-bottom:17px;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+
+  .muuzee-personal-section-head-copy small{
+    margin-bottom:6px;
+  }
+
+  .muuzee-personal-section-head-copy h2{
+    font-size:22px;
+  }
+
+  .muuzee-personal-section-head-actions{
+    margin-left:auto;
+  }
+
+  .muuzee-personal-section-head-action{
+    min-height:32px;
+    padding-inline:9px;
+  }
+
+  .muuzee-personal-section-head-action svg{
+    width:14px;
+    height:14px;
+  }
+}

@@ -1,64 +1,13 @@
-/* Shared edit toolbar for Personal Area edit pages. */
-.muuzee-personal-edit-toolbar{
-  margin-bottom:14px;
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:16px;
-}
-.muuzee-personal-edit-toolbar-copy{
-  min-width:0;
-}
-
-.muuzee-personal-edit-toolbar-copy small{
-  display:block;
-  margin-bottom:6px;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1.4;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-}
-
-.muuzee-personal-edit-toolbar-copy strong{
-  display:block;
-  color:var(--ink);
-  font-size:14px;
-  line-height:1.5;
-  font-weight:600;
-}
-
-.muuzee-personal-edit-toolbar-actions{
-  flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
+/* Behavior-state presentation for the Personal Area edit toolbar. */
 .muuzee-personal-edit-toolbar-action{
   min-width:88px;
-  min-height:36px;
-  padding:0 16px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background:#fff;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1;
-  cursor:pointer;
 }
 
 .muuzee-personal-edit-toolbar-save{
   min-width:112px;
-  border-color:var(--ink);
-  background:var(--ink);
-  color:#fff;
 }
 
-.muuzee-personal-edit-toolbar-save:disabled{
+.muuzee-personal-edit-toolbar .muuzee-personal-edit-toolbar-save:disabled{
   border-color:var(--line);
   background:var(--line);
   color:var(--muted);
@@ -68,21 +17,4 @@
 
 .muuzee-personal-edit-toolbar.is-busy .muuzee-personal-edit-toolbar-save{
   cursor:wait;
-}
-
-@media(max-width:720px){
-  .muuzee-personal-edit-toolbar{
-    align-items:center;
-    flex-wrap:wrap;
-    gap:12px;
-  }
-
-  .muuzee-personal-edit-toolbar-actions{
-    margin-left:auto;
-  }
-
-  .muuzee-personal-edit-toolbar-action{
-    min-height:32px;
-    padding-inline:12px;
-  }
 }
