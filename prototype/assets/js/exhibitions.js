@@ -8,9 +8,15 @@
   const grid = document.querySelector("[data-exhibition-grid]");
   const sentinel = document.querySelector("[data-infinite-sentinel]");
   const statusEl = document.querySelector("[data-infinite-status]");
-  const countEl = document.querySelector("[data-result-count]");
   const activeFiltersEl = document.querySelector("[data-active-filters]");
   const renderCard = window.MuuzeeExhibitionCard?.renderListCard;
+  const intro = window.MuuzeeListIntro?.mount({
+    mount:"[data-list-intro]",
+    eyebrow:"Discover exhibitions",
+    title:"展覧会を探す",
+    countLabel:"exhibitions",
+    count:0
+  });
 
   const openButton = document.querySelector("[data-filter-open]");
   const closeButton = document.querySelector("[data-filter-close]");
@@ -54,7 +60,7 @@
   }
 
   function updateCount(){
-    if(countEl) countEl.textContent = grid.children.length;
+    intro?.setCount(grid.children.length);
   }
 
   function appendBatch(){

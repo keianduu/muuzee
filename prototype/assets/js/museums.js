@@ -7,7 +7,6 @@
     : (window.MuuzeeMuseumCatalog || []);
 
   const grid = document.querySelector("[data-museum-grid]");
-  const countEl = document.querySelector("[data-museum-count]");
   const empty = document.querySelector("[data-museum-empty]");
   const emptyReset = document.querySelector("[data-empty-reset]");
   const resultLabel = document.querySelector("[data-result-label]");
@@ -15,7 +14,6 @@
   const keywordInput = document.querySelector("[data-keyword]");
   const applyButton = document.querySelector("[data-filter-apply]");
   const resetButton = document.querySelector("[data-filter-reset]");
-  const tabs = [...document.querySelectorAll("[data-museum-tab]")];
   const scopeButtons = [...document.querySelectorAll("[data-scope-value]")];
 
   const regionGroup = document.querySelector("[data-japan-region-group]");
@@ -51,6 +49,23 @@
   };
 
   let draft = {...applied};
+
+  const intro = window.MuuzeeListIntro?.mount({
+    mount:"[data-list-intro]",
+    eyebrow:"Discover museums",
+    title:"美術館を探す",
+    countLabel:"museums",
+    count:0,
+    tabsLabel:"国内・海外",
+    tabs:[
+      {id:"jp",label:"日本",count:0,active:true},
+      {id:"overseas",label:"海外",count:0}
+    ],
+    onTabChange:id => {
+      draft = {...applied};
+      selectScope(id,true);
+    }
+  });
 
   if(keywordInput) keywordInput.value = initialKeyword;
 
@@ -188,16 +203,14 @@
     const jpCount = MUSEUMS.filter(museum => museum.scope === "jp").length;
     const overseasCount = MUSEUMS.filter(museum => museum.scope === "overseas").length;
 
-    document.querySelectorAll('[data-tab-count="jp"],[data-scope-count="jp"]').forEach(el => el.textContent = jpCount);
-    document.querySelectorAll('[data-tab-count="overseas"],[data-scope-count="overseas"]').forEach(el => el.textContent = overseasCount);
+    intro?.setTabCount("jp",jpCount);
+    intro?.setTabCount("overseas",overseasCount);
+    document.querySelectorAll('[data-scope-count="jp"]').forEach(el => el.textContent = jpCount);
+    document.querySelectorAll('[data-scope-count="overseas"]').forEach(el => el.textContent = overseasCount);
   }
 
   function renderTabs(){
-    tabs.forEach(tab => {
-      const active = tab.dataset.museumTab === applied.scope;
-      tab.classList.toggle("is-active",active);
-      tab.setAttribute("aria-selected",String(active));
-    });
+    intro?.setActiveTab(applied.scope);
   }
 
   function renderActiveFilters(){
@@ -238,7 +251,7 @@
       </a>`;
     }).join("");
 
-    countEl.textContent = museums.length;
+    intro?.setCount(museums.length);
     grid.hidden = museums.length === 0;
     empty.hidden = museums.length !== 0;
 
@@ -268,13 +281,6 @@
       render();
     }
   }
-
-  tabs.forEach(tab => {
-    tab.addEventListener("click",() => {
-      draft = {...applied};
-      selectScope(tab.dataset.museumTab,true);
-    });
-  });
 
   scopeButtons.forEach(button => {
     button.addEventListener("click",() => {

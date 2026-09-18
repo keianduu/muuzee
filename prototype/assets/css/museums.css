@@ -26,98 +26,8 @@
 .museums-page main{
   padding-top:76px;
 }
-
-.museums-intro{
-  padding:68px 0 0;
-  border-bottom:1px solid var(--line);
-}
-
-.museums-kicker{
-  margin-bottom:10px;
-  color:var(--muted);
-  font-size:10px;
-  letter-spacing:.11em;
-  text-transform:uppercase;
-}
-
-.museums-heading-row{
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:20px;
-}
-
-.museums-heading-row h1{
-  margin:0;
-  font-size:36px;
-  line-height:1;
-  letter-spacing:-.05em;
-  font-weight:650;
-}
-
-.museums-heading-row p{
-  margin:0 0 2px;
-  color:var(--muted);
-  font-size:10px;
-  letter-spacing:.05em;
-}
-
-.museums-heading-row p strong{
-  color:var(--ink);
-  font-size:12px;
-  font-weight:650;
-}
-
-.museum-tabs{
-  display:flex;
-  gap:28px;
-  margin-top:42px;
-}
-
-.museum-tab{
-  position:relative;
-  min-height:50px;
-  padding:0 2px 14px;
-  border:0;
-  background:transparent;
-  display:flex;
-  align-items:center;
-  gap:7px;
-  color:var(--muted);
-  cursor:pointer;
-}
-
-.museum-tab::after{
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:-1px;
-  height:2px;
-  background:transparent;
-}
-
-.museum-tab span{
-  font-size:14px;
-  font-weight:600;
-}
-
-.museum-tab em{
-  font-style:normal;
-  color:var(--muted2);
-  font-size:10px;
-}
-
-.museum-tab.is-active{
-  color:var(--ink);
-}
-
-.museum-tab.is-active::after{
-  background:var(--ink);
-}
-
 .museums-results{
-  padding:38px 0 140px;
+  padding:0 0 140px;
 }
 
 .museum-context{
@@ -239,27 +149,8 @@
   .museums-page main{
     padding-top:62px;
   }
-
-  .museums-intro{
-    padding:38px 0 0;
-  }
-
-  .museums-heading-row h1{
-    font-size:26px;
-  }
-
-  .museum-tabs{
-    margin-top:30px;
-    gap:24px;
-  }
-
-  .museum-tab{
-    min-height:46px;
-    padding-bottom:12px;
-  }
-
   .museums-results{
-    padding:30px 0 156px;
+    padding:0 0 156px;
   }
 
   .museum-context{

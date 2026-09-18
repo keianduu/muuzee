@@ -7,7 +7,8 @@
   <meta name="description" content="国内・海外の美術館をエリアやキーワードから探せるMuuzeeの美術館一覧。">
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260917-order651-01">
   <link rel="stylesheet" href="./assets/css/list-filter.css?v=20260828-03">
-  <link rel="stylesheet" href="./assets/css/museums.css?v=20260828-03">
+  <link rel="stylesheet" href="./assets/css/muuzee-list-intro.css?v=20260918-order654-01">
+  <link rel="stylesheet" href="./assets/css/museums.css?v=20260918-order654-01">
 <link rel="stylesheet" href="./assets/css/muuzee-save-control.css?v=20260828-24">
   <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
 </head>
@@ -24,24 +25,7 @@
   </header>
 
   <main>
-    <section class="museums-intro">
-      <div class="shell">
-        <div class="museums-kicker">Museums</div>
-        <div class="museums-heading-row">
-          <h1>美術館を探す</h1>
-          <p><strong data-museum-count>0</strong> museums</p>
-        </div>
-
-        <div class="museum-tabs" role="tablist" aria-label="国内・海外">
-          <button class="museum-tab is-active" type="button" role="tab" aria-selected="true" data-museum-tab="jp">
-            <span>日本</span><em data-tab-count="jp">0</em>
-          </button>
-          <button class="museum-tab" type="button" role="tab" aria-selected="false" data-museum-tab="overseas">
-            <span>海外</span><em data-tab-count="overseas">0</em>
-          </button>
-        </div>
-      </div>
-    </section>
+    <section data-list-intro></section>
 
     <section class="museums-results">
       <div class="shell">
@@ -162,7 +146,8 @@
   <script src="./assets/js/muuzee-data-config.js?v=20260912-01"></script>
   <script src="./assets/js/museum-data.js?v=20260828-07"></script>
   <script src="./assets/js/muuzee-data-source.js?v=20260912-01"></script>
-  <script src="./assets/js/museums.js?v=20260912-01"></script>
+  <script src="./assets/js/muuzee-list-intro.js?v=20260918-order654-01"></script>
+  <script src="./assets/js/museums.js?v=20260918-order654-01"></script>
 <script src="./assets/js/muuzee-save-control.js?v=20260911-login-prototype-01"></script>
   <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>
 </body>

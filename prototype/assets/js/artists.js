@@ -7,7 +7,6 @@
     : (window.MuuzeeArtistCatalog || []);
 
   const grid = document.querySelector("[data-artist-grid]");
-  const count = document.querySelector("[data-artist-count]");
   const empty = document.querySelector("[data-artist-empty]");
   const activeFilters = document.querySelector("[data-active-filters]");
   const keyword = document.querySelector("[data-keyword]");
@@ -16,6 +15,13 @@
   const emptyReset = document.querySelector("[data-empty-reset]");
   const countrySection = document.querySelector("[data-country-section]");
   const groups = [...document.querySelectorAll("[data-filter-group]")];
+  const intro = window.MuuzeeListIntro?.mount({
+    mount:"[data-list-intro]",
+    eyebrow:"Discover artists",
+    title:"アーティストを探す",
+    countLabel:"artists",
+    count:0
+  });
 
   if(!grid) return;
 
@@ -72,7 +78,7 @@
       </a>
     `).join("");
 
-    if(count) count.textContent = artists.length;
+    intro?.setCount(artists.length);
     if(empty) empty.hidden = artists.length !== 0;
     grid.hidden = artists.length === 0;
     renderActiveFilters();

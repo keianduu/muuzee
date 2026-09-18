@@ -23,53 +23,6 @@
 .exhibitions-main{
   padding-top:76px;
 }
-.exhibitions-intro{
-  padding:72px 0 40px;
-}
-.exhibitions-intro .shell{
-  display:flex;
-  align-items:end;
-  justify-content:space-between;
-  gap:32px;
-}
-.exhibitions-intro-copy small{
-  display:block;
-  margin-bottom:8px;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1;
-  letter-spacing:.11em;
-  text-transform:uppercase;
-}
-.exhibitions-intro-copy h1{
-  margin:0;
-  font-size:36px;
-  line-height:1.02;
-  letter-spacing:-.052em;
-  font-weight:650;
-}
-.exhibitions-intro-copy p{
-  max-width:520px;
-  margin:16px 0 0;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.75;
-}
-.result-summary{
-  flex:0 0 auto;
-  padding-bottom:4px;
-  color:var(--muted);
-  font-size:10px;
-  letter-spacing:.06em;
-  text-transform:uppercase;
-}
-.result-summary span{
-  color:var(--ink);
-  font-size:14px;
-  font-weight:650;
-  letter-spacing:-.02em;
-}
-
 .exhibitions-results{
   padding:0 0 120px;
 }
@@ -403,22 +356,6 @@ body.filter-sheet-open{
 
 @media(max-width:720px){
   .exhibitions-main{padding-top:62px}
-  .exhibitions-intro{
-    padding:44px 0 28px;
-  }
-  .exhibitions-intro .shell{
-    align-items:end;
-    gap:16px;
-  }
-  .exhibitions-intro-copy small{font-size:10px}
-  .exhibitions-intro-copy h1{font-size:28px}
-  .exhibitions-intro-copy p{
-    margin-top:12px;
-    font-size:12px;
-    line-height:1.65;
-  }
-  .result-summary{display:none}
-
   .exhibitions-results{
     padding-bottom:92px;
   }

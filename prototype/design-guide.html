@@ -282,6 +282,11 @@
 <div class="type-value">24px</div>
 </div>
 <div class="type-sample">
+<div class="type-name">Shared List Intro</div>
+<div class="type-page">展示会を探す</div>
+<div class="type-value">36px · page-specific / 28px · page-specific</div>
+</div>
+<div class="type-sample">
 <div class="type-name">Primary</div>
 <div class="type-primary">重要なタイトル・本文・主要情報</div>
 <div class="type-value">14px</div>
@@ -572,6 +577,14 @@ Breakpoints: 980px / 720px</pre></div>
 </div>
 </div>
 <!-- shared-map-ui-rule:end -->
+<!-- shared-list-intro-rule:start -->
+<div class="section dg-side-margin-shell">
+<div class="global-rule">
+  <strong>Shared List Intro</strong>
+  <p>展示会 / アーティスト / 美術館の一覧冒頭は <code>muuzee-list-intro.css / muuzee-list-intro.js</code> を共通利用する。Eyebrow / H1 / Result Count / Dividerを標準構造とし、H1はDesktop 36px / Mobile 28pxをこのComponent固有のPage Titleとして使用する。Optional TabsはShared ComponentがDOM・Visual・Active / ARIA・件数表示を所有し、PageはFilter Stateと件数計算を所有する。Divider後からResultsまでの余白も共通化し、説明文slotは設けない。</p>
+</div>
+</div>
+<!-- shared-list-intro-rule:end -->
 <!-- hamburger-navigation-rule:start -->
 <div class="section dg-side-margin-shell">
 <div class="global-rule">
@@ -668,7 +681,7 @@ Breakpoints: 980px / 720px</pre></div>
         <tr><th>Shared area</th><th>Implementation</th><th>Current consumers</th></tr>
       </thead>
       <tbody>
-        <tr><th>Global UI</th><td><code>muuzee-global.css / muuzee-global.js</code></td><td>artist.html / artists.html / artwall-edit.html / contact.html / disclaimer.html / +16</td></tr><tr><th>Save Control</th><td><code>muuzee-save-control.css / muuzee-save-control.js</code></td><td>artist.html / artists.html / exhibition.html / exhibitions.html / favorites.html / +5</td></tr><tr><th>Personal Save / Seen</th><td><code>muuzee-personal-actions.css / muuzee-personal-actions.js</code></td><td>exhibition.html / museum.html / my-art.html</td></tr><tr><th>Personal Edit Toolbar</th><td><code>muuzee-personal-edit-toolbar.css / js</code></td><td>artwall-edit.html / profile-settings.html</td></tr><tr><th>Shared Map UI</th><td><code>muuzee-map-ui.css / muuzee-map-ui.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared Map Discovery</th><td><code>muuzee-map-discovery.css / muuzee-map-discovery.js</code></td><td>index.html / map.html</td></tr><tr><th>Section CTA</th><td><code>.muuzee-section-cta</code></td><td>index.html / my-art.html</td></tr><tr><th>Personal Collection Pills</th><td><code>personal-collection.css</code></td><td>favorites.html / saved.html / seen.html</td></tr>
+        <tr><th>Global UI</th><td><code>muuzee-global.css / muuzee-global.js</code></td><td>artist.html / artists.html / artwall-edit.html / contact.html / disclaimer.html / +16</td></tr><tr><th>Save Control</th><td><code>muuzee-save-control.css / muuzee-save-control.js</code></td><td>artist.html / artists.html / exhibition.html / exhibitions.html / favorites.html / +5</td></tr><tr><th>Personal Save / Seen</th><td><code>muuzee-personal-actions.css / muuzee-personal-actions.js</code></td><td>exhibition.html / museum.html / my-art.html</td></tr><tr><th>Personal Edit Toolbar</th><td><code>muuzee-personal-edit-toolbar.css / js</code></td><td>artwall-edit.html / profile-settings.html</td></tr><tr><th>Shared Map UI</th><td><code>muuzee-map-ui.css / muuzee-map-ui.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared Map Discovery</th><td><code>muuzee-map-discovery.css / muuzee-map-discovery.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared List Intro</th><td><code>muuzee-list-intro.css / muuzee-list-intro.js</code></td><td>exhibitions.html / artists.html / museums.html</td></tr><tr><th>Section CTA</th><td><code>.muuzee-section-cta</code></td><td>index.html / my-art.html</td></tr><tr><th>Personal Collection Pills</th><td><code>personal-collection.css</code></td><td>favorites.html / saved.html / seen.html</td></tr>
       </tbody>
     </table>
   </div>
@@ -730,6 +743,8 @@ Breakpoints: 980px / 720px</pre></div>
     "pageTitle": 24,
     "sectionDesktop": 28,
     "sectionMobile": 22,
+    "listIntroDesktopPageSpecific": 36,
+    "listIntroMobilePageSpecific": 28,
     "heroDisplayPageSpecific": 54
   },
   "images": {
@@ -773,12 +788,13 @@ Breakpoints: 980px / 720px</pre></div>
     "naturalRatio": true,
     "shortestColumnPlacement": true
   },
-  "lastUpdated": "2026-09-04",
+  "lastUpdated": "2026-09-18",
   "sharedComponents": {
     "sectionCTA": ".muuzee-section-cta",
     "saveControl": "muuzee-save-control.css / muuzee-save-control.js",
     "personalActions": "muuzee-personal-actions.css / muuzee-personal-actions.js",
     "mapUI": "muuzee-map-ui.css / muuzee-map-ui.js",
+    "listIntro": "muuzee-list-intro.css / muuzee-list-intro.js",
     "globalNavigation": "muuzee-global.css / muuzee-global.js"
   }
 }
