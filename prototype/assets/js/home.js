@@ -179,90 +179,37 @@ const homeArtWall =
 /* home-shared-artwall-store:end */
 
 
-/* home-shared-exhibition-map:start */
-(() => {
+/* home-shared-map-discovery:start */
+(async () => {
   "use strict";
 
-  const mapEl = document.getElementById("muuzeeLeafletMap");
-  if(!mapEl) return;
+  const mount = document.querySelector("[data-home-map-discovery]");
+  const discoveryModule = window.MuuzeeMapDiscovery;
+  if(!mount || !discoveryModule) return;
 
-  const mapUI = window.MuuzeeMapUI;
-  const exhibitions = (window.MuuzeeExhibitionCatalog || [])
-    .filter(item =>
-      Number.isFinite(item.lat)
-      && Number.isFinite(item.lng)
-    );
+  const [exhibitions,museums] = window.MuuzeeDataSource
+    ? await Promise.all([
+      window.MuuzeeDataSource.loadExhibitions(),
+      window.MuuzeeDataSource.loadMuseums()
+    ])
+    : [
+      window.MuuzeeExhibitionCatalog || [],
+      window.MuuzeeMuseumCatalog || []
+    ];
 
-  if(typeof L === "undefined" || !mapUI){
-    mapEl.innerHTML =
-      '<div style="padding:24px;font:12px/1.6 Helvetica,Arial,sans-serif;color:#777">Map could not load.</div>';
-    return;
-  }
-
-  const map = L.map(mapEl,{
-    zoomControl:true,
-    scrollWheelZoom:false,
-    zoomSnap:0.25,
-    zoomDelta:0.5,
-    attributionControl:true
-  });
-
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    {
-      subdomains:"abcd",
-      maxZoom:20,
-      attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
+  discoveryModule.mount({
+    mount,
+    exhibitions,
+    museums,
+    initialMode:"exhibition",
+    mapOptions:{
+      scrollWheelZoom:false,
+      zoomSnap:0.25,
+      zoomDelta:0.5
     }
-  ).addTo(map);
-
-  const markerLayer = L.layerGroup().addTo(map);
-
-  exhibitions.forEach(item => {
-    mapUI.addItemMarker({
-      map,
-      mapEl,
-      markerLayer,
-      item,
-      type:"exhibition"
-    });
-  });
-
-  if(exhibitions.length){
-    const bounds = L.latLngBounds(
-      exhibitions.map(item => [item.lat,item.lng])
-    );
-
-    if(bounds.isValid()){
-      map.fitBounds(bounds,{
-        padding:[28,28],
-        maxZoom:12.5
-      });
-    }
-  }
-
-  const syncMapSize = () => {
-    window.requestAnimationFrame(() => {
-      map.invalidateSize({pan:false});
-    });
-  };
-
-  syncMapSize();
-  window.setTimeout(syncMapSize,120);
-  window.setTimeout(syncMapSize,420);
-
-  if("ResizeObserver" in window){
-    const observer = new ResizeObserver(syncMapSize);
-    observer.observe(mapEl);
-  }else{
-    window.addEventListener("resize",syncMapSize);
-  }
-
-  window.addEventListener("orientationchange",() => {
-    window.setTimeout(syncMapSize,180);
   });
 })();
-/* home-shared-exhibition-map:end */
+/* home-shared-map-discovery:end */
 
 /* popular-museums:start */
 (() => {

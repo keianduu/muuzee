@@ -50,7 +50,8 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Muuzee — Responsive Home Concept</title>
-<link href="./assets/css/muuzee-global.css?v=20260917-order651-01" rel="stylesheet"/><link href="./assets/css/home.css?v=20260917-order652-02" rel="stylesheet"/>
+<link href="./assets/css/muuzee-global.css?v=20260917-order651-01" rel="stylesheet"/><link href="./assets/css/home.css?v=20260918-order653-01" rel="stylesheet"/>
+<link rel="stylesheet" href="./assets/css/muuzee-map-discovery.css?v=20260918-order653-01">
 <link rel="stylesheet" href="./assets/css/muuzee-map-ui.css?v=20260902-02">
 <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/><link rel="stylesheet" href="./assets/css/muuzee-exhibition-card.css?v=20260826-14">
 <link rel="stylesheet" href="./assets/css/muuzee-save-control.css?v=20260828-24">
@@ -111,7 +112,7 @@
       </div>
     <a class="cta muuzee-section-cta" href="./map.html">詳細検索 →</a></div>
     <div class="near-grid map-only-grid">
-      <div aria-label="展示会を探す地図" class="leaflet-map" id="muuzeeLeafletMap"></div>
+      <div aria-label="展示会と美術館を探す地図" data-home-map-discovery></div>
     </div>
   </div>
 </section><section class="home-artwall-section section" id="artwall">
@@ -177,15 +178,19 @@
   </footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="./assets/js/artwall-image-data.js?v=20260908-02"></script>
-  <script src="./assets/js/muuzee-global.js?v=20260917-order651-01"></script><script src="./assets/js/artist-data.js?v=20260826-10"></script><script src="./assets/js/museum-data.js?v=20260828-07"></script>
+  <script src="./assets/js/muuzee-global.js?v=20260917-order651-01"></script>
+  <script src="./assets/js/muuzee-data-config.js?v=20260912-01"></script>
+  <script src="./assets/js/artist-data.js?v=20260826-10"></script><script src="./assets/js/museum-data.js?v=20260828-07"></script>
 <script src="./assets/js/exhibition-data.js?v=20260828-33"></script>
+  <script src="./assets/js/muuzee-data-source.js?v=20260912-01"></script>
   <script src="./assets/js/artwall-seen-fixtures.js?v=20260912-shared-seen-source-02"></script>
   <script src="./assets/js/artwall-data-config.js?v=20260912-shared-seen-source-02"></script>
 <script src="./assets/js/artwall-data-source.js?v=20260917-order652-01"></script>
 <script src="./assets/js/muuzee-map-ui.js?v=20260911-login-prototype-01"></script>
+<script src="./assets/js/muuzee-map-discovery.js?v=20260918-order653-01"></script>
 <script src="./assets/js/muuzee-artwall-store.js?v=20260912-membership-source-01"></script>
 <script src="./assets/js/muuzee-artwall.js?v=20260917-order652-02"></script>
-  <script src="./assets/js/home.js?v=20260917-order652-01"></script><script src="./assets/js/muuzee-exhibition-card.js?v=20260917-order651-cleanup-01"></script>
+  <script src="./assets/js/home.js?v=20260918-order653-01"></script><script src="./assets/js/muuzee-exhibition-card.js?v=20260917-order651-cleanup-01"></script>
 <script src="./assets/js/muuzee-save-control.js?v=20260911-login-prototype-01"></script>
   <script defer src="./assets/js/muuzee-artwall-stats-tint.js?v=20260908-08"></script>
   <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>

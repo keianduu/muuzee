@@ -1,4 +1,4 @@
-/* Muuzee Map Discovery — page specific */
+/* Muuzee Map Discovery — page layout and detailed filter */
 html,
 body{
   min-height:100%;
@@ -12,8 +12,8 @@ body.map-page{
 }
 
 .map-page .footer{
-  margin-top:0;
   flex:0 0 auto;
+  margin-top:0;
 }
 
 .map-main{
@@ -28,112 +28,28 @@ body.map-page{
   min-height:600px;
   overflow:hidden;
   background:var(--warm);
+  isolation:isolate;
 }
 
-.discovery-map{
-  width:100%;
+.map-surface > [data-map-discovery]{
   height:100%;
-  background:var(--warm);
-}
-
-.discovery-map.leaflet-container{
-  font-family:var(--sans);
-}
-
-.discovery-map .leaflet-tile{
-  max-width:none !important;
-  max-height:none !important;
-}
-
-.map-control-stack{
-  position:absolute;
-  top:18px;
-  left:50%;
-  z-index:700;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  transform:translateX(-50%);
-}
-
-.map-mode-bar{
-  min-height:48px;
-  padding:4px;
-  display:flex;
-  align-items:center;
-  gap:2px;
-  border:1px solid rgba(38,37,34,.08);
-  border-radius:999px;
-  background:rgba(255,255,255,.96);
-  box-shadow:0 10px 28px rgba(38,37,34,.10);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-}
-
-.map-mode-button{
-  height:38px;
-  padding:0 14px;
-  border:0;
-  border-radius:999px;
-  display:flex;
-  align-items:center;
-  gap:7px;
-  background:transparent;
-  color:var(--muted);
-  cursor:pointer;
-}
-
-.map-mode-button svg,
-.map-locate-button svg{
-  width:17px;
-  height:17px;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.6;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-
-.map-mode-button span,
-.map-locate-button span{
-  font-size:11px;
-  font-weight:650;
-}
-
-.map-mode-button.is-active{
-  background:var(--ink);
-  color:#fff;
-}
-
-.map-locate-button{
-  height:48px;
-  padding:0 14px;
-  border:1px solid rgba(38,37,34,.08);
-  border-radius:999px;
-  display:flex;
-  align-items:center;
-  gap:7px;
-  background:rgba(255,255,255,.96);
-  color:var(--ink);
-  box-shadow:0 10px 28px rgba(38,37,34,.08);
-  cursor:pointer;
-}
-
-.map-locate-button.is-loading{
-  color:var(--muted);
-  pointer-events:none;
 }
 
 .map-filter-summary{
   position:absolute;
-  top:58px;
+  top:76px;
   left:50%;
+  z-index:21;
   width:max-content;
   max-width:min(560px,calc(100vw - 36px));
   display:flex;
   justify-content:center;
   gap:6px;
   transform:translateX(-50%);
+}
+
+.map-filter-summary[hidden]{
+  display:none;
 }
 
 .map-filter-summary span{
@@ -149,202 +65,11 @@ body.map-page{
   white-space:nowrap;
 }
 
-.map-result-count{
+.map-surface .map-search-fab{
   position:absolute;
-  left:24px;
+  right:24px;
   bottom:24px;
-  z-index:680;
-  min-height:38px;
-  padding:0 13px;
-  border-radius:999px;
-  display:flex;
-  align-items:center;
-  gap:5px;
-  background:rgba(255,255,255,.94);
-  color:var(--muted);
-  box-shadow:0 8px 24px rgba(38,37,34,.08);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-}
-
-.map-result-count strong{
-  color:var(--ink);
-  font-size:12px;
-}
-
-.map-result-count span{
-  font-size:10px;
-}
-
-.muuzee-map-pin{
-  width:34px;
-  height:34px;
-  border:2px solid #fff;
-  display:grid;
-  place-items:center;
-  background:var(--ink);
-  color:#fff;
-  box-shadow:0 7px 20px rgba(38,37,34,.20);
-  transition:transform var(--motion-fast) ease,box-shadow var(--motion-fast) ease,background-color var(--motion-fast) ease;
-}
-
-.muuzee-map-pin svg{
-  width:17px;
-  height:17px;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.7;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-
-.muuzee-map-pin--exhibition{
-  border-radius:10px 10px 10px 2px;
-  transform:rotate(-4deg);
-}
-
-.muuzee-map-pin--exhibition svg{
-  transform:rotate(4deg);
-}
-
-.muuzee-map-pin--museum{
-  border-radius:50%;
-}
-
-.muuzee-map-pin.is-saved{
-  background:var(--terra);
-  box-shadow:
-    0 0 0 5px rgba(185,111,85,.18),
-    0 7px 22px rgba(38,37,34,.20);
-}
-
-.muuzee-current-pin{
-  width:18px;
-  height:18px;
-  border:4px solid #fff;
-  border-radius:50%;
-  background:var(--blue);
-  box-shadow:0 0 0 4px rgba(153,169,180,.24),0 4px 14px rgba(38,37,34,.16);
-}
-
-.muuzee-map-popup .leaflet-popup-content-wrapper{
-  padding:0;
-  overflow:hidden;
-  border-radius:18px;
-  box-shadow:0 16px 42px rgba(38,37,34,.16);
-}
-
-.muuzee-map-popup .leaflet-popup-content{
-  width:260px !important;
-  margin:0;
-}
-
-.muuzee-map-popup .leaflet-popup-tip{
-  box-shadow:3px 3px 9px rgba(38,37,34,.06);
-}
-
-.map-popup-card{
-  display:block;
-  background:#fff;
-}
-
-.map-popup-image{
-  width:100%;
-  height:138px;
-  overflow:hidden;
-  background:var(--warm);
-}
-
-.map-popup-image img{
-  width:100%;
-  height:100%;
-}
-
-.map-popup-card.is-exhibition .map-popup-image img{
-  object-fit:contain;
-}
-
-.map-popup-card.is-museum .map-popup-image img{
-  object-fit:cover;
-}
-
-.map-popup-body{
-  padding:14px 15px 15px;
-}
-
-.map-popup-topline{
-  min-height:20px;
-  margin-bottom:7px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-}
-
-.map-popup-meta{
-  color:var(--muted2);
-  font-size:9px;
-  line-height:1.3;
-}
-
-.map-popup-saved{
-  min-height:20px;
-  padding:0 7px;
-  border-radius:999px;
-  display:inline-flex;
-  align-items:center;
-  background:rgba(185,111,85,.11);
-  color:var(--terra);
-  font-size:9px;
-}
-
-.map-popup-title{
-  margin:0 0 5px;
-  color:var(--ink);
-  font-size:14px;
-  line-height:1.45;
-  letter-spacing:-.025em;
-  font-weight:650;
-}
-
-.map-popup-sub{
-  margin:0;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1.5;
-}
-
-.map-popup-actions{
-  margin-top:13px;
-  padding-top:12px;
-  border-top:1px solid var(--line);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-
-.map-popup-save{
-  min-height:30px;
-  padding:0 10px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  background:#fff;
-  color:var(--muted);
-  font-size:10px;
-  cursor:pointer;
-}
-
-.map-popup-save.is-saved{
-  border-color:rgba(185,111,85,.25);
-  background:rgba(185,111,85,.08);
-  color:var(--terra);
-}
-
-.map-popup-detail{
-  color:var(--ink);
-  font-size:10px;
-  font-weight:650;
+  z-index:30;
 }
 
 .map-filter-sheet [hidden]{
@@ -361,39 +86,8 @@ body.map-page{
     min-height:420px;
   }
 
-  .map-control-stack{
-    top:12px;
-    max-width:calc(100vw - 28px);
-    gap:6px;
-  }
-
-  .map-mode-bar{
-    min-height:44px;
-  }
-
-  .map-mode-button{
-    height:36px;
-    padding:0 11px;
-  }
-
-  .map-mode-button span,
-  .map-locate-button span{
-    font-size:10px;
-  }
-
-  .map-locate-button{
-    width:44px;
-    height:44px;
-    padding:0;
-    justify-content:center;
-  }
-
-  .map-locate-button span{
-    display:none;
-  }
-
   .map-filter-summary{
-    top:52px;
+    top:64px;
     max-width:calc(100vw - 28px);
     overflow-x:auto;
     justify-content:flex-start;
@@ -404,300 +98,8 @@ body.map-page{
     display:none;
   }
 
-  .map-result-count{
-    left:14px;
-    bottom:14px;
-  }
-
-  .muuzee-map-popup .leaflet-popup-content{
-    width:230px !important;
-  }
-
-  .map-popup-image{
-    height:120px;
-  }
-}
-
-/* map-overlay-layer-fix:start */
-.map-surface{
-  isolation:isolate;
-}
-
-.discovery-map{
-  position:absolute;
-  inset:0;
-  z-index:0;
-}
-
-.map-control-stack{
-  z-index:20;
-}
-
-.map-result-count{
-  z-index:20;
-}
-
-.map-surface .map-search-fab{
-  position:absolute;
-  right:24px;
-  bottom:24px;
-  z-index:30;
-}
-
-.muuzee-map-popup .leaflet-popup-content{
-  width:min(390px,calc(100vw - 56px)) !important;
-  margin:0;
-}
-
-.map-popup-card{
-  min-height:152px;
-  display:grid;
-  grid-template-columns:136px minmax(0,1fr);
-  background:#fff;
-}
-
-.map-popup-image{
-  width:136px;
-  height:100%;
-  min-height:152px;
-  overflow:hidden;
-  background:var(--warm);
-}
-
-.map-popup-image img,
-.map-popup-card.is-exhibition .map-popup-image img,
-.map-popup-card.is-museum .map-popup-image img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-.map-popup-body{
-  min-width:0;
-  padding:13px 14px 12px;
-  display:flex;
-  flex-direction:column;
-}
-
-.map-popup-topline{
-  min-height:18px;
-  margin-bottom:5px;
-}
-
-.map-popup-meta{
-  min-width:0;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.map-popup-title{
-  margin:0 0 5px;
-  display:-webkit-box;
-  overflow:hidden;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
-  font-size:13px;
-  line-height:1.4;
-}
-
-.map-popup-sub{
-  display:-webkit-box;
-  overflow:hidden;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
-  font-size:9px;
-  line-height:1.45;
-}
-
-.map-popup-actions{
-  margin-top:auto;
-  padding-top:9px;
-}
-
-.map-popup-save{
-  min-height:28px;
-  padding:0 9px;
-  font-size:9px;
-}
-
-.map-popup-detail{
-  font-size:9px;
-  white-space:nowrap;
-}
-
-@media(max-width:720px){
   .map-surface .map-search-fab{
     right:14px;
     bottom:14px;
   }
-
-  .muuzee-map-popup .leaflet-popup-content{
-    width:min(326px,calc(100vw - 42px)) !important;
-  }
-
-  .map-popup-card{
-    min-height:132px;
-    grid-template-columns:108px minmax(0,1fr);
-  }
-
-  .map-popup-image{
-    width:108px;
-    min-height:132px;
-  }
-
-  .map-popup-body{
-    padding:11px 12px 10px;
-  }
-
-  .map-popup-title{
-    font-size:12px;
-  }
-
-  .map-popup-actions{
-    padding-top:7px;
-    gap:7px;
-  }
 }
-/* map-overlay-layer-fix:end */
-
-/* popup-save-icon:start */
-
-/* Tooltip save uses the same Bookmark visual language as the rest of Muuzee. */
-.map-popup-topline{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px;
-}
-
-.map-popup-save{
-  position:relative;
-  flex:0 0 30px;
-  width:30px;
-  height:30px;
-  min-width:30px;
-  min-height:30px;
-  padding:0;
-  border:1px solid rgba(38,37,34,.10);
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  background:#fff;
-  color:var(--ink);
-  box-shadow:0 4px 12px rgba(38,37,34,.08);
-  line-height:0;
-  cursor:pointer;
-}
-
-.map-popup-save svg{
-  display:block;
-  width:14px;
-  height:14px;
-  margin:0;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.6;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-
-.map-popup-save.is-saved{
-  border-color:rgba(185,111,85,.24);
-  background:#fff;
-  color:var(--terra);
-}
-
-.map-popup-save.is-saved svg{
-  fill:currentColor;
-  stroke:currentColor;
-}
-
-/* Old duplicated saved label is no longer used. */
-.map-popup-saved{
-  display:none !important;
-}
-
-/* Bottom row contains Detail only. */
-.map-popup-actions{
-  justify-content:flex-end;
-}
-
-.map-popup-actions > .map-popup-save{
-  display:none !important;
-}
-
-/* popup-save-icon:end */
-
-/* safe-popup-centering:start */
-
-.muuzee-map-popup{
-  transition:opacity 150ms ease;
-}
-
-.muuzee-map-popup.is-positioning{
-  opacity:0 !important;
-  pointer-events:none !important;
-}
-
-/* safe-popup-centering:end */
-
-/* popup-save-hit-area:start */
-
-.muuzee-map-popup .map-popup-save{
-  position:relative !important;
-  z-index:50 !important;
-  pointer-events:auto !important;
-  touch-action:manipulation;
-  isolation:isolate;
-}
-
-.muuzee-map-popup .map-popup-topline{
-  position:relative;
-  z-index:20;
-}
-
-/* popup-save-hit-area:end */
-
-/* map-mode-toggle-width:start */
-
-/* Keep labels on one line without letting the mode toggle collide
-   with Leaflet zoom controls on narrow screens. */
-.map-mode-bar{
-  width:clamp(164px,36vw,220px);
-  min-width:164px;
-}
-
-.map-mode-button{
-  flex:1 1 0;
-  min-width:0;
-  justify-content:center;
-  gap:6px;
-  padding-inline:8px;
-  white-space:nowrap;
-}
-
-.map-mode-button span{
-  display:block;
-  white-space:nowrap;
-  word-break:keep-all;
-}
-
-@media(max-width:720px){
-  .map-mode-bar{
-    width:clamp(164px,46vw,210px);
-    min-width:164px;
-  }
-
-  .map-mode-button{
-    gap:5px;
-    padding-inline:6px;
-  }
-
-  .map-mode-button span{
-    white-space:nowrap;
-    word-break:keep-all;
-  }
-}
-
-/* map-mode-toggle-width:end */

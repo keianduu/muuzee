@@ -568,7 +568,7 @@ Breakpoints: 980px / 720px</pre></div>
 <div class="section dg-side-margin-shell">
 <div class="global-rule">
   <strong>Shared Map UI</strong>
-  <p>Pin / Tooltip / Tooltip内Save / Tooltip中央移動は <code>muuzee-map-ui.css / muuzee-map-ui.js</code> を共通利用する。TOPとMap Discoveryで個別実装しない。TOP Mapは座標を持つExhibitionを表示し、MapページはExhibition / Museumの表示Modeを切り替えられる。</p>
+  <p>Pin / Tooltip / Tooltip内Save / Tooltip中央移動は <code>muuzee-map-ui.css / muuzee-map-ui.js</code> を共通利用する。Leaflet初期化、Exhibition / Museum Mode、現在地、件数、Marker描画、Resizeは <code>muuzee-map-discovery.css / muuzee-map-discovery.js</code> が所有し、TOPとMap Pageで同じDiscovery Componentを利用する。詳細Filter / Summary / Search FABはMap Page固有とし、Shared Componentへ含めない。</p>
 </div>
 </div>
 <!-- shared-map-ui-rule:end -->
@@ -668,7 +668,7 @@ Breakpoints: 980px / 720px</pre></div>
         <tr><th>Shared area</th><th>Implementation</th><th>Current consumers</th></tr>
       </thead>
       <tbody>
-        <tr><th>Global UI</th><td><code>muuzee-global.css / muuzee-global.js</code></td><td>artist.html / artists.html / artwall-edit.html / contact.html / disclaimer.html / +16</td></tr><tr><th>Save Control</th><td><code>muuzee-save-control.css / muuzee-save-control.js</code></td><td>artist.html / artists.html / exhibition.html / exhibitions.html / favorites.html / +5</td></tr><tr><th>Personal Save / Seen</th><td><code>muuzee-personal-actions.css / muuzee-personal-actions.js</code></td><td>exhibition.html / museum.html / my-art.html</td></tr><tr><th>Personal Edit Toolbar</th><td><code>muuzee-personal-edit-toolbar.css / js</code></td><td>artwall-edit.html / profile-settings.html</td></tr><tr><th>Shared Map UI</th><td><code>muuzee-map-ui.css / muuzee-map-ui.js</code></td><td>index.html / map.html</td></tr><tr><th>Section CTA</th><td><code>.muuzee-section-cta</code></td><td>index.html / my-art.html</td></tr><tr><th>Personal Collection Pills</th><td><code>personal-collection.css</code></td><td>favorites.html / saved.html / seen.html</td></tr>
+        <tr><th>Global UI</th><td><code>muuzee-global.css / muuzee-global.js</code></td><td>artist.html / artists.html / artwall-edit.html / contact.html / disclaimer.html / +16</td></tr><tr><th>Save Control</th><td><code>muuzee-save-control.css / muuzee-save-control.js</code></td><td>artist.html / artists.html / exhibition.html / exhibitions.html / favorites.html / +5</td></tr><tr><th>Personal Save / Seen</th><td><code>muuzee-personal-actions.css / muuzee-personal-actions.js</code></td><td>exhibition.html / museum.html / my-art.html</td></tr><tr><th>Personal Edit Toolbar</th><td><code>muuzee-personal-edit-toolbar.css / js</code></td><td>artwall-edit.html / profile-settings.html</td></tr><tr><th>Shared Map UI</th><td><code>muuzee-map-ui.css / muuzee-map-ui.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared Map Discovery</th><td><code>muuzee-map-discovery.css / muuzee-map-discovery.js</code></td><td>index.html / map.html</td></tr><tr><th>Section CTA</th><td><code>.muuzee-section-cta</code></td><td>index.html / my-art.html</td></tr><tr><th>Personal Collection Pills</th><td><code>personal-collection.css</code></td><td>favorites.html / saved.html / seen.html</td></tr>
       </tbody>
     </table>
   </div>
