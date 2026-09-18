@@ -1,7 +1,7 @@
 /* Muuzee Shared List Intro */
 .muuzee-list-intro{
   padding:68px 0 0;
-  margin-bottom:40px;
+  margin-bottom:0;
 }
 
 .muuzee-list-intro-heading{
@@ -109,7 +109,7 @@
 @media(max-width:720px){
   .muuzee-list-intro{
     padding-top:38px;
-    margin-bottom:32px;
+    margin-bottom:0;
   }
 
   .muuzee-list-intro-heading{

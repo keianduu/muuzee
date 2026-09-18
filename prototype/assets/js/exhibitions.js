@@ -17,6 +17,7 @@
     countLabel:"exhibitions",
     count:0
   });
+  const breadcrumb = window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]");
 
   const openButton = document.querySelector("[data-filter-open]");
   const closeButton = document.querySelector("[data-filter-close]");
@@ -131,6 +132,7 @@
     const values = [f.keyword, ...f.area, ...f.status.map(x => x === "now" ? "開催中" : "開催前"), ...f.period, ...f.category].filter(Boolean);
     activeFiltersEl.innerHTML = values.map(x => `<span class="active-filter">${esc(x)}</span>`).join("");
     activeFiltersEl.hidden = values.length === 0;
+    breadcrumb?.setConditionSearch(values.length > 0);
   }
 
   function clearFilterUI(){

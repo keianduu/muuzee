@@ -24,7 +24,7 @@ body.map-page{
 
 .map-surface{
   position:relative;
-  height:calc(100svh - 76px - 92px);
+  height:calc(100svh - 76px - 43px - 92px);
   min-height:600px;
   overflow:hidden;
   background:var(--warm);
@@ -82,7 +82,7 @@ body.map-page{
   }
 
   .map-surface{
-    height:calc(100svh - 62px - 72px);
+    height:calc(100svh - 62px - 35px - 72px);
     min-height:420px;
   }
 

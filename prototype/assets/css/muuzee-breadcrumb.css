@@ -1,0 +1,104 @@
+/* Muuzee Shared Breadcrumb */
+[data-muuzee-breadcrumb]{
+  min-width:0;
+}
+
+.muuzee-breadcrumb{
+  width:100%;
+  min-width:0;
+  overflow-x:auto;
+  color:var(--muted2);
+  font-size:10px;
+  line-height:1.5;
+  scrollbar-width:none;
+}
+
+.muuzee-breadcrumb::-webkit-scrollbar{
+  display:none;
+}
+
+.muuzee-breadcrumb ol{
+  width:max-content;
+  min-width:100%;
+  margin:0;
+  padding:0;
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  list-style:none;
+  white-space:nowrap;
+}
+
+.muuzee-breadcrumb li{
+  display:flex;
+  align-items:center;
+}
+
+.muuzee-breadcrumb li + li::before{
+  content:"/";
+  margin:0 8px;
+  color:var(--line);
+}
+
+.muuzee-breadcrumb a{
+  color:inherit;
+  text-decoration:none;
+}
+
+.muuzee-breadcrumb a:hover{
+  color:var(--ink);
+}
+
+.muuzee-breadcrumb [aria-current="page"]{
+  color:var(--ink);
+}
+
+[data-breadcrumb-placement="list"]{
+  padding-top:12px;
+  padding-bottom:13px;
+}
+
+[data-breadcrumb-placement="detail"]{
+  margin-top:-17px;
+  padding-bottom:28px;
+}
+
+[data-breadcrumb-placement="map"]{
+  padding-top:14px;
+  padding-bottom:14px;
+}
+
+[data-breadcrumb-placement="personal"]{
+  padding-top:18px;
+  padding-bottom:18px;
+}
+
+[data-breadcrumb-placement="information"]{
+  padding-bottom:20px;
+}
+
+@media(max-width:720px){
+  [data-breadcrumb-placement="list"]{
+    padding-top:8px;
+    padding-bottom:9px;
+  }
+
+  [data-breadcrumb-placement="detail"]{
+    margin-top:-13px;
+    padding-bottom:22px;
+  }
+
+  [data-breadcrumb-placement="map"]{
+    padding-top:10px;
+    padding-bottom:10px;
+  }
+
+  [data-breadcrumb-placement="personal"]{
+    padding-top:14px;
+    padding-bottom:14px;
+  }
+
+  [data-breadcrumb-placement="information"]{
+    padding-bottom:16px;
+  }
+}

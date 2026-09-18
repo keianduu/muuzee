@@ -31,6 +31,7 @@
   const artistsEmpty = document.querySelector("[data-artists-empty]");
 
   document.title = `${museum.name} — Muuzee`;
+  window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]")?.setCurrentLabel(museum.name);
 
   if(hero){ hero.src = museum.image || ""; hero.alt = museum.name; }
   if(nameEl) nameEl.textContent = museum.name;

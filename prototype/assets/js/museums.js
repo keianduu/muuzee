@@ -66,6 +66,7 @@
       selectScope(id,true);
     }
   });
+  const breadcrumb = window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]");
 
   if(keywordInput) keywordInput.value = initialKeyword;
 
@@ -231,6 +232,7 @@
     activeFilters.innerHTML = entries.map(([group,value,label]) =>
       `<button class="active-filter" type="button" data-remove-group="${group}" data-remove-value="${esc(value)}">${esc(label)}</button>`
     ).join("");
+    breadcrumb?.setConditionSearch(entries.length > 0);
   }
 
   function render(){

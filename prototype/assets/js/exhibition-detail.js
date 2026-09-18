@@ -10,6 +10,7 @@
   const item = catalog.find(exhibition => exhibition.id === requested) || catalog[0];
 
   document.title = `${item.title} | Muuzee`;
+  window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]")?.setCurrentLabel(item.title);
 
   const hero = document.querySelector(".exhibition-hero img");
   const title = document.querySelector(".exhibition-sheet-title");

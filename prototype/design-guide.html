@@ -585,6 +585,14 @@ Breakpoints: 980px / 720px</pre></div>
 </div>
 </div>
 <!-- shared-list-intro-rule:end -->
+<!-- shared-breadcrumb-rule:start -->
+<div class="section dg-side-margin-shell">
+<div class="global-rule">
+  <strong>Shared Breadcrumb / SEO Page Config</strong>
+  <p>HOMEを除く対象ページのパンくずは <code>muuzee-seo-config.js / muuzee-breadcrumb.js / muuzee-breadcrumb.css</code> を共通利用する。ConfigはRoute / Label / Parent / Structured Data可否とFacet順をDataとして所有し、Visible BreadcrumbとBreadcrumbList JSON-LDは同じResolver結果から生成する。Current itemは非Linkかつ <code>aria-current="page"</code> とし、Detail名はEntity解決後に明示APIで更新する。Mobileは一行を維持し、Breadcrumb内だけ横スクロールを許可する。将来のFacet拡張では <code>Home &gt; Exhibitions &gt; Tokyo &gt; Contemporary Art</code> のような階層をConfig順で解決可能にするが、現行Prototypeでは対応するSEO routeを未実装とし、canonical URLが確定したFacetだけをStructured Dataへ昇格する。</p>
+</div>
+</div>
+<!-- shared-breadcrumb-rule:end -->
 <!-- hamburger-navigation-rule:start -->
 <div class="section dg-side-margin-shell">
 <div class="global-rule">
@@ -681,7 +689,7 @@ Breakpoints: 980px / 720px</pre></div>
         <tr><th>Shared area</th><th>Implementation</th><th>Current consumers</th></tr>
       </thead>
       <tbody>
-        <tr><th>Global UI</th><td><code>muuzee-global.css / muuzee-global.js</code></td><td>artist.html / artists.html / artwall-edit.html / contact.html / disclaimer.html / +16</td></tr><tr><th>Save Control</th><td><code>muuzee-save-control.css / muuzee-save-control.js</code></td><td>artist.html / artists.html / exhibition.html / exhibitions.html / favorites.html / +5</td></tr><tr><th>Personal Save / Seen</th><td><code>muuzee-personal-actions.css / muuzee-personal-actions.js</code></td><td>exhibition.html / museum.html / my-art.html</td></tr><tr><th>Personal Edit Toolbar</th><td><code>muuzee-personal-edit-toolbar.css / js</code></td><td>artwall-edit.html / profile-settings.html</td></tr><tr><th>Shared Map UI</th><td><code>muuzee-map-ui.css / muuzee-map-ui.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared Map Discovery</th><td><code>muuzee-map-discovery.css / muuzee-map-discovery.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared List Intro</th><td><code>muuzee-list-intro.css / muuzee-list-intro.js</code></td><td>exhibitions.html / artists.html / museums.html</td></tr><tr><th>Section CTA</th><td><code>.muuzee-section-cta</code></td><td>index.html / my-art.html</td></tr><tr><th>Personal Collection Pills</th><td><code>personal-collection.css</code></td><td>favorites.html / saved.html / seen.html</td></tr>
+        <tr><th>Global UI</th><td><code>muuzee-global.css / muuzee-global.js</code></td><td>artist.html / artists.html / artwall-edit.html / contact.html / disclaimer.html / +16</td></tr><tr><th>Save Control</th><td><code>muuzee-save-control.css / muuzee-save-control.js</code></td><td>artist.html / artists.html / exhibition.html / exhibitions.html / favorites.html / +5</td></tr><tr><th>Personal Save / Seen</th><td><code>muuzee-personal-actions.css / muuzee-personal-actions.js</code></td><td>exhibition.html / museum.html / my-art.html</td></tr><tr><th>Personal Edit Toolbar</th><td><code>muuzee-personal-edit-toolbar.css / js</code></td><td>artwall-edit.html / profile-settings.html</td></tr><tr><th>Shared Map UI</th><td><code>muuzee-map-ui.css / muuzee-map-ui.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared Map Discovery</th><td><code>muuzee-map-discovery.css / muuzee-map-discovery.js</code></td><td>index.html / map.html</td></tr><tr><th>Shared List Intro</th><td><code>muuzee-list-intro.css / muuzee-list-intro.js</code></td><td>exhibitions.html / artists.html / museums.html</td></tr><tr><th>Shared Breadcrumb / SEO Config</th><td><code>muuzee-breadcrumb.css / muuzee-breadcrumb.js / muuzee-seo-config.js</code></td><td>HOMEを除くPublic / Personal / Utility対象ページ</td></tr><tr><th>Section CTA</th><td><code>.muuzee-section-cta</code></td><td>index.html / my-art.html</td></tr><tr><th>Personal Collection Pills</th><td><code>personal-collection.css</code></td><td>favorites.html / saved.html / seen.html</td></tr>
       </tbody>
     </table>
   </div>

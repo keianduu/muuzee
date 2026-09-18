@@ -7,9 +7,10 @@
   <meta name="description" content="現在地やエリアを起点に、近くの展覧会・美術館を探せるMuuzeeの地図検索。">
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260911-login-prototype-02">
   <link rel="stylesheet" href="./assets/css/list-filter.css?v=20260828-08">
-  <link rel="stylesheet" href="./assets/css/map.css?v=20260918-order653-01">
+  <link rel="stylesheet" href="./assets/css/map.css?v=20260918-order655-01">
   <link rel="stylesheet" href="./assets/css/muuzee-map-discovery.css?v=20260918-order653-01">
 <link rel="stylesheet" href="./assets/css/muuzee-map-ui.css?v=20260902-02">
+  <link rel="stylesheet" href="./assets/css/muuzee-breadcrumb.css?v=20260918-order655-01">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="./assets/js/muuzee-profile-avatar-preload.js?v=20260908-01"></script>
 </head>
@@ -26,6 +27,7 @@
   </header>
 
   <main class="map-main">
+    <div class="shell" data-muuzee-breadcrumb data-breadcrumb-placement="map"></div>
     <section class="map-surface" aria-label="Muuzee 地図検索">
       <div aria-label="展示会と美術館を探す地図" data-map-discovery></div>
       <div class="map-filter-summary" data-map-filter-summary hidden></div>
@@ -123,6 +125,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./assets/js/muuzee-global.js?v=20260911-login-prototype-02"></script>
+  <script src="./assets/js/muuzee-seo-config.js?v=20260918-order655-01"></script>
+  <script src="./assets/js/muuzee-breadcrumb.js?v=20260918-order655-01"></script>
   <script src="./assets/js/list-filter.js?v=20260828-08"></script>
   <script src="./assets/js/muuzee-data-config.js?v=20260912-01"></script>
   <script src="./assets/js/exhibition-data.js?v=20260828-08"></script>

@@ -22,6 +22,7 @@
     countLabel:"artists",
     count:0
   });
+  const breadcrumb = window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]");
 
   if(!grid) return;
 
@@ -97,6 +98,7 @@
     activeFilters.innerHTML = entries.map(entry => `
       <button class="active-filter" type="button" data-remove-group="${esc(entry.group)}" data-remove-value="${esc(entry.value)}">${esc(entry.label)}</button>
     `).join("");
+    breadcrumb?.setConditionSearch(entries.length > 0);
   }
 
   function syncCountrySection(){

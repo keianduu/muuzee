@@ -59,6 +59,7 @@
   }
 
   document.title = `${artist.name} — Muuzee`;
+  window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]")?.setCurrentLabel(artist.name);
   document.querySelector("[data-artist-name]").textContent = artist.name;
   document.querySelector("[data-artist-sub]").textContent = `${artist.country || ""} · ${(artist.eras || []).join(" / ")}`;
   document.querySelector("[data-artist-style]").textContent = (artist.category || []).join(" / ");
