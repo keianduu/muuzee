@@ -1,0 +1,142 @@
+/* Shared Detail Head — Exhibition / Artist / Museum. */
+.muuzee-detail-head{
+  padding-bottom:32px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+}
+
+.muuzee-detail-head-copy{
+  min-width:0;
+}
+
+.muuzee-detail-head-meta{
+  min-height:28px;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.muuzee-detail-head-meta-item{
+  min-height:28px;
+  padding:0 10px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1;
+}
+
+.muuzee-detail-head-meta-item.is-status{
+  border-color:rgba(185,111,85,.28);
+  color:var(--terra);
+}
+
+.muuzee-detail-head-title{
+  max-width:760px;
+  margin:0 0 10px;
+  font-size:24px;
+  line-height:1.2;
+  letter-spacing:-.035em;
+  font-weight:650;
+}
+
+.muuzee-detail-head-sub{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.muuzee-detail-head-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.muuzee-detail-head-action{
+  width:auto;
+  height:auto;
+  min-width:82px;
+  min-height:40px;
+  margin:0;
+  padding:0 14px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  background:#fff;
+  color:var(--ink);
+  font-size:12px;
+  line-height:1;
+  font-weight:560;
+  white-space:nowrap;
+  cursor:pointer;
+}
+
+.muuzee-detail-head-action svg{
+  width:15px;
+  height:15px;
+  flex:0 0 15px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.muuzee-detail-head-action.is-saved{
+  border-color:var(--ink);
+  background:var(--ink);
+  color:#fff;
+}
+
+.muuzee-detail-head-action.is-saved svg{
+  fill:currentColor;
+}
+
+@media(max-width:720px){
+  .muuzee-detail-head{
+    padding-bottom:24px;
+    display:block;
+  }
+
+  .muuzee-detail-head-meta{
+    min-height:26px;
+    margin-bottom:10px;
+    gap:6px;
+  }
+
+  .muuzee-detail-head-meta-item{
+    min-height:26px;
+  }
+
+  .muuzee-detail-head-title{
+    margin-bottom:8px;
+    font-size:24px;
+    line-height:1.16;
+  }
+
+  .muuzee-detail-head-actions{
+    margin-top:18px;
+    display:inline-flex;
+    gap:7px;
+  }
+
+  .muuzee-detail-head-action{
+    width:auto;
+    min-width:72px;
+    min-height:38px;
+    padding-inline:12px;
+    font-size:10px;
+  }
+}

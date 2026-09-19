@@ -18,3 +18,9 @@
 .muuzee-personal-edit-toolbar.is-busy .muuzee-personal-edit-toolbar-save{
   cursor:wait;
 }
+
+@media(max-width:720px){
+  .muuzee-personal-edit-toolbar.muuzee-personal-section-head{
+    display:none;
+  }
+}

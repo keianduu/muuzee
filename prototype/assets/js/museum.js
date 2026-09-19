@@ -15,9 +15,7 @@
   }[char]));
 
   const hero = document.querySelector("[data-museum-hero]");
-  const nameEl = document.querySelector("[data-museum-name]");
-  const metaEl = document.querySelector("[data-museum-meta]");
-  const locationEl = document.querySelector("[data-museum-location]");
+  const detailHead = window.MuuzeeDetailHead?.mount("[data-muuzee-detail-head]");
   const descriptionEl = document.querySelector("[data-museum-description]");
   const addressEl = document.querySelector("[data-museum-address]");
   const accessEl = document.querySelector("[data-museum-access]");
@@ -34,14 +32,13 @@
   window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]")?.setCurrentLabel(museum.name);
 
   if(hero){ hero.src = museum.image || ""; hero.alt = museum.name; }
-  if(nameEl) nameEl.textContent = museum.name;
-  if(metaEl) metaEl.textContent = museum.category || "";
-
   const locationText = museum.scope === "jp"
     ? [museum.prefecture,museum.city,museum.location].filter(Boolean).join(" · ")
     : [museum.city,museum.country].filter(Boolean).join(" · ");
 
-  if(locationEl) locationEl.textContent = locationText;
+  detailHead?.setTitle(museum.name);
+  detailHead?.setSub(locationText);
+  detailHead?.setMeta([{text:museum.category || ""}]);
   if(descriptionEl) descriptionEl.textContent = museum.description || "";
   if(addressEl) addressEl.textContent = museum.address || "";
   if(accessEl) accessEl.innerHTML = (museum.access || []).map(line => `<p>${esc(line)}</p>`).join("");

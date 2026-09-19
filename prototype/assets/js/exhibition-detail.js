@@ -13,9 +13,7 @@
   window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]")?.setCurrentLabel(item.title);
 
   const hero = document.querySelector(".exhibition-hero img");
-  const title = document.querySelector(".exhibition-sheet-title");
-  const venue = document.querySelector(".exhibition-sheet-venue");
-  const meta = [...document.querySelectorAll(".exhibition-sheet-meta .muuzee-pill")];
+  const detailHead = window.MuuzeeDetailHead?.mount("[data-muuzee-detail-head]");
   const lead = document.querySelector(".lead-grid p");
   const mapTitle = document.querySelector(".map-copy h3");
   const mapLocation = document.querySelector(".map-copy p");
@@ -25,15 +23,12 @@
     hero.alt = item.title;
   }
 
-  if(title) title.textContent = item.title;
-  if(venue) venue.textContent = item.venue;
-
-  if(meta[0]) meta[0].textContent = item.category;
-  if(meta[1]){
-    meta[1].textContent = item.statusLabel;
-    meta[1].classList.toggle("muuzee-pill--status",item.status === "now");
-    meta[1].classList.toggle("muuzee-pill--neutral",item.status !== "now");
-  }
+  detailHead?.setTitle(item.title);
+  detailHead?.setSub(item.venue);
+  detailHead?.setMeta([
+    {text:item.category},
+    {text:item.statusLabel,tone:item.status === "now" ? "status" : "neutral"}
+  ]);
 
   if(lead) lead.textContent = item.description;
   if(mapTitle) mapTitle.textContent = item.venue;

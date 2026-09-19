@@ -32,6 +32,7 @@
   --motion-ui:260ms;
   --motion-hero:10s;
   --footer-desktop-height:92px;
+  --footer-mobile-height:72px;
 }
 
 *{box-sizing:border-box}
@@ -254,7 +255,7 @@ svg{display:block}
 }
 
 @media(max-width:720px){
-  body.muuzee-app{padding-bottom:72px}
+  body.muuzee-app{padding-bottom:var(--footer-mobile-height)}
   .shell{width:calc(100% - 36px)}
   .site-header{height:62px}
   .logo{font-size:21px}
@@ -284,7 +285,7 @@ svg{display:block}
     padding-bottom:env(safe-area-inset-bottom);
   }
   .footer-inner{
-    height:72px;
+    height:var(--footer-mobile-height);
     width:100%;
   }
   .footer-nav{

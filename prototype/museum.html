@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="./assets/css/muuzee-exhibition-card.css?v=20260826-14">
   <link rel="stylesheet" href="./assets/css/museum.css?v=20260828-07">
 <link rel="stylesheet" href="./assets/css/muuzee-personal-actions.css?v=20260902-02">
+  <link rel="stylesheet" href="./assets/css/muuzee-detail-head.css?v=20260919-order656-01">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="./assets/css/muuzee-save-control.css?v=20260828-24">
   <link rel="stylesheet" href="./assets/css/muuzee-breadcrumb.css?v=20260918-order655-01">
@@ -34,20 +35,20 @@
 
     <section class="museum-detail-sheet" data-muuzee-sheet>
       <div class="shell">
-        <header class="museum-sheet-head">
-          <div>
-            <div class="museum-sheet-meta" data-museum-meta></div>
-            <h1 data-museum-name>美術館</h1>
-            <p data-museum-location></p>
+        <header class="muuzee-detail-head" data-muuzee-detail-head>
+          <div class="muuzee-detail-head-copy">
+            <div class="muuzee-detail-head-meta" data-detail-head-meta></div>
+            <h1 class="muuzee-detail-head-title" data-detail-head-title>美術館</h1>
+            <p class="muuzee-detail-head-sub" data-detail-head-sub></p>
           </div>
-          <div class="muuzee-detail-actions" aria-label="美術館のアクション">
-<button class="muuzee-personal-action" type="button"
+          <div class="muuzee-detail-head-actions" aria-label="美術館のアクション">
+<button class="muuzee-personal-action muuzee-detail-head-action" type="button"
  data-personal-action="save" data-personal-type="museum"
  data-personal-current aria-pressed="false">
 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"></path></svg>
 <span data-personal-action-label>保存</span>
 </button>
-<button class="muuzee-personal-action" type="button"
+<button class="muuzee-personal-action muuzee-detail-head-action" type="button"
  data-personal-action="seen" data-personal-type="museum"
  data-personal-current aria-pressed="false">
 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 2.6 2.6L16.5 9"></path></svg>
@@ -183,13 +184,14 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./assets/js/muuzee-global.js?v=20260915-surface-02"></script>
+  <script src="./assets/js/muuzee-global.js?v=20260919-order656-02"></script>
   <script src="./assets/js/museum-data.js?v=20260828-07"></script>
-  <script src="./assets/js/artist-data.js?v=20260826-09"></script>
+  <script src="./assets/js/artist-data.js?v=20260919-order656-01"></script>
   <script src="./assets/js/muuzee-seo-config.js?v=20260918-order655-01"></script>
   <script src="./assets/js/muuzee-breadcrumb.js?v=20260918-order655-01"></script>
+  <script src="./assets/js/muuzee-detail-head.js?v=20260919-order656-01"></script>
   <script src="./assets/js/muuzee-exhibition-card.js?v=20260917-order651-cleanup-01"></script>
-  <script src="./assets/js/museum.js?v=20260918-order655-01"></script>
+  <script src="./assets/js/museum.js?v=20260919-order656-01"></script>
 <script src="./assets/js/muuzee-save-control.js?v=20260911-login-prototype-01"></script>
 <script src="./assets/js/muuzee-personal-actions.js?v=20260911-login-prototype-01"></script>
   <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>

@@ -40,6 +40,7 @@
       eyebrow:"Profile",
       title:"プロフィール設定",
       saveType:"submit",
+      mobileTarget:"[data-profile-mobile-save]",
       closeHref:"./my-art.html",
       closeLabel:"My Artに戻る",
       saveAttributes:{

@@ -387,13 +387,24 @@
 
 @media(max-width:720px){
   .collection-tabs.is-pill-buttons{
+    flex-wrap:nowrap;
     gap:8px !important;
     margin-bottom:26px;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-x;
+    scrollbar-width:none;
+  }
+
+  .collection-tabs.is-pill-buttons::-webkit-scrollbar{
+    display:none;
   }
 
   .collection-tabs.is-pill-buttons .collection-tab{
     min-height:40px;
-    padding:0 13px !important;
+    padding:0 14px !important;
   }
 
   .collection-tabs.is-pill-buttons .collection-tab span{

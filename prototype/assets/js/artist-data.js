@@ -74,3 +74,36 @@
   });
 })();
 /* exhibition-sample-artist:end */
+
+/* order656-relation-artists:start */
+(() => {
+  "use strict";
+
+  const catalog = window.MuuzeeArtistCatalog;
+  if(!Array.isArray(catalog)) return;
+
+  const fixtures = [
+    {id:"kumiko-koyama",name:"小山久美子",category:["絵画"],tagIds:["painting"]},
+    {id:"takehisa-yumeji",name:"竹久夢二",category:["日本画"],tagIds:["japanese-painting"]},
+    {id:"zak-prekop",name:"Zak Prekop",category:["現代美術","絵画"],tagIds:["contemporary","painting"]},
+    {id:"nobuko-watahiki",name:"綿引展子",category:["絵画"],tagIds:["painting"]},
+    {id:"taichi-nakamura",name:"中村太一",category:["絵画"],tagIds:["painting"]}
+  ];
+
+  const existingIds = new Set(catalog.map(artist => artist.id).filter(Boolean));
+  fixtures.forEach(fixture => {
+    if(existingIds.has(fixture.id)) return;
+    catalog.push({
+      ...fixture,
+      country:"",
+      place:"情報確認中",
+      eras:[],
+      image:"./assets/images/placeholders/artist-neutral.svg",
+      img:"./assets/images/placeholders/artist-neutral.svg",
+      position:"center",
+      featured:false,
+      aliases:[fixture.name]
+    });
+  });
+})();
+/* order656-relation-artists:end */

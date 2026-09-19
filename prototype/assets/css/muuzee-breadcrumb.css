@@ -59,7 +59,7 @@
 }
 
 [data-breadcrumb-placement="detail"]{
-  margin-top:-17px;
+  padding-top:18px;
   padding-bottom:28px;
 }
 
@@ -84,7 +84,7 @@
   }
 
   [data-breadcrumb-placement="detail"]{
-    margin-top:-13px;
+    padding-top:14px;
     padding-bottom:22px;
   }
 

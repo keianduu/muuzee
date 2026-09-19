@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
+  <title id="title">アーティスト情報のプレースホルダー</title>
+  <rect width="120" height="120" rx="60" fill="#f7f5f1"/>
+  <circle cx="60" cy="44" r="18" fill="#d8cec0"/>
+  <path d="M29 101c3-24 14-36 31-36s28 12 31 36" fill="#d8cec0"/>
+</svg>

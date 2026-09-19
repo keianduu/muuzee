@@ -11,6 +11,7 @@
     {
       eyebrow:"ArtWall Edit",
       title:"＋から編集できます",
+      mobileTarget:"[data-artwall-mobile-save]",
       closeHref:"./my-art.html",
       closeLabel:"閉じる",
       saveAttributes:{

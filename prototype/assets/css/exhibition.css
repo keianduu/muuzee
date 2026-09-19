@@ -92,55 +92,9 @@
   margin-top:-8px !important;
   padding-top:32px;
 }
-.exhibition-sheet-head{
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:24px;
-  padding-bottom:32px;
-  margin-bottom:36px;
-  border-bottom:1px solid var(--line);
-}
-.exhibition-sheet-copy{
-  min-width:0;
-}
-.exhibition-sheet-meta{
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:12px;
-}
-.exhibition-sheet-title{
-  margin:0 0 10px;
-  max-width:760px;
-  font-size:24px;
-  line-height:1.18;
-  letter-spacing:-.035em;
-  font-weight:650;
-}
-.exhibition-sheet-venue{
-  margin:0;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-}
 @media (max-width:720px){.detail-sheet{
     margin-top:-4px !important;
     padding-top:24px;
-  }.exhibition-sheet-head{
-    display:block;
-    padding-bottom:24px;
-    margin-bottom:28px;
-  }.exhibition-sheet-meta{
-    margin-bottom:10px;
-    gap:6px;
-  }.exhibition-sheet-title{
-    font-size:24px;
-    line-height:1.16;
-    margin-bottom:8px;
-  }.exhibition-sheet-venue{
-    font-size:10px;
   }}
 
 /* exhibition-detail-typography:start */
@@ -149,7 +103,6 @@
   font-size:10px;
 }
 
-.exhibition-sheet-venue,
 .info-row dt,
 .more,
 .map-copy p,
@@ -163,11 +116,6 @@
   line-height:1.75;
 }
 
-.exhibition-sheet-title{
-  font-size:24px;
-  line-height:1.2;
-}
-
 .section-title h2{
   font-size:24px;
 }
@@ -178,7 +126,6 @@
     font-size:10px;
   }
 
-  .exhibition-sheet-venue,
   .info-row dt,
   .more,
   .map-copy p,
@@ -190,10 +137,6 @@
   .info-row dd{
     font-size:14px;
     line-height:1.75;
-  }
-
-  .exhibition-sheet-title{
-    font-size:24px;
   }
 
   .section-title h2{

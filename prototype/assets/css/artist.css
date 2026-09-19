@@ -25,48 +25,6 @@
   padding:32px 0 36px;
   background:#fff;
 }
-.artist-sheet-head{
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:24px;
-  padding-bottom:32px;
-  margin-bottom:36px;
-  border-bottom:1px solid var(--line);
-}
-.artist-sheet-copy{min-width:0}
-.artist-sheet-meta{
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:12px;
-}
-.artist-tag{
-  min-height:28px;
-  padding:0 10px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  display:inline-flex;
-  align-items:center;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1;
-}
-.artist-sheet-title{
-  margin:0 0 10px;
-  max-width:760px;
-  font-size:32px;
-  line-height:1.14;
-  letter-spacing:-.045em;
-  font-weight:650;
-}
-.artist-sheet-sub{
-  margin:0;
-  color:var(--muted);
-  font-size:14px;
-  line-height:1.5;
-}
 .artist-save-button{
   flex:0 0 auto;
   min-width:88px;
@@ -307,23 +265,6 @@
     margin-top:-4px;
     padding:24px 0 28px;
     border-radius:28px 28px 0 0;
-  }
-  .artist-sheet-head{
-    display:block;
-    padding-bottom:24px;
-    margin-bottom:28px;
-  }
-  .artist-sheet-meta{margin-bottom:10px;gap:6px}
-  .artist-tag{min-height:26px;font-size:9px}
-  .artist-sheet-title{
-    font-size:26px;
-    line-height:1.16;
-    margin-bottom:8px;
-  }
-  .artist-sheet-sub{font-size:11px}
-  .artist-save-button{
-    margin-top:18px;
-    width:100%;
   }
   .artist-overview{
     display:block;

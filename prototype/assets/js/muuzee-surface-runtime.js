@@ -96,22 +96,18 @@
   function bindExhibitionSummary(item){
     document.title = `${item.title} | Muuzee`;
     const hero = document.querySelector(".exhibition-hero img");
-    const title = document.querySelector(".exhibition-sheet-title");
-    const venue = document.querySelector(".exhibition-sheet-venue");
-    const meta = [...document.querySelectorAll(".exhibition-sheet-meta .muuzee-pill")];
+    const detailHead = window.MuuzeeDetailHead?.mount("[data-muuzee-detail-head]");
     const lead = document.querySelector(".lead-grid p");
     const mapTitle = document.querySelector(".map-copy h3");
     const mapLocation = document.querySelector(".map-copy p");
 
     if(hero){ hero.src = item.src || ""; hero.alt = item.title; }
-    if(title) title.textContent = item.title;
-    if(venue) venue.textContent = item.venue || "";
-    if(meta[0]) meta[0].textContent = item.category || "";
-    if(meta[1]){
-      meta[1].textContent = item.statusLabel || "";
-      meta[1].classList.toggle("muuzee-pill--status",item.status === "now");
-      meta[1].classList.toggle("muuzee-pill--neutral",item.status !== "now");
-    }
+    detailHead?.setTitle(item.title);
+    detailHead?.setSub(item.venue || "");
+    detailHead?.setMeta([
+      {text:item.category || ""},
+      {text:item.statusLabel || "",tone:item.status === "now" ? "status" : "neutral"}
+    ]);
     if(lead) lead.textContent = item.description || "";
     if(mapTitle) mapTitle.textContent = item.venue || "";
     if(mapLocation) mapLocation.textContent = [item.city,item.area].filter(Boolean).join("・");
@@ -129,7 +125,7 @@
     let saved = [];
     try{ saved = JSON.parse(localStorage.getItem(savedKey) || "[]"); }catch{}
 
-    root.innerHTML = artists.map(artist => {
+    root.innerHTML = artists.length ? artists.map(artist => {
       const metadata = [
         (artist.category || []).slice(0,2).join(" / "),
         artist.place || artist.country || ""
@@ -146,7 +142,14 @@
           </button>
         </article>
       `;
-    }).join("");
+    }).join("") : `
+      <article class="exhibition-artist-row is-placeholder">
+        <div class="exhibition-artist-main">
+          <img class="exhibition-artist-avatar" src="./assets/images/placeholders/artist-neutral.svg" alt="" loading="lazy">
+          <span class="exhibition-artist-copy"><strong>アーティスト情報</strong><span class="exhibition-artist-meta"><span>情報確認中</span></span></span>
+        </div>
+      </article>
+    `;
 
     if(toggle) toggle.remove();
     root.onclick = event => {
@@ -172,14 +175,18 @@
     bindExhibitionSummary(item);
     renderExhibitionArtists(item);
 
-    const rail = document.querySelector(".exhibition-page .poster-rail, .detail-sheet .poster-rail, .poster-rail");
+    const section = document.querySelector("[data-same-venue-section]");
+    const rail = document.querySelector("[data-same-venue-rail]");
     if(!rail) return true;
+
+    rail.replaceChildren();
 
     const result = await source.resolve("exhibitionDetail","sameVenueExhibitions",{
       exhibitionId:item.id,
       venueId:item.venueId
     });
     rail.innerHTML = result.items.map(posterCard).join("");
+    if(section) section.hidden = result.items.length === 0;
     return true;
   }
 

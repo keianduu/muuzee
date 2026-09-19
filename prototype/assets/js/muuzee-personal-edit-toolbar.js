@@ -61,6 +61,14 @@
     actions.append(saveButton, closeLink);
     root.replaceChildren(copy, actions);
 
+    const mobilePresenter = window.MuuzeeMobileSaveAction?.mount(
+      options.mobileTarget,
+      {
+        label:options.saveLabel || "保存",
+        onSave:() => saveButton.click()
+      }
+    ) || null;
+
     let dirty = false;
     let busy = false;
 
@@ -72,12 +80,15 @@
       saveButton.dataset.hasChanges = dirty ? "true" : "false";
       root.classList.toggle("is-dirty", dirty);
       root.classList.toggle("is-busy", busy);
+      mobilePresenter?.setDisabled(disabled);
+      mobilePresenter?.setBusy(busy);
     };
 
     const api = {
       root,
       saveButton,
       closeLink,
+      mobilePresenter,
       setDirty(value) {
         dirty = Boolean(value);
         sync();

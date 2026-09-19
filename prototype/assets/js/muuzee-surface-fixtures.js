@@ -32,14 +32,14 @@
 
   const existingRelationById = {
     storytelling:{venueId:"sprout-books-art",artistIds:["ayune-shojima"],start:"2026-09-12",end:"2026-09-27"},
-    uchiuchi:{venueId:"gallery-mumon",artistIds:[],start:"2026-09-18",end:"2026-10-03"},
-    yumeji:{venueId:"takehisa-yumeji-museum",artistIds:[],start:"2026-10-03",end:"2026-12-20"},
-    noise:{venueId:"hagiwara-projects",artistIds:[],start:"2026-09-12",end:"2026-10-17"},
-    "light-path":{venueId:"whitestone-ginza",artistIds:[],start:"2026-09-10",end:"2026-10-03"},
+    uchiuchi:{venueId:"gallery-mumon",artistIds:["kumiko-koyama"],start:"2026-09-18",end:"2026-10-03"},
+    yumeji:{venueId:"takehisa-yumeji-museum",artistIds:["takehisa-yumeji"],start:"2026-10-03",end:"2026-12-20"},
+    noise:{venueId:"hagiwara-projects",artistIds:["zak-prekop"],start:"2026-09-12",end:"2026-10-17"},
+    "light-path":{venueId:"whitestone-ginza",artistIds:["nobuko-watahiki"],start:"2026-09-10",end:"2026-10-03"},
     threshold:{venueId:"art-factory-jonanjima",artistIds:[],start:"2026-09-26",end:"2026-10-25"},
     "curious-matters":{venueId:"good-design-marunouchi",artistIds:[],start:"2026-09-02",end:"2026-09-12"},
     "urushi-body":{venueId:"issey-miyake-ginza-cube",artistIds:[],start:"2026-09-01",end:"2026-09-27"},
-    "dream-river":{venueId:"cave-ayumi-gallery",artistIds:[],start:"2026-08-23",end:"2026-09-22"}
+    "dream-river":{venueId:"cave-ayumi-gallery",artistIds:["taichi-nakamura"],start:"2026-08-23",end:"2026-09-22"}
   };
 
   const dateStatus = (start,end) => {
@@ -143,6 +143,20 @@
       category:"企画展",expressionCategory:"絵画",status:"upcoming",statusLabel:"開催予定",
       artistIds:["gerhard-richter","david-hockney"],src:"./assets/images/exhibitions/exhibition-02.jpg",href:"./exhibition.html?id=nact-color-fields",
       description:"色面と絵画表現を確認するPrototype relation fixture。"
+    },
+    {
+      id:"yumeji-modern-girls",title:"夢二 モダンガールのまなざし",venue:"竹久夢二美術館",venueId:"takehisa-yumeji-museum",
+      city:"東京",area:"上野・谷中",date:"2027.01.09 — 03.28",start:"2027-01-09",end:"2027-03-28",
+      category:"企画展",expressionCategory:"日本画",status:"upcoming",statusLabel:"開催予定",
+      artistIds:["takehisa-yumeji"],src:"./assets/images/exhibitions/exhibition-03.jpg",href:"./exhibition.html?id=yumeji-modern-girls",
+      description:"竹久夢二美術館の同一Venue relationを確認するPrototype fixture。"
+    },
+    {
+      id:"threshold-material-shift",title:"Material Shift",venue:"ART FACTORY城南島",venueId:"art-factory-jonanjima",
+      city:"東京",area:"清澄白河・湾岸",date:"2026.11.08 — 12.06",start:"2026-11-08",end:"2026-12-06",
+      category:"企画展",expressionCategory:"インスタレーション",status:"upcoming",statusLabel:"開催予定",
+      artistIds:["chiharu-shiota"],src:"./assets/images/exhibitions/exhibition-06.jpg",href:"./exhibition.html?id=threshold-material-shift",
+      description:"同一Venue relationのEmpty / populated表示を確認するPrototype fixture。"
     }
   ];
 

@@ -60,14 +60,14 @@
 
   document.title = `${artist.name} — Muuzee`;
   window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]")?.setCurrentLabel(artist.name);
-  document.querySelector("[data-artist-name]").textContent = artist.name;
-  document.querySelector("[data-artist-sub]").textContent = `${artist.country || ""} · ${(artist.eras || []).join(" / ")}`;
+  const detailHead = window.MuuzeeDetailHead?.mount("[data-muuzee-detail-head]");
+  detailHead?.setTitle(artist.name);
+  detailHead?.setSub([artist.country || "",(artist.eras || []).join(" / ")].filter(Boolean).join(" · "));
+  detailHead?.setMeta((artist.category || []).map(category => ({text:category})));
   document.querySelector("[data-artist-style]").textContent = (artist.category || []).join(" / ");
   document.querySelector("[data-artist-country]").textContent = artist.country || "";
   document.querySelector("[data-artist-era]").textContent = (artist.eras || []).join(" / ");
   document.querySelector("[data-artist-intro]").textContent = detail.intro;
-  document.querySelector("[data-artist-categories]").innerHTML = (artist.category || [])
-    .map(category => `<span class="artist-tag">${esc(category)}</span>`).join("");
 
   const workStorageKey = `muuzee:saved-works:${artist.name}`;
   const getSavedWorks = () => {
