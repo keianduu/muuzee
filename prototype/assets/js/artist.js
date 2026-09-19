@@ -8,33 +8,27 @@
   const DETAILS = {
     "草間彌生":{
       intro:"水玉や網目、反復するパターンを通して、自己と世界の境界が溶けていくような感覚を表現してきた日本を代表する現代美術家。絵画、彫刻、インスタレーションまで表現領域は広く、強い視覚性と身体的な鑑賞体験を併せ持ちます。",
-      works:[["無限の鏡の間","1965–"],["かぼちゃ","1990年代–"],["Infinity Nets","1959–"]],
-      museums:[["松本市美術館","長野県・松本","草間彌生の作品を継続的に紹介"],["国立国際美術館","大阪府・大阪","現代美術コレクション"],["東京都現代美術館","東京都・江東","国内外の現代美術を所蔵"]]
+      works:[["無限の鏡の間","1965–"],["かぼちゃ","1990年代–"],["Infinity Nets","1959–"]]
     },
     "クロード・モネ":{
       intro:"刻々と変化する光や大気、水面の反射を、色彩の重なりと素早い筆触で捉えた印象派を代表する画家。同じモティーフを時間や天候を変えて描く連作によって、見ることそのものの変化を絵画にしました。",
-      works:[["印象・日の出","1872"],["睡蓮","1890年代–1920年代"],["散歩、日傘をさす女性","1875"]],
-      museums:[["オランジュリー美術館","フランス・パリ","〈睡蓮〉大装飾画を展示"],["マルモッタン・モネ美術館","フランス・パリ","モネ作品を多数所蔵"],["国立西洋美術館","東京都・上野","モネを含む西洋近代絵画を所蔵"]]
+      works:[["印象・日の出","1872"],["睡蓮","1890年代–1920年代"],["散歩、日傘をさす女性","1875"]]
     },
     "フィンセント・ファン・ゴッホ":{
       intro:"強い色彩とリズミカルな筆触によって、風景や人物に自身の感覚を重ねたポスト印象派の画家。短い活動期間に数多くの作品を残し、その後の表現主義や20世紀美術に大きな影響を与えました。",
-      works:[["星月夜","1889"],["ひまわり","1888–1889"],["夜のカフェテラス","1888"]],
-      museums:[["ファン・ゴッホ美術館","オランダ・アムステルダム","世界最大規模のゴッホ作品群"],["クレラー＝ミュラー美術館","オランダ・オッテルロー","多数の油彩・素描を所蔵"],["国立西洋美術館","東京都・上野","西洋近代美術コレクション"]]
+      works:[["星月夜","1889"],["ひまわり","1888–1889"],["夜のカフェテラス","1888"]]
     },
     "パブロ・ピカソ":{
       intro:"20世紀美術を大きく変えた画家・彫刻家。キュビスムをはじめ、古典的表現から大胆な造形実験まで生涯を通してスタイルを更新し続け、絵画の見方そのものに大きな影響を与えました。",
-      works:[["アヴィニョンの娘たち","1907"],["ゲルニカ","1937"],["泣く女","1937"]],
-      museums:[["ピカソ美術館","スペイン・バルセロナ","初期作品を中心に所蔵"],["国立ピカソ美術館","フランス・パリ","幅広い時代の作品を所蔵"],["国立西洋美術館","東京都・上野","西洋近代美術コレクション"]]
+      works:[["アヴィニョンの娘たち","1907"],["ゲルニカ","1937"],["泣く女","1937"]]
     },
     "奈良美智":{
       intro:"大きな頭部と鋭いまなざしを持つ子どもの像で知られる現代美術家。かわいらしさと反抗心、孤独や静けさが同居する人物像を通して、見る側の記憶や感情を揺さぶります。",
-      works:[["Miss Forest","2010"],["Knife Behind Back","2000"],["The Little Ambassador","2000"]],
-      museums:[["青森県立美術館","青森県・青森","奈良美智の作品を継続的に展示"],["豊田市美術館","愛知県・豊田","現代美術コレクション"],["横浜美術館","神奈川県・横浜","近現代美術を所蔵"]]
+      works:[["Miss Forest","2010"],["Knife Behind Back","2000"],["The Little Ambassador","2000"]]
     },
     "アンディ・ウォーホル":{
       intro:"広告や商品、セレブリティのイメージを反復し、大量消費社会と芸術の境界を問い直したポップアートの代表的存在。シルクスクリーンによる反復と鮮烈な色彩は、現代の視覚文化にも大きな影響を残しています。",
-      works:[["Marilyn Diptych","1962"],["Campbell's Soup Cans","1962"],["Shot Marilyns","1964"]],
-      museums:[["アンディ・ウォーホル美術館","アメリカ・ピッツバーグ","ウォーホル作品を包括的に所蔵"],["MoMA","アメリカ・ニューヨーク","ポップアートを含む近現代美術"],["テート・モダン","イギリス・ロンドン","国際的な近現代美術コレクション"]]
+      works:[["Marilyn Diptych","1962"],["Campbell's Soup Cans","1962"],["Shot Marilyns","1964"]]
     }
   };
 
@@ -43,8 +37,7 @@
   const artist = catalog.find(item => item.name === requested) || catalog[0];
   const detail = DETAILS[artist.name] || {
     intro:`${(artist.category || []).join("、")}の文脈で知られる${artist.name}。作品の背景や時代との関係を知ることで、展示で作品に出会ったときの見え方がより立体的になります。Muuzeeでは代表作、展覧会、所蔵美術館を一つのプロフィールとしてまとめます。`,
-    works:[[`${artist.name} 代表作 I`,"—"],[`${artist.name} 代表作 II`,"—"],[`${artist.name} 代表作 III`,"—"]],
-    museums:[["主要所蔵美術館","Collection","所蔵情報は今後データ連携予定"],["国内の関連美術館","Japan","展示・所蔵情報を順次追加予定"]]
+    works:[[`${artist.name} 代表作 I`,"—"],[`${artist.name} 代表作 II`,"—"],[`${artist.name} 代表作 III`,"—"]]
   };
 
   const esc = value => String(value ?? "").replace(/[&<>"']/g,char => ({
@@ -123,11 +116,20 @@
 
   const museumsEl = document.querySelector("[data-museums]");
   if(museumsEl){
-    museumsEl.innerHTML = detail.museums.map(museum => `
-      <article class="museum-card" data-save-type="museum">
-        <small>${esc(museum[1])}</small><h3>${esc(museum[0])}</h3><p>${esc(museum[2])}</p>
-      </article>
-    `).join("");
+    const collection = window.MuuzeeArtistCollections?.resolve(artist.id) || {items:[]};
+    museumsEl.innerHTML = collection.items.length ? collection.items.map(museum => {
+      const titles = museum.works.map(work => work.displayTitle).filter(Boolean).slice(0,3);
+      const workSummary = titles.length
+        ? ` · ${titles.map(title => `《${esc(title)}》`).join("、")}${museum.workCount > titles.length ? " ほか" : ""}`
+        : "";
+      return `<article class="museum-card" data-save-type="museum" data-save-id="${esc(museum.id)}">
+        <a class="museum-card-main" href="${esc(museum.href)}">
+          <small>${esc(museum.location)}</small><h3>${esc(museum.name)}</h3>
+          <p>所蔵作品 ${museum.workCount}件${workSummary}</p>
+        </a>
+      </article>`;
+    }).join("") : '<p class="artist-empty-copy">所蔵情報を確認中です。</p>';
+    window.Muuzee?.saveControl?.scan?.(museumsEl);
   }
 
   // Current exhibitions and related artists are owned by MuuzeeSurfaceRuntime.

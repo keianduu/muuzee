@@ -583,7 +583,7 @@ Breakpoints: 980px / 720px</pre></div>
 <div class="section dg-side-margin-shell">
 <div class="global-rule">
   <strong>Shared Relation Text List</strong>
-  <p><code>muuzee-relation-text-list.css / js</code>はRelation結果を静かなText Rowとして表示し、DOM、Divider、Primary 14px、Secondary 12px、Meta 10px、Empty stateを所有する。Data取得、Relation解決、Route、Save、画像は所有しない。Museum Collectionは<code>Work → work_artists → Artist</code>と<code>collection_holdings → Venue</code>を<code>MuuzeeMuseumCollection</code>でRead Modelへcomposeし、Pageはjoinを行わない。Venue × Artist direct relationと<code>work_presentations</code>をCollection resolverへ持ち込まない。</p>
+  <p><code>muuzee-relation-text-list.css / js</code>はRelation結果を静かなText Rowとして表示し、DOM、Divider、Primary 14px、Secondary 12px、Meta 10px、Empty stateを所有する。Data取得、Relation解決、Route、Save、画像は所有しない。Collection Relationは<code>Work → work_artists → Artist</code>と<code>collection_holdings → Venue</code>を<code>muuzee-collection-relations.js</code>のstable ID joinとpublication gateでcomposeし、Artist逆引きは<code>MuuzeeArtistCollections</code>、Museum逆引きは<code>MuuzeeMuseumCollection</code>を利用する。両relationが<code>verified</code>かつsourceとsource URL / recordを持つ場合だけ公開し、Work titleも独立したverified publication metadataがある場合だけ表示する。Pageはjoinを行わず、Venue × Artist direct relation、名前照合、<code>work_presentations</code>をCollection resolverへ持ち込まない。</p>
 </div>
 </div>
 <!-- shared-relation-text-list-rule:end -->

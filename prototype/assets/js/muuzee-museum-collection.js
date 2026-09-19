@@ -3,38 +3,34 @@
   "use strict";
 
   function displayTitle(work,artists){
-    const title = String(work?.title || "").trim();
-    if(title) return title;
+    const relations = window.MuuzeeCollectionRelations;
+    if(relations?.isPublishableWorkTitle(work)) return String(work.title).trim();
     const names = artists.map(artist => artist.name).filter(Boolean);
     return names.length ? `${names.join(" / ")}の作品` : "作品情報を確認中です";
   }
 
-  function resolve(museumId){
-    const workCatalog = window.MuuzeeWorkCatalog || [];
-    const workArtists = window.MuuzeeWorkArtists || [];
-    const holdings = window.MuuzeeCollectionHoldings || [];
-    const artistCatalog = window.MuuzeeArtistCatalog || [];
-
-    const worksById = new Map(workCatalog.map(work => [work.id,work]));
-    const artistsById = new Map(artistCatalog.map(artist => [artist.id,artist]));
-    const relationsByWorkId = new Map();
-    workArtists.forEach(relation => {
-      const relations = relationsByWorkId.get(relation.workId) || [];
-      relations.push(relation);
-      relationsByWorkId.set(relation.workId,relations);
-    });
+  function resolve(museumId,input){
+    const relations = window.MuuzeeCollectionRelations;
+    if(!relations || !museumId) return {works:[],artists:[]};
+    const index = relations.createIndex(input);
 
     const artistWorkIds = new Map();
-    const works = holdings
-      .filter(holding => holding.venueId === museumId)
-      .sort((a,b) => a.sortOrder - b.sortOrder)
+    const seenWorkIds = new Set();
+    const works = (index.holdingsByVenueId.get(museumId) || [])
+      .filter(holding => relations.isPublishableRelation(holding))
       .map(holding => {
-        const work = worksById.get(holding.workId);
-        if(!work) return null;
-        const artists = (relationsByWorkId.get(work.id) || [])
-          .sort((a,b) => a.sortOrder - b.sortOrder)
-          .map(relation => artistsById.get(relation.artistId))
-          .filter(Boolean)
+        const work = index.worksById.get(holding.workId);
+        if(!work || seenWorkIds.has(work.id)) return null;
+        seenWorkIds.add(work.id);
+        const seenArtistIds = new Set();
+        const artists = (index.workArtistsByWorkId.get(work.id) || [])
+          .filter(relation => relations.isPublishableRelation(relation))
+          .map(relation => index.artistsById.get(relation.artistId))
+          .filter(artist => {
+            if(!artist || seenArtistIds.has(artist.id)) return false;
+            seenArtistIds.add(artist.id);
+            return true;
+          })
           .map(artist => ({id:artist.id,name:artist.name}));
         artists.forEach(artist => {
           const ids = artistWorkIds.get(artist.id) || [];
@@ -51,7 +47,7 @@
       .filter(Boolean);
 
     const artists = [...artistWorkIds.entries()].map(([artistId,workIds]) => {
-      const artist = artistsById.get(artistId);
+      const artist = index.artistsById.get(artistId);
       return {
         id:artistId,
         displayName:artist?.name || "Artist情報を確認中です",

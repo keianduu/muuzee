@@ -3,25 +3,30 @@
   "use strict";
 
   const works = [
-    {id:"mam-collection-01",title:"MAM Collection 01",yearText:"Collection highlight"},
-    {id:"mam-collection-02",title:"MAM Collection 02",yearText:"Collection highlight"},
-    {id:"water-lilies",title:"睡蓮",yearText:"Collection highlight"},
-    {id:"impressionist-landscape",title:"印象派の風景",yearText:"Collection highlight"},
-    {id:"development-of-modern-painting",title:"近代絵画の展開",yearText:"Collection highlight"},
-    {id:"impressionist-collection",title:"印象派コレクション",yearText:"Collection highlight"},
-    {id:"cezanne-and-modernity",title:"セザンヌと近代",yearText:"Collection highlight"},
-    {id:"collection-space",title:"Collection / Space",yearText:"Collection view"},
-    {id:"collection-contemporary",title:"Collection / Contemporary",yearText:"Collection view"},
-    {id:"european-painting",title:"European Painting",yearText:"Collection view"},
-    {id:"modern-reference",title:"Modern Reference",yearText:"Collection view"},
-    {id:"modern-collection",title:"Modern Collection",yearText:"Collection view"},
-    {id:"modern-painting",title:"Modern Painting",yearText:"Collection view"},
-    {id:"the-starry-night",title:"The Starry Night",yearText:"Collection highlight"},
-    {id:"modern-masters",title:"Modern Masters",yearText:"Collection highlight"},
-    {id:"modern-portrait",title:"Modern Portrait",yearText:"Collection highlight"},
-    {id:"contemporary-collection",title:"Contemporary Collection",yearText:"Collection view"},
-    {id:"contemporary-masters",title:"Contemporary Masters",yearText:"Collection view"}
-  ];
+    ["mam-collection-01","MAM Collection 01","Collection highlight","placeholder"],
+    ["mam-collection-02","MAM Collection 02","Collection highlight","placeholder"],
+    ["water-lilies","睡蓮","Collection highlight","unverified"],
+    ["impressionist-landscape","印象派の風景","Collection highlight","placeholder"],
+    ["development-of-modern-painting","近代絵画の展開","Collection highlight","placeholder"],
+    ["impressionist-collection","印象派コレクション","Collection highlight","placeholder"],
+    ["cezanne-and-modernity","セザンヌと近代","Collection highlight","placeholder"],
+    ["collection-space","Collection / Space","Collection view","placeholder"],
+    ["collection-contemporary","Collection / Contemporary","Collection view","placeholder"],
+    ["european-painting","European Painting","Collection view","placeholder"],
+    ["modern-reference","Modern Reference","Collection view","placeholder"],
+    ["modern-collection","Modern Collection","Collection view","placeholder"],
+    ["modern-painting","Modern Painting","Collection view","placeholder"],
+    ["the-starry-night","The Starry Night","Collection highlight","unverified"],
+    ["modern-masters","Modern Masters","Collection highlight","placeholder"],
+    ["modern-portrait","Modern Portrait","Collection highlight","placeholder"],
+    ["contemporary-collection","Contemporary Collection","Collection view","placeholder"],
+    ["contemporary-masters","Contemporary Masters","Collection view","placeholder"]
+  ].map(([id,title,yearText,titleStatus]) => ({
+    id,
+    title,
+    yearText,
+    publication:{titleStatus,source:null,sourceUrl:null,sourceRecordId:null}
+  }));
 
   const workArtists = [
     ["mam-collection-01","yayoi-kusama"],
@@ -42,7 +47,13 @@
     ["modern-portrait","frida-kahlo"],
     ["contemporary-collection","gerhard-richter"],
     ["contemporary-masters","gerhard-richter"]
-  ].map(([workId,artistId],index) => ({workId,artistId,role:"artist",sortOrder:index}));
+  ].map(([workId,artistId],index) => ({
+    workId,
+    artistId,
+    role:"artist",
+    sortOrder:index,
+    verification:{status:"unverified",source:null,sourceUrl:null,sourceRecordId:null,verifiedAt:null}
+  }));
 
   const collectionHoldings = [
     ["mori","mam-collection-01"],["mori","mam-collection-02"],
@@ -55,9 +66,15 @@
     ["moma","the-starry-night"],["moma","modern-masters"],["moma","modern-portrait"],
     ["tate","modern-collection"],["tate","contemporary-collection"],
     ["guggenheim","contemporary-masters"]
-  ].map(([venueId,workId],index) => ({venueId,workId,sortOrder:index}));
+  ].map(([venueId,workId],index) => ({
+    venueId,
+    workId,
+    holdingType:"collection",
+    sortOrder:index,
+    verification:{status:"unverified",source:null,sourceUrl:null,sourceRecordId:null,verifiedAt:null}
+  }));
 
-  window.MuuzeeWorkCatalog = Object.freeze(works.map(item => Object.freeze({...item})));
-  window.MuuzeeWorkArtists = Object.freeze(workArtists.map(item => Object.freeze({...item})));
-  window.MuuzeeCollectionHoldings = Object.freeze(collectionHoldings.map(item => Object.freeze({...item})));
+  window.MuuzeeWorkCatalog = Object.freeze(works.map(item => Object.freeze({...item,publication:Object.freeze({...item.publication})})));
+  window.MuuzeeWorkArtists = Object.freeze(workArtists.map(item => Object.freeze({...item,verification:Object.freeze({...item.verification})})));
+  window.MuuzeeCollectionHoldings = Object.freeze(collectionHoldings.map(item => Object.freeze({...item,verification:Object.freeze({...item.verification})})));
 })();

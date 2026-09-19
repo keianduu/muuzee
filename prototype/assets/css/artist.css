@@ -187,6 +187,11 @@
   padding:22px 24px 22px 0;
   border-bottom:1px solid var(--line);
 }
+.museum-card-main{
+  display:block;
+  color:inherit;
+  text-decoration:none;
+}
 .museum-card:nth-child(odd){
   padding-right:32px;
   border-right:1px solid var(--line);
