@@ -3,18 +3,28 @@
   Shared by exhibition.html / artist.html / museum.html.
 */
 
-/* Media hero: use the rendered image height, not a fixed viewport-height box. */
-.detail-media-hero{
+/* Shared Hero -> Bottom Sheet composition. */
+.muuzee-detail-composition{
+  --muuzee-detail-sheet-radius:36px;
+  --muuzee-detail-hero-min-height:520px;
+}
+
+.muuzee-detail-hero{
   position:sticky;
   top:0;
   z-index:1;
+  width:100%;
+  min-height:var(--muuzee-detail-hero-min-height) !important;
+  overflow:hidden;
+}
+
+/* Media hero: use the rendered image height, not a fixed viewport-height box. */
+.detail-media-hero{
   height:auto !important;
-  min-height:0 !important;
   max-height:none !important;
   display:flex;
   align-items:flex-start;
   justify-content:center;
-  overflow:hidden;
   background:#fff !important;
   box-shadow:none !important;
 }
@@ -37,9 +47,9 @@
 .muuzee-detail-sheet{
   position:relative;
   z-index:20;
-  margin-top:-4px;
+  margin-top:calc(-1 * var(--muuzee-detail-sheet-radius,36px));
   padding-top:32px;
-  border-radius:36px 36px 0 0;
+  border-radius:var(--muuzee-detail-sheet-radius,36px) var(--muuzee-detail-sheet-radius,36px) 0 0;
   overflow:hidden;
   background:#fff;
   box-shadow:0 -12px 36px rgba(28,26,23,.07);
@@ -88,10 +98,13 @@
 }
 
 @media(max-width:720px){
+  .muuzee-detail-composition{
+    --muuzee-detail-sheet-radius:28px;
+    --muuzee-detail-hero-min-height:420px;
+  }
+
   .muuzee-detail-sheet{
-    margin-top:-2px;
     padding-top:24px;
-    border-radius:28px 28px 0 0;
   }
 
   .detail-related-rail{

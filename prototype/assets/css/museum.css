@@ -5,13 +5,7 @@
 }
 
 .museum-hero{
-  position:sticky;
-  top:0;
-  z-index:1;
-  width:100%;
   height:min(72svh,760px);
-  min-height:520px;
-  overflow:hidden;
   background:var(--greige);
 }
 
@@ -376,7 +370,6 @@
 @media(max-width:720px){
   .museum-hero{
     height:min(62svh,112vw);
-    min-height:0;
   }
 
   .museum-section{

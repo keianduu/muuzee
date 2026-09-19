@@ -1,5 +1,5 @@
 /* Muuzee Exhibition Detail — page-specific styles */
-.exhibition-hero{position:sticky;top:0;z-index:1;min-height:88svh;height:88svh;overflow:hidden;background:#171714}
+.exhibition-hero{height:88svh;background:#171714}
 .exhibition-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 44%;transform:scale(1.015)}
 .exhibition-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,17,15,.08) 0%,rgba(18,17,15,.03) 40%,rgba(18,17,15,.72) 100%)}
 .hero-content{position:absolute;z-index:2;left:0;right:0;bottom:76px;color:#fff}
@@ -39,12 +39,14 @@
 
 
 
-.exhibition-hero.landscape{height:min(82svh,68vw);min-height:520px}
+.exhibition-hero.landscape{height:min(82svh,68vw)}
 .exhibition-hero.landscape img{object-fit:cover;object-position:center}
-@media (max-width:720px){.exhibition-hero{height:82svh;min-height:620px}.exhibition-hero.landscape{height:min(72svh,82vw);min-height:460px}.exhibition-hero img{object-position:center 45%}.hero-content{bottom:64px}.hero-content h1{font-size:24px;line-height:1.14;max-width:92%;margin-bottom:12px}.hero-venue{font-size:11px}.hero-meta{font-size:8px;margin-bottom:10px}.detail-sheet{margin-top:-30px;border-radius:28px 28px 0 0;padding:36px 0 68px}.lead-grid{display:block}.lead{font-size:16px;line-height:1.85}.body-copy{font-size:11px;line-height:1.9;margin-top:18px}.info-card{margin-top:30px;border-radius:20px;padding:4px 18px}.info-row{grid-template-columns:72px 1fr;padding:15px 0;gap:12px}.info-row dt{font-size:7px}.info-row dd{font-size:10px}.section{padding-top:56px}.section-head{margin-bottom:18px}.section-title h2{font-size:24px}.map-card{display:block;min-height:0;border-radius:22px}.map-visual{height:250px}.map-copy{padding:24px}.map-copy h3{font-size:20px}.map-copy p{font-size:10px}}
+@media (max-width:720px){.exhibition-hero{height:82svh}.exhibition-hero.landscape{height:min(72svh,82vw)}.exhibition-hero img{object-position:center 45%}.hero-content{bottom:64px}.hero-content h1{font-size:24px;line-height:1.14;max-width:92%;margin-bottom:12px}.hero-venue{font-size:11px}.hero-meta{font-size:8px;margin-bottom:10px}.lead-grid{display:block}.lead{font-size:16px;line-height:1.85}.body-copy{font-size:11px;line-height:1.9;margin-top:18px}.info-card{margin-top:30px;border-radius:20px;padding:4px 18px}.info-row{grid-template-columns:72px 1fr;padding:15px 0;gap:12px}.info-row dt{font-size:7px}.info-row dd{font-size:10px}.section{padding-top:56px}.section-head{margin-bottom:18px}.section-title h2{font-size:24px}.map-card{display:block;min-height:0;border-radius:22px}.map-visual{height:250px}.map-copy{padding:24px}.map-copy h3{font-size:20px}.map-copy p{font-size:10px}}
+@media (max-width:720px){
+  .detail-sheet{padding-bottom:68px}
+}
 .exhibition-hero, .exhibition-hero.landscape{
   height:70svh !important;
-  min-height:0 !important;
   max-height:70svh !important;
   background:#181816;
 }
@@ -64,7 +66,6 @@
 }
 @media (max-width:720px){.exhibition-hero, .exhibition-hero.landscape{
     height:70svh !important;
-    min-height:0 !important;
     max-height:70svh !important;
   }.exhibition-hero img, .exhibition-hero.landscape img{
     object-fit:contain !important;

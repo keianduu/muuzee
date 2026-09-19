@@ -1,13 +1,8 @@
 /* Muuzee Artist Detail — page specific. Exhibition detail visual language, artist content. */
 .artist-page{background:#fff}
 .artist-hero{
-  position:sticky;
-  top:0;
-  z-index:1;
   height:70svh;
-  min-height:0;
   max-height:70svh;
-  overflow:hidden;
   background:#181816;
 }
 .artist-hero img{
@@ -330,12 +325,8 @@
 /* artist-fullbleed-hero:start */
 /* Artist Hero is intentionally different from Exhibition Detail. */
 .artist-page .artist-hero.detail-media-hero{
-  width:100%;
   height:min(72svh,820px) !important;
-  min-height:520px !important;
   max-height:none !important;
-  display:block;
-  overflow:hidden;
   background:var(--ink) !important;
 }
 
@@ -351,19 +342,14 @@
 @media(max-width:720px){
   .artist-page .artist-hero.detail-media-hero{
     height:min(66svh,118vw) !important;
-    min-height:0 !important;
   }
 }
 /* artist-fullbleed-hero:end */
 
 /* artist-detail-final:start */
 .artist-page .artist-hero{
-  width:100%;
   height:min(72svh,820px);
-  min-height:520px;
   max-height:none;
-  display:block;
-  overflow:hidden;
   background:var(--ink);
 }
 .artist-page .artist-hero img{
@@ -382,7 +368,6 @@
 @media(max-width:720px){
   .artist-page .artist-hero{
     height:min(66svh,118vw);
-    min-height:0;
   }
   .artist-page .artist-detail-sheet{
     padding-bottom:28px;
