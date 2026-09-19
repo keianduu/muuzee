@@ -20,13 +20,26 @@
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query || "")}`;
   }
 
-  function action(label,href,tone,{external=false} = {}){
+  function action(id,href,{external=false} = {}){
+    const descriptor = config.actions[id];
+    if(!descriptor || !href) return null;
     return {
-      label,
+      id,
+      label:descriptor.label,
       href,
-      tone,
+      tone:descriptor.tone,
       ...(external ? {target:"_blank",rel:"noopener noreferrer"} : {})
     };
+  }
+
+  function museumActions({detailHref,mapHref,extraActions=[]}){
+    const base = action("museum",detailHref);
+    const hrefs = {map:mapHref,museum:detailHref};
+    const extras = asArray(extraActions)
+      .filter(id => id !== base?.id)
+      .map(id => action(id,hrefs[id],{external:id === "map"}))
+      .filter(Boolean);
+    return [...new Map([...extras,base].filter(Boolean).map(item => [item.id,item])).values()];
   }
 
   function museumImage(item){
@@ -43,18 +56,12 @@
       .join(" · ");
   }
 
-  function normalizeMuseum(item,{context="discovery"} = {}){
+  function normalizeMuseum(item,{extraActions=[]} = {}){
     if(!item) return null;
     const lat = finite(item.lat);
     const lng = finite(item.lng);
     const detailHref = `./museum.html?id=${encodeURIComponent(item.id)}`;
     const mapHref = externalMapHref({address:item.address,lat,lng,name:item.name});
-    const actions = context === "venue-detail"
-      ? [
-          action(config.actions.map.label,mapHref,config.actions.map.tone,{external:true}),
-          action(config.actions.museum.label,detailHref,config.actions.museum.tone)
-        ]
-      : [action(config.actions.museum.label,detailHref,config.actions.museum.tone)];
 
     return {
       id:item.id,
@@ -69,7 +76,7 @@
       saveId:item.id,
       detailHref,
       mapHref,
-      actions,
+      actions:museumActions({detailHref,mapHref,extraActions}),
       scope:item.scope,
       region:item.region,
       city:item.city,
@@ -95,7 +102,7 @@
       saveId:item.id,
       detailHref,
       mapHref:externalMapHref({lat,lng,name:item.venue || item.title}),
-      actions:[action(config.actions.exhibition.label,detailHref,config.actions.exhibition.tone)],
+      actions:[action("exhibition",detailHref)],
       status:item.status,
       expressionCategory:item.expressionCategory
     };
@@ -118,7 +125,7 @@
       saveId:null,
       detailHref:null,
       mapHref,
-      actions:[action(config.actions.map.label,mapHref,config.actions.map.tone,{external:true})]
+      actions:[action("map",mapHref,{external:true})]
     };
   }
 
@@ -129,12 +136,12 @@
     return api;
   }
 
-  function resolveVenue(venueId,{context="venue-detail"} = {}){
+  function resolveVenue(venueId,{extraActions=[]} = {}){
     const place = config.places[String(venueId || "")];
     if(!place) return null;
     if(place.source === "museum"){
       const museum = museums.find(item => String(item.id) === String(place.entityId));
-      return normalizeMuseum(museum,{context});
+      return normalizeMuseum(museum,{extraActions});
     }
     return normalizeVenue(place);
   }

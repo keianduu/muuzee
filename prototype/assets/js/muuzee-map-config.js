@@ -4,7 +4,7 @@
 
   const museumIds = [
     "nact","mori","tnm","nmwa","artizon","mot","hokusai","21kanazawa",
-    "kyocera","nakanoshima","chichu","adachi","louvre","pompidou","moma",
+    "kyocera","nakanoshima","chichu","adachi","takehisa-yumeji-museum","louvre","pompidou","moma",
     "met","tate","guggenheim","rijks","prado"
   ];
 
@@ -42,10 +42,6 @@
       "gallery-mumon":Object.freeze({
         source:"venue",entityId:"gallery-mumon",name:"Gallery MUMON",
         lat:35.6651,lng:139.7274,address:"東京都港区南青山",meta:"Gallery",sub:"東京都・南青山"
-      }),
-      "takehisa-yumeji-museum":Object.freeze({
-        source:"venue",entityId:"takehisa-yumeji-museum",name:"竹久夢二美術館",
-        lat:35.7187,lng:139.7598,address:"東京都文京区弥生2-4-2",meta:"Museum",sub:"東京都・文京区"
       }),
       "hagiwara-projects":Object.freeze({
         source:"venue",entityId:"hagiwara-projects",name:"HAGIWARA PROJECTS",

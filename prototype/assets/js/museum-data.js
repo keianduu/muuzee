@@ -15,6 +15,7 @@
     {id:"nakanoshima",name:"大阪中之島美術館",scope:"jp",region:"関西",prefecture:"大阪府",city:"大阪市",location:"中之島",category:"近現代美術",image:"https://images.unsplash.com/photo-1554907984-15263bfd63bd?auto=format&fit=crop&fm=jpg&q=82&w=1200",lat:34.6910,lng:135.4905},
     {id:"chichu",name:"地中美術館",scope:"jp",region:"中国・四国",prefecture:"香川県",city:"直島町",location:"直島",category:"現代美術 / 建築",image:"https://img.hankyung.com/photo/202402/01.36007592.1.jpg",lat:34.4492,lng:133.9915,popularRank:4},
     {id:"adachi",name:"足立美術館",scope:"jp",region:"中国・四国",prefecture:"島根県",city:"安来市",location:"安来",category:"日本画 / 庭園",image:"https://images.unsplash.com/photo-1561214115-f2f134cc4912?auto=format&fit=crop&fm=jpg&q=82&w=1200",lat:35.3806,lng:133.1944},
+    {id:"takehisa-yumeji-museum",name:"竹久夢二美術館",scope:"jp",region:"関東",prefecture:"東京都",city:"文京区",location:"弥生",category:"日本美術 / 竹久夢二",lat:35.7187,lng:139.7598},
 
     {id:"louvre",name:"ルーヴル美術館",scope:"overseas",country:"フランス",city:"パリ",location:"Paris",category:"古典 / 西洋美術",image:"https://images.unsplash.com/photo-1500039436846-25ae2f11882e?auto=format&fit=crop&fm=jpg&q=82&w=1200",lat:48.8606,lng:2.3376,popularRank:5},
     {id:"pompidou",name:"Centre Pompidou",scope:"overseas",country:"フランス",city:"パリ",location:"Paris",category:"近現代美術 / 建築",image:"https://images.unsplash.com/photo-1561214115-f2f134cc4912?auto=format&fit=crop&fm=jpg&q=82&w=1200",lat:48.8606,lng:2.3522,popularRank:9},

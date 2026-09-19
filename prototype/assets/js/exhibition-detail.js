@@ -38,7 +38,7 @@
   if(!resolver || !mapMount || !fallback) return;
   await resolver.ready();
 
-  const place = resolver.resolveVenue(item.venueId,{context:"venue-detail"});
+  const place = resolver.resolveVenue(item.venueId,{extraActions:["map"]});
   const fallbackPlace = place || {
     name:item.venue,
     sub:[item.city,item.area].filter(Boolean).join("・"),

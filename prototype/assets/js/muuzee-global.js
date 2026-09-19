@@ -70,7 +70,7 @@
     if(!discoveryPages.has(currentPrototypePage())) return;
 
     await loadSharedScript("artist-data.js?v=20260919-order658-01",() => Array.isArray(window.MuuzeeArtistCatalog));
-    await loadSharedScript("museum-data.js?v=20260919-order658-01",() => Array.isArray(window.MuuzeeMuseumCatalog));
+    await loadSharedScript("museum-data.js?v=20260919-order658-map-canonical-01",() => Array.isArray(window.MuuzeeMuseumCatalog));
     await loadSharedScript("exhibition-data.js?v=20260914-surface-01",() => Array.isArray(window.MuuzeeExhibitionCatalog));
     await loadSharedScript("muuzee-data-config.js?v=20260914-surface-01",() => Boolean(window.MuuzeeDataConfig));
     await loadSharedScript("muuzee-data-source.js?v=20260914-surface-01",() => Boolean(window.MuuzeeDataSource));
