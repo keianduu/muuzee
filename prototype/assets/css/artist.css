@@ -19,11 +19,7 @@
   filter:none;
 }
 .artist-detail-sheet{
-  position:relative;
-  z-index:2;
-  margin-top:-8px;
-  padding:32px 0 36px;
-  background:#fff;
+  padding-bottom:36px;
 }
 .artist-save-button{
   flex:0 0 auto;
@@ -262,9 +258,7 @@
     max-height:58svh;
   }
   .artist-detail-sheet{
-    margin-top:-4px;
-    padding:24px 0 28px;
-    border-radius:28px 28px 0 0;
+    padding-bottom:28px;
   }
   .artist-overview{
     display:block;
@@ -354,19 +348,10 @@
   object-position:var(--artist-position,center) !important;
 }
 
-.artist-page .artist-detail-sheet{
-  margin-top:-22px;
-  border-radius:28px 28px 0 0;
-}
-
 @media(max-width:720px){
   .artist-page .artist-hero.detail-media-hero{
     height:min(66svh,118vw) !important;
     min-height:0 !important;
-  }
-
-  .artist-page .artist-detail-sheet{
-    margin-top:-28px;
   }
 }
 /* artist-fullbleed-hero:end */
@@ -389,8 +374,6 @@
   object-fit:cover;
 }
 .artist-page .artist-detail-sheet{
-  margin-top:-22px;
-  border-radius:28px 28px 0 0;
   padding-bottom:36px;
 }
 .artist-page .artist-section:last-child{
@@ -402,7 +385,6 @@
     min-height:0;
   }
   .artist-page .artist-detail-sheet{
-    margin-top:-28px;
     padding-bottom:28px;
   }
 }

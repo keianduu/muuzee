@@ -566,7 +566,7 @@ Breakpoints: 980px / 720px</pre></div>
   <strong>Personal Compact Layout / Shared Section Head / Edit Toolbar</strong>
   <p>My Art配下のPersonal Areaは、明示的にopt-inした画面のみTablet / PCで最大780pxの共有Content幅を使用する。Global Header / Profile Header / Personal Navigation / Page Contentの内側を同じ幅へ揃え、背景とFooterは全幅を維持する。SavedはCollection Gridを優先してWide Layoutのままとする。My Art / ArtWall Edit / Profile Settingsの主要見出しは<code>muuzee-personal-section-head.css</code>のcopy / actions構造とMy Art基準のTypographyを共通利用する。Edit画面はTablet / PCで<code>muuzee-personal-edit-toolbar.css / js</code>の上部Toolbar、SPで<code>muuzee-mobile-save-action.css / js</code>のFooter上Floating Saveを別Presenterとして利用し、dirty / disabled / busy / submit controllerは共通化する。Validation / Store / Popup / Navigationは各Pageが所有する。</p>
   <strong>Shared Detail Head</strong>
-  <p>Exhibition / Artist / Museum DetailのSheet Headは<code>muuzee-detail-head.css / js</code>を共通利用し、Meta / H1 / Sub / Actions / Dividerを同じ構造とGeometryで表示する。各Pageは表示DataとAction setのみを差し替える。BreadcrumbはDivider直下の通常flowに置き、Page固有のnegative marginで位置補正しない。</p>
+  <p>Exhibition / Artist / Museum Detailは<code>.muuzee-detail-sheet</code>でHeroからSheetへのoverlap・top padding・top radiusを共通化し、Sheet Headは<code>muuzee-detail-head.css / js</code>を共通利用してMeta / H1 / Sub / Actions / Dividerを同じ構造とGeometryで表示する。各PageはHero、表示Data、Action set、本文とSheet下部余白のみを所有する。BreadcrumbはDivider直下の通常flowに置き、Page固有のnegative marginで位置補正しない。</p>
 </div>
 </div>
 <!-- personal-compact-toolbar-rule:end -->

@@ -1,6 +1,6 @@
 /*
   Muuzee Shared Detail Components
-  Shared by exhibition.html / artist.html.
+  Shared by exhibition.html / artist.html / museum.html.
 */
 
 /* Media hero: use the rendered image height, not a fixed viewport-height box. */
@@ -31,6 +31,18 @@
   transform:none !important;
   box-shadow:none !important;
   filter:none !important;
+}
+
+/* Shared handoff from each page-specific hero into the detail content. */
+.muuzee-detail-sheet{
+  position:relative;
+  z-index:20;
+  margin-top:-4px;
+  padding-top:32px;
+  border-radius:36px 36px 0 0;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 -12px 36px rgba(28,26,23,.07);
 }
 
 /* Related exhibition cards: shared with "同じ施設の展覧会". */
@@ -76,6 +88,12 @@
 }
 
 @media(max-width:720px){
+  .muuzee-detail-sheet{
+    margin-top:-2px;
+    padding-top:24px;
+    border-radius:28px 28px 0 0;
+  }
+
   .detail-related-rail{
     display:flex;
     overflow-x:auto;

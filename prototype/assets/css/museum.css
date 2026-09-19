@@ -22,12 +22,7 @@
 }
 
 .museum-detail-sheet{
-  position:relative;
-  z-index:2;
-  margin-top:-28px;
-  padding:32px 0 20px;
-  border-radius:28px 28px 0 0;
-  background:#fff;
+  padding-bottom:20px;
 }
 
 .museum-section{
@@ -382,12 +377,6 @@
   .museum-hero{
     height:min(62svh,112vw);
     min-height:0;
-  }
-
-  .museum-detail-sheet{
-    margin-top:-22px;
-    padding-top:24px;
-    border-radius:22px 22px 0 0;
   }
 
   .museum-section{
