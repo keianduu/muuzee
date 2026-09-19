@@ -24,6 +24,16 @@ Source priority is `Manual > Official Website > Trusted API > Wikidata`.
 
 Confidence, match reasons, discovery threshold, raw payload, QID, and historical provenance are diagnostics, not application gates.
 
+## Assertion policy and relation visibility
+
+External-source application is configured per `data_source × assertion_type` in `data_source_assertion_policies`. The supported v1 assertion types are `work_artist`, `collection_holding`, `work_presentation`, and `media`.
+
+For SHŪZŌ and ToMuCo, deterministic Core 3/3 resolution allows `work_artist` and `collection_holding` to auto-apply with `default_visibility = public`. `work_presentation` and `media` are enforced as `auto_apply = false`, `default_visibility = hidden`, and `review_required = true`. Admin can edit safe operational policy at `/admin/sources`; API secrets are not stored in the policy table or returned to the browser.
+
+`work_artists` and `collection_holdings` have relation-level `visibility_status`, `visibility_overridden`, optional `hidden_reason`, and `visibility_updated_at`. A new low-risk relation uses the source policy default. A manually added relation uses `source = manual` and defaults Public. Admin Public ON/OFF sets `visibility_overridden = true`; later source sync may refresh provenance, URL, verification time, or holding type, but preserves the overridden visibility. Hide keeps the canonical relation and source record. Remove remains a separate destructive correction.
+
+Public relation projections use deterministic canonical foreign keys plus `visibility_status = public`; universal human review is not a publication gate for low-risk facts. A draft Work may therefore support an Artist→Museum holding count without exposing an unpublished Work title. `collection_holdings` may produce only holding language and never current-display language. `work_presentations` is the sole display-state relation.
+
 ## Images and coordinates
 
 One Wikidata coordinate is applied automatically unless a higher-priority coordinate exists. P18 / Wikimedia Commons remains a Media Candidate because selecting a Primary image and evaluating rights are separate content operations. The existing three-way rights classification remains unchanged.

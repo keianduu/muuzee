@@ -31,7 +31,7 @@ Work titleは用途を分けて保存する。
 - SHŪZŌ: Artist名の完全一致後、検索結果から最大5候補を取得する。
 - ToMuCo: 公開APIのArtist名検索を使用する。ただしLOCALから403等で利用できない場合は失敗を記録し、SHŪZŌだけで続行する。
 
-結果順だけでは代表作と確定できないため、両Sourceとも`work_import_candidates`へ候補保存する。自動採用はせず、Adminで人が`この作品を採用`を実行した候補だけをWork Masterへ反映する。全件同期やcronは実装しない。
+結果順だけでは代表作と確定できないため、両Sourceとも`work_import_candidates`へ候補を保存する。Source PolicyがAuto Applyで、Title / canonical Artist / canonical Holding VenueのCore 3/3がdeterministically解決した候補は、Draft Work + Artist relation + Holding relationまで自動反映する。曖昧・未解決・review-requiredな候補はAdminに残し、人の判断なしには反映しない。全件同期やcronは実装しない。
 
 ## Relation rules
 
@@ -41,8 +41,9 @@ Tier A Artist
   → exact Artist identity
   → Work candidate (max 5 / Artist)
   → exact Venue Master match
-  → human selects representative work
-  → Work + work_artists + collection_holdings
+  → Source assertion policy
+  → deterministic Core 3/3: Work + work_artists + collection_holdings
+  → ambiguous / unresolved: Candidate remains for review
 ```
 
 - ArtistとVenueは既存Muuzee UUIDへ結ぶ。VenueはDB-side Shared Venue Resolverで照合し、Master全件をApplicationへ取得しない。曖昧な候補からMasterを新規作成しない。
@@ -55,17 +56,17 @@ Tier A Artist
 ## Candidate adoption
 
 - Core 3/3（Title / canonical Artist / canonical Holding Venue）の候補だけ採用できる。
-- 採用はDB function内の単一Transactionで`works`、`work_artists`、`collection_holdings`、`source_records`、`work_field_sources`を更新する。
+- 自動 / 手動採用はDB function内の単一Transactionで`works`、`work_artists`、`collection_holdings`、`source_records`、`work_field_sources`を更新する。
 - Workは必ず`draft`で作成し、採用とPublishを分離する。
-- PresentationはSourceに明示されたCandidateだけ作成する。Holdingから展示中を推測しない。
+- Presentation候補情報はCandidateへ保持するが、自動 / 通常採用では作成しない。`work_presentations`はreview-requiredな別Assertionであり、Holdingから展示中を推測しない。
 - 同じCandidateを再採用しても同じWorkを返し、Relationを重複作成しない。
-- Candidate再取得時も`imported`と`matched_work_id`を保持する。
+- Candidate再取得時も`matched_work_id`を保持し、Relationのsource URL / verified time / holding typeを更新する。Admin visibility overrideは変更しない。
 - 未照合Candidateの再照合はVenue relation情報だけを更新し、Workを自動採用しない。候補ID、match method、reasonを監査用に保持する。
 - `work_artists.sort_order`はArtistごとのAdmin表示順を保持する補助値で、代表性の自動判定には使わない。
 
 ## Admin and CSV
 
-`/admin/works`は候補の日本語Title / English Title / Original Title / Artist / Holding Venue / Year / Source / HoldingとDisplayの区別 / Statusを表示し、1件または最大20件を明示的に採用できる。採用できないCandidateには、作品名がない、アーティスト情報と紐づいていない、所蔵先情報がない、所蔵先と会場情報を紐づけられていない、一致する会場候補が複数ある、採用済みの該当理由をテーブル上で表示する。Master一覧はUI localeに応じたfallback Title / Artist / Holding Venue / Year / Publication / Core Qualityを表示する。Artist/Holding不足とPresentationでFilterできる。Work CSVは`title_ja` / `title_en` / `title_original` / `original_language`、Artist、Holding Venue、任意のPresentation列を含み、Import後もfield / relation source URLを保持する。
+`/admin/works`は候補の日本語Title / English Title / Original Title / Artist / Holding Venue / Year / Source / HoldingとDisplayの区別 / Status、Auto Applied / Needs Review集計を表示する。採用できないCandidateには、作品名がない、アーティスト情報と紐づいていない、所蔵先情報がない、所蔵先と会場情報を紐づけられていない、一致する会場候補が複数ある、採用済みの該当理由をテーブル上で表示する。Work Relation UIはSource / Provenance / Public ON/OFF / Manual override / Removeを分離する。Master一覧はUI localeに応じたfallback Title / Artist / Holding Venue / Year / Publication / Core Qualityを表示する。Artist/Holding不足とPresentationでFilterできる。Work CSVは`title_ja` / `title_en` / `title_original` / `original_language`、Artist、Holding Venue、任意のPresentation列を含み、Import後もfield / relation source URLを保持する。
 
 Publishはサーバー側でCore 3/3を再検証する。候補、Year、Display、Imageがなくても、Core 3/3なら公開可能である。
 

@@ -8,10 +8,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params; const body = await request.json(); if (!validUuid(id) || !validUuid(body.targetId)) throw new Error("Invalid ID");
     const db = createSupabaseAdminClient();
     if (body.kind === "artist") {
-      const { error } = await db.from("work_artists").upsert({ work_id: id, artist_id: body.targetId, role: body.role || null }, { onConflict: "work_id,artist_id" }); if (error) throw error;
+      const { error } = await db.from("work_artists").upsert({ work_id: id, artist_id: body.targetId, role: body.role || null, source: "manual", verified_at: new Date().toISOString() }, { onConflict: "work_id,artist_id" }); if (error) throw error;
     } else if (body.kind === "holding") {
       const { data: existing, error: findError } = await db.from("collection_holdings").select("id").eq("work_id", id).eq("venue_id", body.targetId).is("inventory_number", null).maybeSingle(); if (findError) throw findError;
-      const values = { work_id: id, venue_id: body.targetId, holding_type: body.holdingType || null, inventory_number: null };
+      const values = { work_id: id, venue_id: body.targetId, holding_type: body.holdingType || null, inventory_number: null, source: "manual", verified_at: new Date().toISOString() };
       const result = existing ? await db.from("collection_holdings").update(values).eq("id", existing.id) : await db.from("collection_holdings").insert(values); if (result.error) throw result.error;
     } else if (body.kind === "presentation") {
       const presentationType = ["permanent", "temporary", "unknown"].includes(body.presentationType) ? body.presentationType : "unknown";
@@ -22,6 +22,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     revalidatePath(`/admin/works/${id}`); revalidatePath("/admin/works");
     return NextResponse.json({ message: "Relationを保存しました。" });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Relation save failed" }, { status: 400 }); }
+}
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    if (!validUuid(id) || !validUuid(body.relationId)) throw new Error("Invalid ID");
+    if (body.kind !== "artist" && body.kind !== "holding") throw new Error("Visibility is supported only for Artist and Holding relations");
+    if (body.visibility !== "public" && body.visibility !== "hidden") throw new Error("Invalid visibility");
+    const table = body.kind === "artist" ? "work_artists" : "collection_holdings";
+    const reason = body.visibility === "hidden" && typeof body.hiddenReason === "string" ? body.hiddenReason.trim().slice(0, 500) || null : null;
+    const db = createSupabaseAdminClient();
+    const { data: relation, error: relationError } = await db.from(table).select("id,work_id,visibility_status").eq("id", body.relationId).eq("work_id", id).maybeSingle();
+    if (relationError) throw relationError;
+    if (!relation) throw new Error("Relation not found for this Work");
+    const { error } = await db.from(table).update({
+      visibility_status: body.visibility,
+      visibility_overridden: true,
+      hidden_reason: reason,
+      visibility_updated_at: new Date().toISOString(),
+    }).eq("id", relation.id).eq("work_id", id);
+    if (error) throw error;
+    revalidatePath(`/admin/works/${id}`); revalidatePath("/admin/works");
+    return NextResponse.json({ message: `Relationを${body.visibility === "public" ? "Public" : "Hidden"}へ変更しました。`, before: relation.visibility_status, after: body.visibility });
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Visibility update failed" }, { status: 400 }); }
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {

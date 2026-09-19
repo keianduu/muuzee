@@ -41,7 +41,7 @@ async function saveCandidate(db: SupabaseClient, artist: Artist, candidate: Work
   const checksum = createHash("sha256").update(JSON.stringify(candidate.raw)).digest("hex");
   const { error: sourceError } = await db.from("source_records").upsert({ data_source_id: dataSourceId, external_id: candidate.externalId, source_url: candidate.sourceUrl, raw_payload: candidate.raw, checksum, fetched_at: new Date().toISOString() }, { onConflict: "data_source_id,external_id" });
   if (sourceError) throw sourceError;
-  const { error } = await db.from("work_import_candidates").upsert({
+  const { data: saved, error } = await db.from("work_import_candidates").upsert({
     artist_id: artist.id, data_source_id: dataSourceId, external_id: candidate.externalId, source_url: candidate.sourceUrl,
     title: candidate.title, title_ja: candidate.titleJa, title_en: candidate.titleEn, title_original: candidate.titleOriginal,
     original_language: candidate.originalLanguage, year_text: candidate.yearText,
@@ -51,16 +51,16 @@ async function saveCandidate(db: SupabaseClient, artist: Artist, candidate: Work
     presentation_type: candidate.presentationType, presentation_status: candidate.presentationStatus,
     representative_score: candidate.representativeScore, representative_reason: candidate.representativeReason,
     match_status: status, matched_work_id: preserved.matchedWorkId, raw_payload: candidate.raw,
-  }, { onConflict: "data_source_id,external_id,artist_id" });
+  }, { onConflict: "data_source_id,external_id,artist_id" }).select("id").single();
   if (error) throw error;
-  return { venueMatched: Boolean(venue.venueId), duplicate: Boolean(duplicateId), ambiguous: status === "ambiguous" };
+  return { candidateId: saved.id as string, venueMatched: Boolean(venue.venueId), duplicate: Boolean(duplicateId), ambiguous: status === "ambiguous" };
 }
 
 export async function targetedWorkCoverage(options: { limit?: number; saveCandidates?: boolean; fetchApj?: typeof searchApjShuzo; fetchTomuco?: typeof searchTomuco } = {}, db: SupabaseClient = createSupabaseAdminClient()) {
   const limit = Math.min(20, Math.max(1, options.limit || 20));
   const { data, error } = await db.from("artists").select("id,name,name_en,aliases").eq("effective_priority_tier", "A").order("name").limit(limit);
   if (error) throw error;
-  const rows = (data || []) as Artist[]; const coverage: WorkCoverageRow[] = []; let saved = 0; let duplicates = 0; let ambiguous = 0;
+  const rows = (data || []) as Artist[]; const coverage: WorkCoverageRow[] = []; let saved = 0; let duplicates = 0; let ambiguous = 0; let autoApplied = 0; let needsReview = 0;
   for (const artist of rows) {
     const errors: string[] = []; let candidates: WorkSourceCandidate[] = [];
     try { candidates.push(...await (options.fetchApj || searchApjShuzo)(artist, 5)); } catch (error) { errors.push(`SHŪZŌ: ${error instanceof Error ? error.message : "failed"}`); }
@@ -69,11 +69,19 @@ export async function targetedWorkCoverage(options: { limit?: number; saveCandid
     let venueMatches = 0;
     const venueInputs = candidates.map((candidate) => ({ sourceName: candidate.venueName }));
     const venueResults = await resolveVenues(db, venueInputs);
-    if (options.saveCandidates) for (let index = 0; index < candidates.length; index += 1) { const result = await saveCandidate(db, artist, candidates[index], venueResults.get(venueResolutionKey(venueInputs[index]))); saved += 1; venueMatches += Number(result.venueMatched); duplicates += Number(result.duplicate); ambiguous += Number(result.ambiguous); }
+    if (options.saveCandidates) for (let index = 0; index < candidates.length; index += 1) {
+      const result = await saveCandidate(db, artist, candidates[index], venueResults.get(venueResolutionKey(venueInputs[index])));
+      saved += 1; venueMatches += Number(result.venueMatched); duplicates += Number(result.duplicate); ambiguous += Number(result.ambiguous);
+      const { data: application, error: applicationError } = await db.rpc("auto_apply_work_candidate", { p_candidate_id: result.candidateId });
+      if (applicationError) throw applicationError;
+      const state = application as { applied?: boolean; idempotent?: boolean } | null;
+      autoApplied += Number(Boolean(state?.applied && !state.idempotent));
+      needsReview += Number(!state?.applied);
+    }
     else for (const input of venueInputs) venueMatches += Number(Boolean(venueResults.get(venueResolutionKey(input))?.venueId));
     coverage.push({ artistId: artist.id, artistName: artist.name, artistFound: candidates.length > 0, workFound: candidates.length > 0, candidateCount: candidates.length, holdingVenueCount: candidates.filter((item) => item.holdingType).length, venueMatchCount: venueMatches, yearCount: candidates.filter((item) => item.yearText).length, permanentCount: candidates.filter((item) => item.presentationType === "permanent").length, currentDisplayCount: candidates.filter((item) => item.presentationStatus === "currently_displayed").length, sourceErrors: errors });
   }
-  return { dryRun: !options.saveCandidates, artists: rows.length, artistFound: coverage.filter((row) => row.artistFound).length, candidates: coverage.reduce((sum, row) => sum + row.candidateCount, 0), saved, duplicates, ambiguous, coverage };
+  return { dryRun: !options.saveCandidates, artists: rows.length, artistFound: coverage.filter((row) => row.artistFound).length, candidates: coverage.reduce((sum, row) => sum + row.candidateCount, 0), saved, autoApplied, needsReview, duplicates, ambiguous, coverage };
 }
 
 export async function rematchUnresolvedWorkCandidateVenues(db: SupabaseClient = createSupabaseAdminClient()) {

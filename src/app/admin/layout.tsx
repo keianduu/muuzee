@@ -13,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/admin/venues" prefetch={false}>Venues（会場）</Link>
         <Link href="/admin/artists" prefetch={false}>Artists（作家）</Link>
         <Link href="/admin/works" prefetch={false}>Works（作品）</Link>
+        <Link href="/admin/sources" prefetch={false}>Sources（外部ソース）</Link>
       </nav>
     </header>
     <main className="admin-main">{children}</main>
