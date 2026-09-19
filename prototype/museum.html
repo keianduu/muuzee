@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="./assets/css/muuzee-global.css?v=20260911-login-prototype-02">
   <link rel="stylesheet" href="./assets/css/muuzee-detail.css?v=20260919-order656-overlap-01">
   <link rel="stylesheet" href="./assets/css/muuzee-exhibition-card.css?v=20260826-14">
-  <link rel="stylesheet" href="./assets/css/museum.css?v=20260919-order656-overlap-01">
+  <link rel="stylesheet" href="./assets/css/museum.css?v=20260919-order658-01">
+  <link rel="stylesheet" href="./assets/css/muuzee-relation-text-list.css?v=20260919-order658-01">
 <link rel="stylesheet" href="./assets/css/muuzee-personal-actions.css?v=20260902-02">
   <link rel="stylesheet" href="./assets/css/muuzee-detail-head.css?v=20260919-order656-01">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -141,8 +142,7 @@
           <div class="museum-section-label">Collection</div>
           <div class="museum-section-main">
             <h2>所蔵作品</h2>
-            <div class="museum-work-rail" data-collection-works></div>
-            <div class="museum-quiet-empty" data-collection-empty hidden></div>
+            <div data-collection-works></div>
           </div>
         </section>
 
@@ -150,8 +150,7 @@
           <div class="museum-section-label">Artists</div>
           <div class="museum-section-main">
             <h2>所蔵Artist</h2>
-            <div class="museum-artist-rail" data-collection-artists></div>
-            <div class="museum-quiet-empty" data-artists-empty hidden></div>
+            <div data-collection-artists></div>
           </div>
         </section>
       </div>
@@ -184,14 +183,17 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./assets/js/muuzee-global.js?v=20260919-order656-02"></script>
-  <script src="./assets/js/museum-data.js?v=20260828-07"></script>
-  <script src="./assets/js/artist-data.js?v=20260919-order656-01"></script>
+  <script src="./assets/js/muuzee-global.js?v=20260919-order658-01"></script>
+  <script src="./assets/js/museum-data.js?v=20260919-order658-01"></script>
+  <script src="./assets/js/artist-data.js?v=20260919-order658-01"></script>
+  <script src="./assets/js/work-data.js?v=20260919-order658-01"></script>
+  <script src="./assets/js/muuzee-museum-collection.js?v=20260919-order658-01"></script>
+  <script src="./assets/js/muuzee-relation-text-list.js?v=20260919-order658-01"></script>
   <script src="./assets/js/muuzee-seo-config.js?v=20260918-order655-01"></script>
   <script src="./assets/js/muuzee-breadcrumb.js?v=20260918-order655-01"></script>
   <script src="./assets/js/muuzee-detail-head.js?v=20260919-order656-01"></script>
   <script src="./assets/js/muuzee-exhibition-card.js?v=20260917-order651-cleanup-01"></script>
-  <script src="./assets/js/museum.js?v=20260919-order656-01"></script>
+  <script src="./assets/js/museum.js?v=20260919-order658-01"></script>
 <script src="./assets/js/muuzee-save-control.js?v=20260911-login-prototype-01"></script>
 <script src="./assets/js/muuzee-personal-actions.js?v=20260911-login-prototype-01"></script>
   <script defer src="./assets/js/muuzee-profile-ui.js?v=20260908-avatar-flash-01"></script>

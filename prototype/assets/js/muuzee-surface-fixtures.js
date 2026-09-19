@@ -22,11 +22,10 @@
     {id:"ayune-shojima",name:"庄島歩音",tagIds:["contemporary","illustration","japan"]}
   ];
 
-  const artistByName = new Map(artists.map(item => [item.name,item]));
+  const artistById = new Map(artists.map(item => [item.id,item]));
   artistFixtures.forEach(fixture => {
-    const artist = artistByName.get(fixture.name);
+    const artist = artistById.get(fixture.id);
     if(!artist) return;
-    artist.id = fixture.id;
     artist.tagIds = [...fixture.tagIds];
   });
 

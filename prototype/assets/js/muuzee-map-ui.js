@@ -99,15 +99,18 @@
     const canSave = Boolean(item.saveType && item.saveId);
     const saved = canSave && isSaved(item.saveType,item.saveId);
     const actions = Array.isArray(item.actions) ? item.actions : [];
+    const image = `<div class="map-popup-image"><img src="${esc(item.image)}" alt="${esc(item.name)}"></div>`;
+    const imageMarkup = item.detailHref
+      ? `<a class="map-popup-image-link" href="${esc(item.detailHref)}" aria-label="${esc(item.name)}の詳細を見る">${image}</a>`
+      : image;
+    const title = `<h3 class="map-popup-title">${esc(item.name)}</h3>`;
+    const titleMarkup = item.detailHref
+      ? `<a class="map-popup-title-link" href="${esc(item.detailHref)}">${title}</a>`
+      : title;
 
     return `
       <article class="map-popup-card is-${esc(item.kind || "venue")}">
-        <div class="map-popup-image">
-          <img
-            src="${esc(item.image)}"
-            alt="${esc(item.name)}"
-          >
-        </div>
+        ${imageMarkup}
 
         <div class="map-popup-body">
           <div class="map-popup-topline">
@@ -128,7 +131,7 @@
             </button>` : ""}
           </div>
 
-          <h3 class="map-popup-title">${esc(item.name)}</h3>
+          ${titleMarkup}
           <p class="map-popup-sub">${esc(item.sub)}</p>
 
           <div class="map-popup-actions">
@@ -302,6 +305,7 @@
 
   window.MuuzeeMapUI = Object.freeze({
     isSaved,
-    addItemMarker
+    addItemMarker,
+    popupHTML
   });
 })();

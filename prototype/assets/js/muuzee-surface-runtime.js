@@ -214,12 +214,39 @@
     const [year,month] = key.split("-").map(Number);
     return {year:String(year),month:new Intl.DateTimeFormat("ja-JP",{month:"short"}).format(new Date(year,month - 1,1))};
   }
+  function toMonthKey(value){
+    const date = value instanceof Date ? value : new Date(value);
+    if(Number.isNaN(date.getTime())) return "";
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}`;
+  }
+  function monthIndex(key){
+    const match = /^(\d{4})-(\d{2})$/.exec(String(key || ""));
+    if(!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if(month < 1 || month > 12) return null;
+    return year * 12 + month - 1;
+  }
+  function resolveInitialMonth(months,now = new Date()){
+    if(!Array.isArray(months) || !months.length) return "";
+    const current = toMonthKey(now);
+    if(months.includes(current)) return current;
+    const currentIndex = monthIndex(current);
+    if(currentIndex === null) return months[0];
+    return months.reduce((nearest,key) => {
+      const keyIndex = monthIndex(key);
+      const nearestIndex = monthIndex(nearest);
+      if(keyIndex === null) return nearest;
+      if(nearestIndex === null) return key;
+      return Math.abs(keyIndex - currentIndex) < Math.abs(nearestIndex - currentIndex) ? key : nearest;
+    },months[0]);
+  }
   function monthsBetween(start,end){
     const values = [];
     const cursor = new Date(start.getFullYear(),start.getMonth(),1);
     const last = new Date(end.getFullYear(),end.getMonth(),1);
     while(cursor <= last){
-      values.push(`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,"0")}`);
+      values.push(toMonthKey(cursor));
       cursor.setMonth(cursor.getMonth()+1);
     }
     return values;
@@ -253,7 +280,7 @@
       new Date(Math.min(...starts.map(date => date.getTime()))),
       new Date(Math.max(...ends.map(date => date.getTime())))
     );
-    let activeMonth = months.find(key => valid.some(item => overlapsMonth(item,key))) || months[0];
+    let activeMonth = resolveInitialMonth(months);
 
     const draw = () => {
       const matches = valid.filter(item => overlapsMonth(item,activeMonth));
@@ -275,6 +302,8 @@
     };
     draw();
   }
+
+  window.MuuzeeSurfaceRuntimeHelpers = Object.freeze({toMonthKey,resolveInitialMonth});
 
   async function renderMuseumDetail(){
     const museum = currentMuseum();

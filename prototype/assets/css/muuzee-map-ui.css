@@ -98,6 +98,22 @@
   background:var(--warm);
 }
 
+.muuzee-map-popup .map-popup-image-link,
+.muuzee-map-popup .map-popup-image-link:visited,
+.muuzee-map-popup .map-popup-image-link:hover,
+.muuzee-map-popup .map-popup-image-link:focus-visible,
+.muuzee-map-popup .map-popup-image-link:active{
+  height:100%;
+  display:block;
+  color:inherit;
+  text-decoration:none;
+}
+
+.muuzee-map-popup .map-popup-image-link:focus-visible{
+  outline:2px solid var(--ink);
+  outline-offset:-3px;
+}
+
 .map-popup-image img{
   display:block;
   width:100%;
@@ -146,6 +162,21 @@
   font-weight:650;
 }
 
+.muuzee-map-popup .map-popup-title-link,
+.muuzee-map-popup .map-popup-title-link:visited,
+.muuzee-map-popup .map-popup-title-link:hover,
+.muuzee-map-popup .map-popup-title-link:focus-visible,
+.muuzee-map-popup .map-popup-title-link:active{
+  color:var(--ink);
+  text-decoration:none;
+}
+
+.muuzee-map-popup .map-popup-title-link:focus-visible{
+  border-radius:2px;
+  outline:2px solid var(--ink);
+  outline-offset:2px;
+}
+
 .map-popup-sub{
   margin:0;
   display:-webkit-box;
@@ -167,7 +198,11 @@
   gap:7px;
 }
 
-.map-popup-action{
+.muuzee-map-popup .map-popup-action.is-primary,
+.muuzee-map-popup .map-popup-action.is-primary:visited,
+.muuzee-map-popup .map-popup-action.is-primary:hover,
+.muuzee-map-popup .map-popup-action.is-primary:focus-visible,
+.muuzee-map-popup .map-popup-action.is-primary:active{
   min-height:30px;
   padding:7px 11px;
   border:1px solid var(--ink);
@@ -177,16 +212,27 @@
   justify-content:center;
   color:#fff;
   background:var(--ink);
+  text-decoration:none;
   font-size:12px;
   font-weight:650;
   line-height:1.2;
   white-space:nowrap;
 }
 
-.map-popup-action.is-secondary{
+.muuzee-map-popup .map-popup-action.is-secondary,
+.muuzee-map-popup .map-popup-action.is-secondary:visited,
+.muuzee-map-popup .map-popup-action.is-secondary:hover,
+.muuzee-map-popup .map-popup-action.is-secondary:focus-visible,
+.muuzee-map-popup .map-popup-action.is-secondary:active{
   border-color:var(--line);
   color:var(--ink);
   background:#fff;
+  text-decoration:none;
+}
+
+.muuzee-map-popup .map-popup-action:focus-visible{
+  outline:2px solid var(--ink);
+  outline-offset:2px;
 }
 
 .muuzee-map-popup .map-popup-save{
@@ -264,7 +310,7 @@
     gap:7px;
   }
 
-  .map-popup-action{
+  .muuzee-map-popup .map-popup-action{
     min-height:28px;
     padding:6px 9px;
   }

@@ -1,0 +1,60 @@
+/* Muuzee Shared Relation Text List */
+
+.muuzee-relation-text-list{
+  margin-top:24px;
+  border-top:1px solid var(--line);
+}
+
+.muuzee-relation-text-list-row{
+  min-width:0;
+  padding:18px 0;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+}
+
+.muuzee-relation-text-list-copy{
+  min-width:0;
+  display:grid;
+  gap:5px;
+}
+
+.muuzee-relation-text-list-primary{
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.5;
+  font-weight:600;
+}
+
+.muuzee-relation-text-list-secondary{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.55;
+}
+
+.muuzee-relation-text-list-meta{
+  flex:0 0 auto;
+  padding-top:3px;
+  color:var(--muted2);
+  font-size:10px;
+  line-height:1.5;
+  white-space:nowrap;
+}
+
+.muuzee-relation-text-list-empty{
+  margin:0;
+  padding:22px 0;
+  border-bottom:1px solid var(--line);
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.7;
+}
+
+@media(max-width:720px){
+  .muuzee-relation-text-list-row{
+    padding:16px 0;
+    gap:14px;
+  }
+}

@@ -8,7 +8,6 @@
   const params = new URLSearchParams(location.search);
   const requestedId = params.get("id");
   const museum = catalog.find(item => item.id === requestedId) || catalog[0];
-  const artistCatalog = window.MuuzeeArtistCatalog || [];
 
   const esc = value => String(value ?? "").replace(/[&<>"']/g,char => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
@@ -24,9 +23,7 @@
   const openingNoteEl = document.querySelector("[data-museum-opening-note]");
   const mapLink = document.querySelector("[data-map-link]");
   const worksEl = document.querySelector("[data-collection-works]");
-  const worksEmpty = document.querySelector("[data-collection-empty]");
   const artistsEl = document.querySelector("[data-collection-artists]");
-  const artistsEmpty = document.querySelector("[data-artists-empty]");
 
   document.title = `${museum.name} — Muuzee`;
   window.MuuzeeBreadcrumb?.get("[data-muuzee-breadcrumb]")?.setCurrentLabel(museum.name);
@@ -50,37 +47,22 @@
     mapLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(museum.address || museum.name)}`;
   }
 
-  const works = museum.collectionWorks || [];
-  if(worksEl){
-    worksEl.innerHTML = works.map(work => `
-      <article class="museum-work" data-save-type="work">
-        <div class="museum-work-image"><img src="${esc(work.image)}" alt="${esc(work.title)}" loading="lazy"></div>
-        <small>${esc(work.year || "")}</small><strong>${esc(work.title)}</strong><p>${esc(work.artist)}</p>
-      </article>
-    `).join("");
-    worksEl.hidden = works.length === 0;
-    if(worksEmpty){
-      worksEmpty.hidden = works.length !== 0;
-      worksEmpty.textContent = museum.collectionNote || "所蔵作品データは準備中です。";
-    }
-  }
-
-  const artistNames = museum.artists || [];
-  if(artistsEl){
-    artistsEl.innerHTML = artistNames.map(name => {
-      const artist = artistCatalog.find(item => item.name === name);
-      const image = artist?.image || artist?.img || "";
-      const imageMarkup = image
-        ? `<div class="museum-artist-image"><img src="${esc(image)}" alt="${esc(name)}" loading="lazy" style="object-position:${esc(artist?.position || "center")}"></div>`
-        : `<div class="museum-artist-image is-fallback">${esc(name.slice(0,1))}</div>`;
-      return `<a class="museum-artist" data-save-type="artist" data-save-id="${esc(name)}" href="./artist.html?name=${encodeURIComponent(name)}">${imageMarkup}<strong>${esc(name)}</strong></a>`;
-    }).join("");
-    artistsEl.hidden = artistNames.length === 0;
-    if(artistsEmpty){
-      artistsEmpty.hidden = artistNames.length !== 0;
-      artistsEmpty.textContent = museum.collectionNote || "所蔵Artistデータは準備中です。";
-    }
-  }
+  const collection = window.MuuzeeMuseumCollection?.resolve(museum.id) || {works:[],artists:[]};
+  window.MuuzeeRelationTextList?.mount(worksEl,{
+    items:collection.works.map(work => ({
+      primary:work.displayTitle,
+      secondary:work.artists.map(artist => artist.name).join(" / "),
+      meta:work.yearText
+    })),
+    emptyText:"所蔵作品情報を確認中です。"
+  });
+  window.MuuzeeRelationTextList?.mount(artistsEl,{
+    items:collection.artists.map(artist => ({
+      primary:artist.displayName,
+      meta:`${artist.workCount}作品`
+    })),
+    emptyText:museum.collectionNote || "所蔵Artist情報を確認中です。"
+  });
 
   function initMap(){
     const mapEl = document.querySelector("[data-museum-map]");
