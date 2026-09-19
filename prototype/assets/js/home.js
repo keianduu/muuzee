@@ -197,10 +197,14 @@ const homeArtWall =
       window.MuuzeeMuseumCatalog || []
     ];
 
+  const placeResolver = window.MuuzeeMapPlaceResolver;
+  if(!placeResolver) return;
+  await placeResolver.ready();
+
   discoveryModule.mount({
     mount,
-    exhibitions,
-    museums,
+    exhibitions:placeResolver.normalizeCollection(exhibitions,"exhibition"),
+    museums:placeResolver.normalizeCollection(museums,"museum"),
     initialMode:"exhibition",
     mapOptions:{
       scrollWheelZoom:false,

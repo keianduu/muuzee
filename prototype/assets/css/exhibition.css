@@ -25,13 +25,14 @@
 .section-title small{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-bottom:7px}
 .section-title h2{font-size:30px;line-height:1;letter-spacing:-.045em;margin:0;font-weight:650}
 .more{font-size:10px;color:var(--muted)}
-.map-card{display:grid;grid-template-columns:1.1fr .9fr;min-height:390px;border-radius:28px;overflow:hidden;background:var(--warm)}
-.map-visual{position:relative;background:#e9e9e4;overflow:hidden;background-image:repeating-linear-gradient(18deg,transparent 0 54px,rgba(255,255,255,.72) 55px 59px),repeating-linear-gradient(104deg,transparent 0 72px,rgba(255,255,255,.55) 73px 76px)}
-.map-visual::before{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:var(--terra);left:54%;top:48%;box-shadow:0 0 0 7px rgba(200,111,85,.18),0 4px 10px rgba(38,37,34,.14)}
-.map-copy{padding:42px;display:flex;flex-direction:column;justify-content:center}
-.map-copy h3{font-size:23px;line-height:1.25;letter-spacing:-.035em;margin:0 0 12px}
-.map-copy p{font-size:12px;line-height:1.9;color:var(--muted);margin:0 0 8px}
-.map-link{display:inline-flex;align-items:center;align-self:flex-start;margin-top:16px;padding:11px 16px;border-radius:999px;background:var(--ink);color:#fff;font-size:9px}
+.exhibition-venue-map-card{height:380px;border-radius:var(--radius-lg);overflow:hidden;background:var(--warm)}
+.exhibition-venue-map-card>[data-exhibition-venue-map],
+.exhibition-venue-map-card .muuzee-map-discovery-canvas{height:100%}
+.exhibition-venue-map-fallback{height:100%;padding:36px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.exhibition-venue-map-fallback[hidden]{display:none}
+.exhibition-venue-map-fallback small{margin-bottom:8px;color:var(--muted2);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.exhibition-venue-map-fallback h3{margin:0 0 8px;font-size:24px;line-height:1.25}
+.exhibition-venue-map-fallback p{margin:0 0 20px;color:var(--muted);font-size:12px;line-height:1.7}
 
 
 
@@ -42,6 +43,11 @@
 .exhibition-hero.landscape{height:min(82svh,68vw)}
 .exhibition-hero.landscape img{object-fit:cover;object-position:center}
 @media (max-width:720px){.exhibition-hero{height:82svh}.exhibition-hero.landscape{height:min(72svh,82vw)}.exhibition-hero img{object-position:center 45%}.hero-content{bottom:64px}.hero-content h1{font-size:24px;line-height:1.14;max-width:92%;margin-bottom:12px}.hero-venue{font-size:11px}.hero-meta{font-size:8px;margin-bottom:10px}.lead-grid{display:block}.lead{font-size:16px;line-height:1.85}.body-copy{font-size:11px;line-height:1.9;margin-top:18px}.info-card{margin-top:30px;border-radius:20px;padding:4px 18px}.info-row{grid-template-columns:72px 1fr;padding:15px 0;gap:12px}.info-row dt{font-size:7px}.info-row dd{font-size:10px}.section{padding-top:56px}.section-head{margin-bottom:18px}.section-title h2{font-size:24px}.map-card{display:block;min-height:0;border-radius:22px}.map-visual{height:250px}.map-copy{padding:24px}.map-copy h3{font-size:20px}.map-copy p{font-size:10px}}
+@media (max-width:720px){
+  .exhibition-venue-map-card{height:290px;border-radius:var(--radius-md)}
+  .exhibition-venue-map-fallback{padding:24px}
+  .exhibition-venue-map-fallback h3{font-size:24px}
+}
 @media (max-width:720px){
   .detail-sheet{padding-bottom:68px}
 }
@@ -91,9 +97,7 @@
 }
 
 .info-row dt,
-.more,
-.map-copy p,
-.map-link{
+.more{
   font-size:12px;
 }
 
@@ -114,9 +118,7 @@
   }
 
   .info-row dt,
-  .more,
-  .map-copy p,
-  .map-link{
+  .more{
     font-size:12px;
   }
 

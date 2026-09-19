@@ -2,11 +2,28 @@
 (() => {
   "use strict";
 
-  const INITIAL_BOUNDS = [[35.645,139.735],[35.728,139.825]];
   const MODES = new Set(["exhibition","museum"]);
 
   function resolveMount(value){
     return typeof value === "string" ? document.querySelector(value) : value;
+  }
+
+  function tileConfig(){
+    return window.MuuzeeMapConfig?.tile || {
+      url:"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      options:{
+        subdomains:"abcd",
+        maxZoom:20,
+        attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
+      },
+      initialBounds:[[35.645,139.735],[35.728,139.825]],
+      detailZoom:15
+    };
+  }
+
+  function addTileLayer(map){
+    const tile = tileConfig();
+    return L.tileLayer(tile.url,tile.options).addTo(map);
   }
 
   function controlsMarkup(){
@@ -73,13 +90,9 @@
       zoomControl:true,
       attributionControl:true,
       ...mapOptions
-    }).fitBounds(INITIAL_BOUNDS,{padding:[24,24],maxZoom:12.5});
+    }).fitBounds(tileConfig().initialBounds,{padding:[24,24],maxZoom:12.5});
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{
-      subdomains:"abcd",
-      maxZoom:20,
-      attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
-    }).addTo(map);
+    addTileLayer(map);
 
     const markerLayer = L.layerGroup().addTo(map);
 
@@ -109,7 +122,7 @@
       );
 
       positionedItems.forEach(item => {
-        mapUI.addItemMarker({map,mapEl,markerLayer,item,type:mode});
+        mapUI.addItemMarker({map,mapEl,markerLayer,item});
       });
 
       resultCount.textContent = items.length;
@@ -241,5 +254,48 @@
     return api;
   }
 
-  window.MuuzeeMapDiscovery = Object.freeze({mount});
+  function mountPlace({mount:mountValue,item,mapOptions={}} = {}){
+    const root = resolveMount(mountValue);
+    const mapUI = window.MuuzeeMapUI;
+    if(
+      !root
+      || typeof window.L === "undefined"
+      || !mapUI
+      || !Number.isFinite(item?.lat)
+      || !Number.isFinite(item?.lng)
+    ) return null;
+
+    root.classList.add("muuzee-map-discovery","muuzee-map-discovery--place");
+    root.innerHTML = '<div class="muuzee-map-discovery-canvas" data-map-discovery-canvas></div>';
+    const mapEl = root.querySelector("[data-map-discovery-canvas]");
+    const map = L.map(mapEl,{
+      scrollWheelZoom:false,
+      zoomControl:true,
+      attributionControl:true,
+      ...mapOptions
+    }).setView([item.lat,item.lng],tileConfig().detailZoom);
+
+    addTileLayer(map);
+    const markerLayer = L.layerGroup().addTo(map);
+    mapUI.addItemMarker({map,mapEl,markerLayer,item,openPopup:true});
+
+    const invalidateSize = () => map.invalidateSize({pan:false});
+    const resizeObserver = "ResizeObserver" in window
+      ? new ResizeObserver(() => window.requestAnimationFrame(invalidateSize))
+      : null;
+    resizeObserver?.observe(root);
+    window.requestAnimationFrame(invalidateSize);
+
+    return Object.freeze({
+      invalidateSize,
+      destroy(){
+        resizeObserver?.disconnect();
+        map.remove();
+        root.replaceChildren();
+        root.classList.remove("muuzee-map-discovery","muuzee-map-discovery--place");
+      }
+    });
+  }
+
+  window.MuuzeeMapDiscovery = Object.freeze({mount,mountPlace});
 })();

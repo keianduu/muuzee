@@ -12,6 +12,12 @@
       window.MuuzeeMuseumCatalog || []
     ];
 
+  const placeResolver = window.MuuzeeMapPlaceResolver;
+  if(!placeResolver) return;
+  await placeResolver.ready();
+  const mapExhibitions = placeResolver.normalizeCollection(exhibitions,"exhibition");
+  const mapMuseums = placeResolver.normalizeCollection(museums,"museum");
+
   const mount = document.querySelector("[data-map-discovery]");
   const discoveryModule = window.MuuzeeMapDiscovery;
   if(!mount || !discoveryModule) return;
@@ -101,7 +107,7 @@
   function renderExpressionOptions(){
     if(!expressionOptions) return;
 
-    const values = unique(exhibitions.map(item => item.expressionCategory));
+    const values = unique(mapExhibitions.map(item => item.expressionCategory));
     expressionOptions.innerHTML = values.map(value => `
       <button class="filter-chip${draftFilters.exhibition.expression.includes(value) ? " is-selected" : ""}"
         type="button" data-expression-value="${esc(value)}">${esc(value)}</button>
@@ -112,7 +118,7 @@
     if(!museumAreaOptions) return;
 
     const scope = draftFilters.museum.scope;
-    const scoped = museums.filter(item => item.scope === scope);
+    const scoped = mapMuseums.filter(item => item.scope === scope);
     const values = scope === "jp"
       ? unique(scoped.map(item => item.region))
       : unique(scoped.map(item => item.city));
@@ -155,8 +161,8 @@
 
   const discovery = discoveryModule.mount({
     mount,
-    exhibitions,
-    museums,
+    exhibitions:mapExhibitions,
+    museums:mapMuseums,
     initialMode:"exhibition",
     filterItems,
     onModeChange:({mode}) => renderSummary(mode),

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title desc">
+  <title id="title">Museum map placeholder</title>
+  <desc id="desc">A neutral architectural illustration for map cards.</desc>
+  <rect width="640" height="480" fill="#f7f5f1"/>
+  <path d="M104 192 320 74l216 118v24H104z" fill="#ded9d0"/>
+  <path d="M132 216h376v176H132z" fill="#eeeae3"/>
+  <path d="M168 238h44v124h-44zm86 0h44v124h-44zm88 0h44v124h-44zm86 0h44v124h-44z" fill="#fff"/>
+  <path d="M104 392h432v24H104z" fill="#d3cdc2"/>
+  <circle cx="320" cy="154" r="23" fill="#b96f55" opacity=".78"/>
+</svg>

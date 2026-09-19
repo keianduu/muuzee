@@ -65,73 +65,74 @@
       </div>`;
   }
 
-  function createIcon(type,saved){
+  function venueIcon(){
+    return `
+      <div class="muuzee-map-pin muuzee-map-pin--venue">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11Z"></path>
+          <circle cx="12" cy="10" r="2.2"></circle>
+        </svg>
+      </div>`;
+  }
+
+  function createIcon(kind,saved){
     return L.divIcon({
       className:"",
-      html:type === "museum"
+      html:kind === "museum"
         ? museumIcon(saved)
-        : exhibitionIcon(saved),
+        : (kind === "venue" ? venueIcon() : exhibitionIcon(saved)),
       iconSize:[34,34],
       iconAnchor:[17,17],
       popupAnchor:[0,-15]
     });
   }
 
-  function popupHTML(item,type){
-    const saved = isSaved(type,item.id);
-    const isMuseum = type === "museum";
+  function actionHTML(action){
+    if(!action?.href || !action?.label) return "";
+    const tone = action.tone === "secondary" ? " is-secondary" : " is-primary";
+    const target = action.target ? ` target="${esc(action.target)}"` : "";
+    const rel = action.rel ? ` rel="${esc(action.rel)}"` : "";
+    return `<a class="map-popup-action${tone}" href="${esc(action.href)}"${target}${rel}>${esc(action.label)}</a>`;
+  }
 
-    const meta = isMuseum
-      ? [
-          item.prefecture || item.country,
-          item.city || item.location
-        ].filter(Boolean).join(" · ")
-      : [
-          item.statusLabel,
-          item.expressionCategory
-        ].filter(Boolean).join(" · ");
-
-    const sub = isMuseum
-      ? item.category
-      : [item.venue,item.date].filter(Boolean).join(" · ");
-
-    const href = isMuseum
-      ? `./museum.html?id=${encodeURIComponent(item.id)}`
-      : (item.href || `./exhibition.html?id=${encodeURIComponent(item.id)}`);
+  function popupHTML(item){
+    const canSave = Boolean(item.saveType && item.saveId);
+    const saved = canSave && isSaved(item.saveType,item.saveId);
+    const actions = Array.isArray(item.actions) ? item.actions : [];
 
     return `
-      <article class="map-popup-card ${isMuseum ? "is-museum" : "is-exhibition"}">
+      <article class="map-popup-card is-${esc(item.kind || "venue")}">
         <div class="map-popup-image">
           <img
-            src="${esc(isMuseum ? item.image : item.src)}"
-            alt="${esc(item.name || item.title)}"
+            src="${esc(item.image)}"
+            alt="${esc(item.name)}"
           >
         </div>
 
         <div class="map-popup-body">
           <div class="map-popup-topline">
-            <span class="map-popup-meta">${esc(meta)}</span>
+            <span class="map-popup-meta">${esc(item.meta)}</span>
 
-            <button
+            ${canSave ? `<button
               class="map-popup-save${saved ? " is-saved" : ""}"
               type="button"
               data-popup-save
-              data-popup-type="${type}"
-              data-popup-id="${esc(item.id)}"
+              data-popup-type="${esc(item.saveType)}"
+              data-popup-id="${esc(item.saveId)}"
               aria-label="${saved ? "保存済み" : "保存"}"
               aria-pressed="${String(saved)}"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M6 3h12v18l-6-4-6 4Z"></path>
               </svg>
-            </button>
+            </button>` : ""}
           </div>
 
-          <h3 class="map-popup-title">${esc(item.name || item.title)}</h3>
-          <p class="map-popup-sub">${esc(sub)}</p>
+          <h3 class="map-popup-title">${esc(item.name)}</h3>
+          <p class="map-popup-sub">${esc(item.sub)}</p>
 
           <div class="map-popup-actions">
-            <a class="map-popup-detail" href="${esc(href)}">詳細を見る →</a>
+            ${actions.map(actionHTML).join("")}
           </div>
         </div>
       </article>`;
@@ -262,7 +263,7 @@
     });
   }
 
-  function addItemMarker({map,mapEl,markerLayer,item,type}){
+  function addItemMarker({map,mapEl,markerLayer,item,openPopup=false}){
     if(
       !Number.isFinite(item?.lat)
       || !Number.isFinite(item?.lng)
@@ -270,14 +271,14 @@
 
     const marker = L.marker(
       [item.lat,item.lng],
-      {icon:createIcon(type,isSaved(type,item.id))}
+      {icon:createIcon(item.kind,item.saveType ? isSaved(item.saveType,item.saveId) : false)}
     );
 
-    marker._muuzeeSaveType = type;
-    marker._muuzeeSaveId = item.id;
+    marker._muuzeeSaveType = item.saveType;
+    marker._muuzeeSaveId = item.saveId;
 
     marker.bindPopup(
-      popupHTML(item,type),
+      popupHTML(item),
       {
         className:"muuzee-map-popup is-positioning",
         maxWidth:420,
@@ -295,6 +296,7 @@
     });
 
     marker.addTo(markerLayer);
+    if(openPopup) marker.openPopup();
     return marker;
   }
 
