@@ -37,35 +37,35 @@
       ...Object.fromEntries(museumIds.map(id => [id,Object.freeze({source:"museum",entityId:id})])),
       "sprout-books-art":Object.freeze({
         source:"venue",entityId:"sprout-books-art",name:"Sprout Books and Art",
-        lat:35.6742,lng:139.7631,address:"東京都中央区銀座",meta:"Gallery",sub:"東京都・銀座"
+        lat:35.6742,lng:139.7631,address:"東京都中央区銀座",venueType:"gallery",sub:"東京都・銀座"
       }),
       "gallery-mumon":Object.freeze({
         source:"venue",entityId:"gallery-mumon",name:"Gallery MUMON",
-        lat:35.6651,lng:139.7274,address:"東京都港区南青山",meta:"Gallery",sub:"東京都・南青山"
+        lat:35.6651,lng:139.7274,address:"東京都港区南青山",venueType:"gallery",sub:"東京都・南青山"
       }),
       "hagiwara-projects":Object.freeze({
         source:"venue",entityId:"hagiwara-projects",name:"HAGIWARA PROJECTS",
-        lat:35.6810,lng:139.8061,address:"東京都内",meta:"Gallery",sub:"東京都"
+        lat:35.6810,lng:139.8061,address:"東京都内",venueType:"gallery",sub:"東京都"
       }),
       "whitestone-ginza":Object.freeze({
         source:"venue",entityId:"whitestone-ginza",name:"ホワイトストーンギャラリー銀座新館",
-        lat:35.6711,lng:139.7648,address:"東京都中央区銀座",meta:"Gallery",sub:"東京都・銀座"
+        lat:35.6711,lng:139.7648,address:"東京都中央区銀座",venueType:"gallery",sub:"東京都・銀座"
       }),
       "art-factory-jonanjima":Object.freeze({
         source:"venue",entityId:"art-factory-jonanjima",name:"ART FACTORY城南島",
-        lat:35.5748,lng:139.7484,address:"東京都大田区城南島2-4-10",meta:"Art space",sub:"東京都・城南島"
+        lat:35.5748,lng:139.7484,address:"東京都大田区城南島2-4-10",venueType:"art_space",sub:"東京都・城南島"
       }),
       "good-design-marunouchi":Object.freeze({
         source:"venue",entityId:"good-design-marunouchi",name:"GOOD DESIGN Marunouchi",
-        lat:35.6800,lng:139.7630,address:"東京都千代田区丸の内3-4-1",meta:"Design space",sub:"東京都・丸の内"
+        lat:35.6800,lng:139.7630,address:"東京都千代田区丸の内3-4-1",venueType:"design_space",sub:"東京都・丸の内"
       }),
       "issey-miyake-ginza-cube":Object.freeze({
         source:"venue",entityId:"issey-miyake-ginza-cube",name:"ISSEY MIYAKE GINZA | CUBE",
-        lat:35.6701,lng:139.7644,address:"東京都中央区銀座4-4-5",meta:"Art space",sub:"東京都・銀座"
+        lat:35.6701,lng:139.7644,address:"東京都中央区銀座4-4-5",venueType:"art_space",sub:"東京都・銀座"
       }),
       "cave-ayumi-gallery":Object.freeze({
         source:"venue",entityId:"cave-ayumi-gallery",name:"CAVE-AYUMI GALLERY",
-        lat:35.6763,lng:139.7705,address:"東京都中央区日本橋",meta:"Gallery",sub:"東京都・日本橋"
+        lat:35.6763,lng:139.7705,address:"東京都中央区日本橋",venueType:"gallery",sub:"東京都・日本橋"
       })
     })
   });

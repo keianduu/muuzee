@@ -10,6 +10,16 @@
   const asArray = value => Array.isArray(value) ? value : [];
   const isUnsplash = value => /\/\/images\.unsplash\.com\//i.test(String(value || ""));
   const finite = value => Number.isFinite(Number(value)) ? Number(value) : null;
+  const venueTypeLabels = Object.freeze({
+    gallery:"ギャラリーで開催",
+    art_space:"アートスペースで開催",
+    design_space:"デザインスペースで開催",
+    other:"会場で開催"
+  });
+
+  function venueMeta(venueType){
+    return venueTypeLabels[venueType] || venueTypeLabels.other;
+  }
 
   function externalMapHref({address,lat,lng,name}){
     const query = address || (
@@ -119,7 +129,7 @@
       lat,
       lng,
       image:config.media.neutral,
-      meta:place.meta || "Venue",
+      meta:venueMeta(place.venueType),
       sub:place.address || place.sub || "",
       saveType:null,
       saveId:null,
