@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source of Truth: supabase/migrations/*.sql
-// Applied migrations: 202609040001_admin_v0.sql .. 202609190001_external_source_assertion_policy.sql
+// Applied migrations: 202609040001_admin_v0.sql .. 202609190003_relation_visibility_backfill_fix.sql
 // Regenerate: npm run db:docs
 
 Table artist_external_match_candidates {
@@ -87,7 +87,7 @@ Table collection_holdings {
   updated_at timestamptz [not null, default: `now()`]
   source text
   source_record_id uuid [ref: > source_records.id]
-  visibility_status text [not null, default: `'public'`]
+  visibility_status text [not null, default: `'hidden'`]
   visibility_overridden boolean [not null, default: false]
   hidden_reason text
   visibility_updated_at timestamptz [not null, default: `now()`]
@@ -574,7 +574,7 @@ Table work_artists {
   source_url text
   source_record_id uuid [ref: > source_records.id]
   verified_at timestamptz
-  visibility_status text [not null, default: `'public'`]
+  visibility_status text [not null, default: `'hidden'`]
   visibility_overridden boolean [not null, default: false]
   hidden_reason text
   visibility_updated_at timestamptz [not null, default: `now()`]

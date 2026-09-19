@@ -560,13 +560,25 @@ export async function executeCsvImport(entity: MasterEntity, rows: CsvPreviewRow
           venueId = resolution.venueId;
         }
         if (artistId) {
-          const { error } = await db.from("work_artists").upsert({ work_id: masterId, artist_id: artistId, source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() }, { onConflict: "work_id,artist_id" });
-          if (error) throw error;
+          const { data: existingArtist, error: artistFindError } = await db.from("work_artists").select("id,visibility_overridden").eq("work_id", masterId).eq("artist_id", artistId).maybeSingle();
+          if (artistFindError) throw artistFindError;
+          const { data: artistVisibility, error: artistVisibilityError } = await db.rpc("relation_default_visibility", { p_source: row.sourceType, p_assertion_type: "work_artist" });
+          if (artistVisibilityError) throw artistVisibilityError;
+          const artistValues = { source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() };
+          const savedArtist = existingArtist
+            ? await db.from("work_artists").update(existingArtist.visibility_overridden ? artistValues : { ...artistValues, visibility_status: artistVisibility === "public" ? "public" : "hidden", hidden_reason: null, visibility_updated_at: new Date().toISOString() }).eq("id", existingArtist.id)
+            : await db.from("work_artists").insert({ work_id: masterId, artist_id: artistId, ...artistValues, visibility_status: artistVisibility === "public" ? "public" : "hidden", visibility_overridden: false });
+          if (savedArtist.error) throw savedArtist.error;
         }
         if (venueId) {
-          const { data: holding } = await db.from("collection_holdings").select("id").eq("work_id", masterId).eq("venue_id", venueId).is("inventory_number", null).maybeSingle();
-          const values = { work_id: masterId, venue_id: venueId, holding_type: relation.holdingType || "collection", source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() };
-          const saved = holding ? await db.from("collection_holdings").update(values).eq("id", holding.id) : await db.from("collection_holdings").insert(values);
+          const { data: holding, error: holdingFindError } = await db.from("collection_holdings").select("id,visibility_overridden").eq("work_id", masterId).eq("venue_id", venueId).is("inventory_number", null).maybeSingle();
+          if (holdingFindError) throw holdingFindError;
+          const { data: holdingVisibility, error: holdingVisibilityError } = await db.rpc("relation_default_visibility", { p_source: row.sourceType, p_assertion_type: "collection_holding" });
+          if (holdingVisibilityError) throw holdingVisibilityError;
+          const holdingValues = { holding_type: relation.holdingType || "collection", source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() };
+          const saved = holding
+            ? await db.from("collection_holdings").update(holding.visibility_overridden ? holdingValues : { ...holdingValues, visibility_status: holdingVisibility === "public" ? "public" : "hidden", hidden_reason: null, visibility_updated_at: new Date().toISOString() }).eq("id", holding.id)
+            : await db.from("collection_holdings").insert({ work_id: masterId, venue_id: venueId, inventory_number: null, ...holdingValues, visibility_status: holdingVisibility === "public" ? "public" : "hidden", visibility_overridden: false });
           if (saved.error) throw saved.error;
           if (relation.presentationType || relation.presentationStatus) {
             const { error } = await db.from("work_presentations").upsert({ work_id: masterId, venue_id: venueId, presentation_type: relation.presentationType || "unknown", status: relation.presentationStatus || "unknown", start_date: relation.presentationStartDate || null, end_date: relation.presentationEndDate || null, source: row.sourceType, source_url: relation.sourceUrl || null, verified_at: new Date().toISOString() }, { onConflict: "work_id,venue_id,presentation_type,start_date" });

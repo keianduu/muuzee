@@ -8,11 +8,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params; const body = await request.json(); if (!validUuid(id) || !validUuid(body.targetId)) throw new Error("Invalid ID");
     const db = createSupabaseAdminClient();
     if (body.kind === "artist") {
-      const { error } = await db.from("work_artists").upsert({ work_id: id, artist_id: body.targetId, role: body.role || null, source: "manual", verified_at: new Date().toISOString() }, { onConflict: "work_id,artist_id" }); if (error) throw error;
+      const { data: existing, error: findError } = await db.from("work_artists").select("id,visibility_overridden").eq("work_id", id).eq("artist_id", body.targetId).maybeSingle(); if (findError) throw findError;
+      const sharedValues = { role: body.role || null, source: "manual", verified_at: new Date().toISOString() };
+      const result = existing
+        ? await db.from("work_artists").update(existing.visibility_overridden ? sharedValues : { ...sharedValues, visibility_status: "public", hidden_reason: null, visibility_updated_at: new Date().toISOString() }).eq("id", existing.id)
+        : await db.from("work_artists").insert({ work_id: id, artist_id: body.targetId, ...sharedValues, visibility_status: "public", visibility_overridden: false });
+      if (result.error) throw result.error;
     } else if (body.kind === "holding") {
-      const { data: existing, error: findError } = await db.from("collection_holdings").select("id").eq("work_id", id).eq("venue_id", body.targetId).is("inventory_number", null).maybeSingle(); if (findError) throw findError;
-      const values = { work_id: id, venue_id: body.targetId, holding_type: body.holdingType || null, inventory_number: null, source: "manual", verified_at: new Date().toISOString() };
-      const result = existing ? await db.from("collection_holdings").update(values).eq("id", existing.id) : await db.from("collection_holdings").insert(values); if (result.error) throw result.error;
+      const { data: existing, error: findError } = await db.from("collection_holdings").select("id,visibility_overridden").eq("work_id", id).eq("venue_id", body.targetId).is("inventory_number", null).maybeSingle(); if (findError) throw findError;
+      const sharedValues = { holding_type: body.holdingType || null, source: "manual", verified_at: new Date().toISOString() };
+      const result = existing
+        ? await db.from("collection_holdings").update(existing.visibility_overridden ? sharedValues : { ...sharedValues, visibility_status: "public", hidden_reason: null, visibility_updated_at: new Date().toISOString() }).eq("id", existing.id)
+        : await db.from("collection_holdings").insert({ work_id: id, venue_id: body.targetId, inventory_number: null, ...sharedValues, visibility_status: "public", visibility_overridden: false });
+      if (result.error) throw result.error;
     } else if (body.kind === "presentation") {
       const presentationType = ["permanent", "temporary", "unknown"].includes(body.presentationType) ? body.presentationType : "unknown";
       const status = ["currently_displayed", "not_displayed", "unknown"].includes(body.status) ? body.status : "unknown";

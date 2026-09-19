@@ -61,6 +61,8 @@ Tier A Artist
 - Presentation候補情報はCandidateへ保持するが、自動 / 通常採用では作成しない。`work_presentations`はreview-requiredな別Assertionであり、Holdingから展示中を推測しない。
 - 同じCandidateを再採用しても同じWorkを返し、Relationを重複作成しない。
 - Candidate再取得時も`matched_work_id`を保持し、Relationのsource URL / verified time / holding typeを更新する。Admin visibility overrideは変更しない。
+- `verified_at`はSource relationをdeterministically解決・適用した日時であり、Human Review完了日時ではない。
+- Relationのschema defaultはHidden。Manual追加はApplicationが明示的にPublicを設定し、external sourceはSource × Assertion Policyからvisibilityを決定する。
 - 未照合Candidateの再照合はVenue relation情報だけを更新し、Workを自動採用しない。候補ID、match method、reasonを監査用に保持する。
 - `work_artists.sort_order`はArtistごとのAdmin表示順を保持する補助値で、代表性の自動判定には使わない。
 

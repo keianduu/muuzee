@@ -75,6 +75,8 @@ is_current = true
 
 Previous provenance is retained as history with `is_current = false`. CSV never directly publishes a master; newly created rows remain Draft and the publication column is informational on export.
 
+Work relation imports do not rely on the schema visibility default. A new relation resolves visibility through the same Source × Assertion Policy boundary; an unconfigured `csv_import` / `official_website` / `trusted_api` source remains Hidden until a matching policy exists. Existing relation visibility, including an operator override, is preserved when CSV refreshes source/provenance fields. `verified_at` records deterministic relation resolution/application rather than human approval.
+
 ## 4.1 Official Website Source B
 
 `/admin/venues`の`公式サイト情報取得`は、選択Venue、現在のFilter、Tier A、A+B、A〜Cから最大50件を対象に、同一domain・robots.txt準拠・最大6ページのbounded crawlを実行する。不足Fieldを指定でき、公式URLなしは対象外としてDashboard集計する。結果はMasterへ直接保存せず、Crawl Result → CSV Download → CSV Preview → Confirmを必須とする。最新Crawlと履歴、抽出値、Field Source URLはVenue DrawerのDataタブで確認できる。詳細は[`docs/integrations/official-venue-crawler.md`](./integrations/official-venue-crawler.md)を参照。
