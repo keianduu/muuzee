@@ -1,11 +1,17 @@
 # Muuzee Database ER Documentation
 
-`supabase/migrations/*.sql` is the database Source of Truth.
+`supabase/migrations/*.sql` is the Source of Truth for the **Current Physical Schema**.
+
+`docs/database/user-data-target.json` is the separate Source of Truth for the proposed **Target User Data Schema v1**. Target entries marked `Planned` are design contracts only; they are not database tables until a later migration implements them.
 
 The files in this directory are generated views of the current migration-derived schema:
 
 - `schema.dbml` — DBML representation for ER tools and code review
-- `er-diagram.html` — self-contained searchable ER / column explorer
+- `er-diagram.html` — self-contained searchable Current / Target ER and column explorer
+
+The Target source is version-controlled but is not generated:
+
+- `user-data-target.json` — User Data Target v1 tables, columns, FKs, constraints, delete policy, RLS expectations, downstream Orders, exclusions, and Human Decisions
 
 Do not edit the generated files directly.
 
@@ -15,7 +21,7 @@ Do not edit the generated files directly.
 npm run db:docs
 ```
 
-The generator applies migration files in filename order and reconstructs the current `public` schema from supported `CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, and simple index statements.
+The generator applies migration files in filename order and reconstructs the current `public` schema from supported `CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, and simple index statements. It then reads `user-data-target.json` only for the separate Target v1 view. It never adds Planned tables to `schema.dbml` or the Current view.
 
 After adding or changing a migration, regenerate these files in the same change.
 
@@ -33,6 +39,13 @@ npm run db:docs:check
 
 Open `docs/database/er-diagram.html` in a browser. It is self-contained and does not require a server or external JavaScript library.
 
+Use the schema switcher to compare:
+
+- **Current Schema** — migration-derived physical schema only
+- **Target v1** — the proposed User Data target, with `Implemented`, `Planned`, and `External / Managed` status labels
+
+The Target sidebar also records tables explicitly excluded from Target v1, client-owned Guest Saved state, and the remaining Human Decisions. Status filtering is available in Target v1.
+
 Search supports:
 
 - table names
@@ -46,4 +59,4 @@ Matching columns are highlighted and non-matching tables are dimmed. Selecting a
 
 The ER documentation is optimized for tables, columns, PKs, FKs, common unique constraints, and searchable relationships. PostgreSQL functions, triggers, RLS policies, check-constraint expressions, and complex / partial expression indexes remain authoritative only in the migrations.
 
-When the generated view and a migration disagree, the migration wins.
+When the Current generated view and a migration disagree, the migration wins. When the Target view and `user-data-target.json` disagree, the JSON target source wins. Neither Target source nor Target view proves that a migration has been applied.

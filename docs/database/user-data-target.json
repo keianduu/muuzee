@@ -1,0 +1,719 @@
+{
+  "version": "Target v1",
+  "title": "Muuzee User Data Target Schema v1",
+  "description": "Proposed Production MVP user-data schema. Planned tables are not present in the Current Physical Schema until a migration implements them.",
+  "sourcePolicy": "Current reference tables are projected from supabase/migrations. Planned user tables and their contracts are defined in this file.",
+  "referenceTables": [
+    {
+      "name": "exhibitions",
+      "columns": ["id", "title", "publication_status"],
+      "category": "Canonical Reference"
+    },
+    {
+      "name": "artists",
+      "columns": ["id", "name", "publication_status"],
+      "category": "Canonical Reference"
+    },
+    {
+      "name": "venues",
+      "columns": ["id", "name", "city", "country_code", "publication_status"],
+      "category": "Canonical Reference"
+    },
+    {
+      "name": "works",
+      "columns": ["id", "title", "publication_status"],
+      "category": "Canonical Reference"
+    },
+    {
+      "name": "exhibition_occurrences",
+      "columns": ["id", "exhibition_id", "venue_id", "start_date", "end_date", "relation_status"],
+      "category": "Canonical Reference"
+    }
+  ],
+  "externalTables": [
+    {
+      "name": "auth.users",
+      "category": "Auth / Managed",
+      "status": "External / Managed",
+      "implementationOrder": "Supabase Auth / Order 190",
+      "owner": "Supabase Auth",
+      "publicExposure": "Not exposed as a public content table",
+      "rlsExpectation": "Identity root used by auth.uid(); managed outside the public schema",
+      "notes": [
+        "Production user identity is auth.users.id.",
+        "Muuzee does not create a second credential users table."
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        }
+      ],
+      "primaryKey": ["id"],
+      "uniques": [],
+      "checks": [],
+      "indexes": [],
+      "foreignKeys": []
+    }
+  ],
+  "plannedTables": [
+    {
+      "name": "profiles",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 200",
+      "owner": "Authenticated user",
+      "publicExposure": "Private by default; no public Profile contract is approved",
+      "rlsExpectation": "Owner read/update with auth.uid() = user_id; insert lifecycle is controlled by the profile bootstrap path",
+      "notes": [
+        "Profile presentation is separate from Auth credentials.",
+        "avatar_object_path is a Storage object path, never Base64 or a signed URL."
+      ],
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "display_name",
+          "type": "text"
+        },
+        {
+          "name": "avatar_object_path",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["user_id"],
+      "uniques": [],
+      "checks": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        }
+      ]
+    },
+    {
+      "name": "user_saved_items",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 210",
+      "owner": "Authenticated user",
+      "publicExposure": "Private",
+      "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
+      "notes": [
+        "Account Saved is current set membership.",
+        "Guest Saved remains client-owned and has no server table."
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "exhibition_id",
+          "type": "uuid",
+          "reference": {
+            "table": "exhibitions",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "artist_id",
+          "type": "uuid",
+          "reference": {
+            "table": "artists",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "venue_id",
+          "type": "uuid",
+          "reference": {
+            "table": "venues",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "work_id",
+          "type": "uuid",
+          "reference": {
+            "table": "works",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["id"],
+      "uniques": [],
+      "checks": [
+        "num_nonnulls(exhibition_id, artist_id, venue_id, work_id) = 1"
+      ],
+      "indexes": [
+        {
+          "name": "user_saved_items_user_created_idx",
+          "columns": ["user_id", "created_at desc"]
+        },
+        {
+          "name": "user_saved_items_exhibition_uq",
+          "columns": ["user_id", "exhibition_id"],
+          "unique": true,
+          "where": "exhibition_id is not null"
+        },
+        {
+          "name": "user_saved_items_artist_uq",
+          "columns": ["user_id", "artist_id"],
+          "unique": true,
+          "where": "artist_id is not null"
+        },
+        {
+          "name": "user_saved_items_venue_uq",
+          "columns": ["user_id", "venue_id"],
+          "unique": true,
+          "where": "venue_id is not null"
+        },
+        {
+          "name": "user_saved_items_work_uq",
+          "columns": ["user_id", "work_id"],
+          "unique": true,
+          "where": "work_id is not null"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        },
+        {
+          "columns": ["exhibition_id"],
+          "table": "exhibitions",
+          "column": "id",
+          "onDelete": "restrict"
+        },
+        {
+          "columns": ["artist_id"],
+          "table": "artists",
+          "column": "id",
+          "onDelete": "restrict"
+        },
+        {
+          "columns": ["venue_id"],
+          "table": "venues",
+          "column": "id",
+          "onDelete": "restrict"
+        },
+        {
+          "columns": ["work_id"],
+          "table": "works",
+          "column": "id",
+          "onDelete": "restrict"
+        }
+      ]
+    },
+    {
+      "name": "user_visits",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 210 scope revision or dedicated follow-up",
+      "owner": "Authenticated user",
+      "publicExposure": "Private",
+      "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
+      "decisionRequired": true,
+      "notes": [
+        "Recommended MVP Source of Truth for 行った / experience history.",
+        "Repeat visits are separate events; no user/entity uniqueness constraint.",
+        "Exhibition visits derive Exhibition, Venue and Artists through canonical relations."
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "exhibition_occurrence_id",
+          "type": "uuid",
+          "reference": {
+            "table": "exhibition_occurrences",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "venue_id",
+          "type": "uuid",
+          "reference": {
+            "table": "venues",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "visited_on",
+          "type": "date",
+          "notNull": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["id"],
+      "uniques": [],
+      "checks": [
+        "num_nonnulls(exhibition_occurrence_id, venue_id) = 1"
+      ],
+      "indexes": [
+        {
+          "name": "user_visits_user_date_idx",
+          "columns": ["user_id", "visited_on desc", "created_at desc"]
+        },
+        {
+          "name": "user_visits_occurrence_idx",
+          "columns": ["exhibition_occurrence_id"],
+          "where": "exhibition_occurrence_id is not null"
+        },
+        {
+          "name": "user_visits_venue_idx",
+          "columns": ["venue_id"],
+          "where": "venue_id is not null"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        },
+        {
+          "columns": ["exhibition_occurrence_id"],
+          "table": "exhibition_occurrences",
+          "column": "id",
+          "onDelete": "restrict"
+        },
+        {
+          "columns": ["venue_id"],
+          "table": "venues",
+          "column": "id",
+          "onDelete": "restrict"
+        }
+      ]
+    },
+    {
+      "name": "user_artwall_settings",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 210 scope revision or dedicated ArtWall follow-up",
+      "owner": "Authenticated user",
+      "publicExposure": "Private by default; public ArtWall sharing is not approved",
+      "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
+      "decisionRequired": true,
+      "notes": [
+        "The explicit presentation columns are Prototype-derived candidates pending Human approval.",
+        "Do not replace these columns with an unconstrained generic JSON settings bag."
+      ],
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "show_icon",
+          "type": "boolean",
+          "notNull": true,
+          "default": "true",
+          "decisionRequired": true
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "decisionRequired": true
+        },
+        {
+          "name": "comment",
+          "type": "text",
+          "decisionRequired": true
+        },
+        {
+          "name": "background_key",
+          "type": "text",
+          "decisionRequired": true
+        },
+        {
+          "name": "columns",
+          "type": "smallint",
+          "notNull": true,
+          "default": "4",
+          "decisionRequired": true
+        },
+        {
+          "name": "wall_height_mode",
+          "type": "text",
+          "notNull": true,
+          "default": "'standard'",
+          "decisionRequired": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["user_id"],
+      "uniques": [],
+      "checks": [
+        "columns in (3, 4)",
+        "wall_height_mode in ('standard', 'expanded')"
+      ],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        }
+      ]
+    },
+    {
+      "name": "user_artwall_items",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 210 scope revision or dedicated ArtWall follow-up",
+      "owner": "Authenticated user",
+      "publicExposure": "Private by default; public ArtWall sharing is not approved",
+      "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
+      "notes": [
+        "Stores selected Exhibition membership/order only.",
+        "Title, image URL, Museum name and Artist name are hydrated from canonical Master data."
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "exhibition_id",
+          "type": "uuid",
+          "notNull": true,
+          "reference": {
+            "table": "exhibitions",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "notNull": true
+        },
+        {
+          "name": "is_visible",
+          "type": "boolean",
+          "notNull": true,
+          "default": "true"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["id"],
+      "uniques": [
+        ["user_id", "exhibition_id"]
+      ],
+      "checks": [
+        "sort_order >= 0"
+      ],
+      "indexes": [
+        {
+          "name": "user_artwall_items_user_order_idx",
+          "columns": ["user_id", "sort_order", "id"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        },
+        {
+          "columns": ["exhibition_id"],
+          "table": "exhibitions",
+          "column": "id",
+          "onDelete": "restrict"
+        }
+      ]
+    },
+    {
+      "name": "user_legal_consents",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 250 dependency; migration only after legal/retention approval",
+      "owner": "Authenticated user / legal audit domain",
+      "publicExposure": "Private",
+      "rlsExpectation": "Owner read; write path and retention/deletion policy require Order 250 approval",
+      "decisionRequired": true,
+      "notes": [
+        "Registration consent is not stored in Auth metadata.",
+        "The Target assumes account-delete cascade unless Order 250 requires a separately retained or pseudonymized audit record."
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "consent_type",
+          "type": "text",
+          "notNull": true
+        },
+        {
+          "name": "document_version",
+          "type": "text",
+          "notNull": true
+        },
+        {
+          "name": "consented_at",
+          "type": "timestamptz",
+          "notNull": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["id"],
+      "uniques": [
+        ["user_id", "consent_type", "document_version"]
+      ],
+      "checks": [
+        "consent_type in ('terms', 'privacy')"
+      ],
+      "indexes": [
+        {
+          "name": "user_legal_consents_user_time_idx",
+          "columns": ["user_id", "consented_at desc"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        }
+      ]
+    }
+  ],
+  "derivedData": [
+    "Visit count",
+    "Exhibition count",
+    "Museum count",
+    "Artist count",
+    "City count",
+    "Country count"
+  ],
+  "excludedFromTargetV1": [
+    {
+      "name": "user_seen_items",
+      "status": "Future / Excluded",
+      "reason": "MVP recommendation derives 行った and Exhibition/Venue/Artist history from user_visits. Add a separate action only if Product approves direct Artist/Work Seen semantics."
+    },
+    {
+      "name": "user_favorite_items",
+      "status": "Future / Excluded",
+      "reason": "Favorite meaning, targets and difference from Saved are not approved."
+    },
+    {
+      "name": "user_preferences",
+      "status": "Future / Excluded",
+      "reason": "No concrete Production preference fields are approved; do not create an empty generic bucket."
+    },
+    {
+      "name": "user_stats",
+      "status": "Future / Excluded",
+      "reason": "MVP stats are derived from user_visits and canonical relations; a future cache must be rebuildable."
+    }
+  ],
+  "externalClientState": [
+    {
+      "name": "Guest Saved Store",
+      "status": "Client-owned / Order 240",
+      "notes": "Outside the server Target ER. Stores canonical entity kind + UUID only; merge policy is owned by Order 240."
+    }
+  ],
+  "taskMapping": [
+    {
+      "order": "Order 200",
+      "responsibility": "Implement profiles, minimal Auth-user bootstrap/backfill, avatar object-path boundary and update timestamps."
+    },
+    {
+      "order": "Order 210 scope revision or split follow-ups",
+      "responsibility": "Implement Account Saved, approved Visit history, and approved ArtWall settings/membership after Human Decisions are resolved."
+    },
+    {
+      "order": "Order 220",
+      "responsibility": "Implement typed repositories/API boundaries for Profile, Saved, Visit and ArtWall without exposing raw tables to UI."
+    },
+    {
+      "order": "Order 230",
+      "responsibility": "Implement and test owner RLS for every user-owned table using auth.uid() = user_id."
+    },
+    {
+      "order": "Order 240",
+      "responsibility": "Define Guest Saved storage, expiry, idempotent Account merge, cleanup and logout behavior; no Guest server table."
+    },
+    {
+      "order": "Order 250",
+      "responsibility": "Approve consent retention/delete/export policy before user_legal_consents migration and finalize account-delete behavior."
+    }
+  ],
+  "humanDecisions": [
+    {
+      "topic": "Seen vs Visit",
+      "recommendation": "Use repeatable user_visits as the MVP Source of Truth and derive 行った / Exhibition / Venue / Artist history.",
+      "alternative": "Add user_seen_items only if direct Artist/Work Seen is approved as a separate Product action."
+    },
+    {
+      "topic": "Favorite MVP inclusion",
+      "recommendation": "Exclude user_favorite_items from Target v1 until meaning, targets and Saved distinction are approved.",
+      "alternative": "Include a separate action table after Product approves the contract."
+    },
+    {
+      "topic": "ArtWall persisted settings",
+      "recommendation": "Approve only the six explicit Prototype-derived candidates shown in user_artwall_settings, or remove unapproved columns before migration.",
+      "alternative": "Delay presentation settings and ship membership/order first; do not use an unconstrained JSON bag."
+    },
+    {
+      "topic": "Visit memo / rating / photos",
+      "recommendation": "Exclude them from MVP Target v1 and keep user_visits as the minimal event record.",
+      "alternative": "Add dedicated private child records in a later Visit Log task after privacy/rights requirements are approved."
+    },
+    {
+      "topic": "Preferences MVP scope",
+      "recommendation": "Exclude user_preferences until concrete fields and ownership are approved.",
+      "alternative": "Add explicit typed columns in a later task; never create an empty generic settings table."
+    }
+  ]
+}
