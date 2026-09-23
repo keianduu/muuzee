@@ -1,7 +1,7 @@
 {
   "version": "Target v1",
   "title": "Muuzee User Data Target Schema v1",
-  "description": "Proposed Production MVP user-data schema. Planned tables are not present in the Current Physical Schema until a migration implements them.",
+  "description": "Finalized Production MVP user-data target schema. Planned tables are not present in the Current Physical Schema until a migration implements them.",
   "sourcePolicy": "Current reference tables are projected from supabase/migrations. Planned user tables and their contracts are defined in this file.",
   "referenceTables": [
     {
@@ -89,6 +89,84 @@
         },
         {
           "name": "avatar_object_path",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["user_id"],
+      "uniques": [],
+      "checks": [],
+      "indexes": [],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        }
+      ]
+    },
+    {
+      "name": "user_preferences",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 200",
+      "owner": "Authenticated user",
+      "publicExposure": "Private; location fields are never part of Public Profile",
+      "rlsExpectation": "Owner read/update with auth.uid() = user_id; insert lifecycle is controlled by the account bootstrap path",
+      "notes": [
+        "Stores explicit MVP preferences only; it is not a generic settings bucket.",
+        "Notification delivery is Order 252, Newsletter delivery is Order 254, and Location defaults are Order 256."
+      ],
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "notification_enabled",
+          "type": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "name": "newsletter_enabled",
+          "type": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "name": "country_code",
+          "type": "text"
+        },
+        {
+          "name": "region",
+          "type": "text"
+        },
+        {
+          "name": "prefecture",
+          "type": "text"
+        },
+        {
+          "name": "city",
           "type": "text"
         },
         {
@@ -259,18 +337,17 @@
       ]
     },
     {
-      "name": "user_visits",
+      "name": "user_seen_items",
       "category": "User Data",
       "status": "Planned",
-      "implementationOrder": "Order 210 scope revision or dedicated follow-up",
+      "implementationOrder": "Order 210",
       "owner": "Authenticated user",
       "publicExposure": "Private",
       "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
-      "decisionRequired": true,
       "notes": [
-        "Recommended MVP Source of Truth for 行った / experience history.",
-        "Repeat visits are separate events; no user/entity uniqueness constraint.",
-        "Exhibition visits derive Exhibition, Venue and Artists through canonical relations."
+        "Seen is current Personal Action set membership, not Visit history.",
+        "Seen Exhibitions are the only source candidates for the current ArtWall; Artist, Venue and Work Seen remain collection/progress signals.",
+        "Unsee deletes the membership row; repeat Visit data belongs to a future user_visits event model."
       ],
       "columns": [
         {
@@ -291,10 +368,19 @@
           }
         },
         {
-          "name": "exhibition_occurrence_id",
+          "name": "exhibition_id",
           "type": "uuid",
           "reference": {
-            "table": "exhibition_occurrences",
+            "table": "exhibitions",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "artist_id",
+          "type": "uuid",
+          "reference": {
+            "table": "artists",
             "column": "id",
             "onDelete": "restrict"
           }
@@ -309,9 +395,19 @@
           }
         },
         {
-          "name": "visited_on",
-          "type": "date",
-          "notNull": true
+          "name": "work_id",
+          "type": "uuid",
+          "reference": {
+            "table": "works",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "seen_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
         },
         {
           "name": "created_at",
@@ -329,21 +425,146 @@
       "primaryKey": ["id"],
       "uniques": [],
       "checks": [
-        "num_nonnulls(exhibition_occurrence_id, venue_id) = 1"
+        "num_nonnulls(exhibition_id, artist_id, venue_id, work_id) = 1"
       ],
       "indexes": [
         {
-          "name": "user_visits_user_date_idx",
-          "columns": ["user_id", "visited_on desc", "created_at desc"]
+          "name": "user_seen_items_user_seen_idx",
+          "columns": ["user_id", "seen_at desc"]
         },
         {
-          "name": "user_visits_occurrence_idx",
-          "columns": ["exhibition_occurrence_id"],
-          "where": "exhibition_occurrence_id is not null"
+          "name": "user_seen_items_exhibition_uq",
+          "columns": ["user_id", "exhibition_id"],
+          "unique": true,
+          "where": "exhibition_id is not null"
         },
         {
-          "name": "user_visits_venue_idx",
+          "name": "user_seen_items_artist_uq",
+          "columns": ["user_id", "artist_id"],
+          "unique": true,
+          "where": "artist_id is not null"
+        },
+        {
+          "name": "user_seen_items_venue_uq",
+          "columns": ["user_id", "venue_id"],
+          "unique": true,
+          "where": "venue_id is not null"
+        },
+        {
+          "name": "user_seen_items_work_uq",
+          "columns": ["user_id", "work_id"],
+          "unique": true,
+          "where": "work_id is not null"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columns": ["user_id"],
+          "table": "auth.users",
+          "column": "id",
+          "onDelete": "cascade"
+        },
+        {
+          "columns": ["exhibition_id"],
+          "table": "exhibitions",
+          "column": "id",
+          "onDelete": "restrict"
+        },
+        {
+          "columns": ["artist_id"],
+          "table": "artists",
+          "column": "id",
+          "onDelete": "restrict"
+        },
+        {
           "columns": ["venue_id"],
+          "table": "venues",
+          "column": "id",
+          "onDelete": "restrict"
+        },
+        {
+          "columns": ["work_id"],
+          "table": "works",
+          "column": "id",
+          "onDelete": "restrict"
+        }
+      ]
+    },
+    {
+      "name": "user_favorite_items",
+      "category": "User Data",
+      "status": "Planned",
+      "implementationOrder": "Order 210",
+      "owner": "Authenticated user",
+      "publicExposure": "Private",
+      "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
+      "notes": [
+        "Favorite / 推し is distinct from Saved and is limited to Artist or Venue.",
+        "Notification delivery is owned by Order 252; future Favorite ArtWall and Mission use are outside MVP."
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "notNull": true,
+          "reference": {
+            "table": "auth.users",
+            "column": "id",
+            "onDelete": "cascade"
+          }
+        },
+        {
+          "name": "artist_id",
+          "type": "uuid",
+          "reference": {
+            "table": "artists",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "venue_id",
+          "type": "uuid",
+          "reference": {
+            "table": "venues",
+            "column": "id",
+            "onDelete": "restrict"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "notNull": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": ["id"],
+      "uniques": [],
+      "checks": [
+        "num_nonnulls(artist_id, venue_id) = 1"
+      ],
+      "indexes": [
+        {
+          "name": "user_favorite_items_user_created_idx",
+          "columns": ["user_id", "created_at desc"]
+        },
+        {
+          "name": "user_favorite_items_artist_uq",
+          "columns": ["user_id", "artist_id"],
+          "unique": true,
+          "where": "artist_id is not null"
+        },
+        {
+          "name": "user_favorite_items_venue_uq",
+          "columns": ["user_id", "venue_id"],
+          "unique": true,
           "where": "venue_id is not null"
         }
       ],
@@ -355,8 +576,8 @@
           "onDelete": "cascade"
         },
         {
-          "columns": ["exhibition_occurrence_id"],
-          "table": "exhibition_occurrences",
+          "columns": ["artist_id"],
+          "table": "artists",
           "column": "id",
           "onDelete": "restrict"
         },
@@ -372,13 +593,12 @@
       "name": "user_artwall_settings",
       "category": "User Data",
       "status": "Planned",
-      "implementationOrder": "Order 210 scope revision or dedicated ArtWall follow-up",
+      "implementationOrder": "Order 215",
       "owner": "Authenticated user",
-      "publicExposure": "Private by default; public ArtWall sharing is not approved",
+      "publicExposure": "Private; Public / Shared ArtWall is outside MVP",
       "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
-      "decisionRequired": true,
       "notes": [
-        "The explicit presentation columns are Prototype-derived candidates pending Human approval.",
+        "The six explicit presentation columns are approved Target v1 fields.",
         "Do not replace these columns with an unconstrained generic JSON settings bag."
       ],
       "columns": [
@@ -397,37 +617,31 @@
           "name": "show_icon",
           "type": "boolean",
           "notNull": true,
-          "default": "true",
-          "decisionRequired": true
+          "default": "true"
         },
         {
           "name": "title",
-          "type": "text",
-          "decisionRequired": true
+          "type": "text"
         },
         {
           "name": "comment",
-          "type": "text",
-          "decisionRequired": true
+          "type": "text"
         },
         {
           "name": "background_key",
-          "type": "text",
-          "decisionRequired": true
+          "type": "text"
         },
         {
           "name": "columns",
           "type": "smallint",
           "notNull": true,
-          "default": "4",
-          "decisionRequired": true
+          "default": "4"
         },
         {
           "name": "wall_height_mode",
           "type": "text",
           "notNull": true,
-          "default": "'standard'",
-          "decisionRequired": true
+          "default": "'standard'"
         },
         {
           "name": "created_at",
@@ -462,13 +676,14 @@
       "name": "user_artwall_items",
       "category": "User Data",
       "status": "Planned",
-      "implementationOrder": "Order 210 scope revision or dedicated ArtWall follow-up",
+      "implementationOrder": "Order 215",
       "owner": "Authenticated user",
-      "publicExposure": "Private by default; public ArtWall sharing is not approved",
+      "publicExposure": "Private; Public / Shared ArtWall is outside MVP",
       "rlsExpectation": "Owner CRUD with auth.uid() = user_id",
       "notes": [
-        "Stores selected Exhibition membership/order only.",
-        "Title, image URL, Museum name and Artist name are hydrated from canonical Master data."
+        "Stores selected Exhibition membership/order only; candidates come from user_seen_items rows with exhibition_id.",
+        "ArtWall membership and Seen membership remain separate; cleanup/filter behavior after Unsee belongs to the Data Access implementation.",
+        "Title, image URL, Museum name and Artist name are hydrated from canonical Master data; no cross-table constraint to Seen is added."
       ],
       "columns": [
         {
@@ -558,7 +773,6 @@
       "owner": "Authenticated user / legal audit domain",
       "publicExposure": "Private",
       "rlsExpectation": "Owner read; write path and retention/deletion policy require Order 250 approval",
-      "decisionRequired": true,
       "notes": [
         "Registration consent is not stored in Auth metadata.",
         "The Target assumes account-delete cascade unless Order 250 requires a separately retained or pseudonymized audit record."
@@ -627,33 +841,22 @@
     }
   ],
   "derivedData": [
-    "Visit count",
-    "Exhibition count",
-    "Museum count",
-    "Artist count",
-    "City count",
-    "Country count"
+    "Saved counts by entity type",
+    "Seen counts by entity type",
+    "Favorite Artist count",
+    "Favorite Museum count",
+    "ArtWall and progress summaries resolved from Personal Actions plus canonical relations"
   ],
   "excludedFromTargetV1": [
     {
-      "name": "user_seen_items",
+      "name": "user_visits",
       "status": "Future / Excluded",
-      "reason": "MVP recommendation derives 行った and Exhibition/Venue/Artist history from user_visits. Add a separate action only if Product approves direct Artist/Work Seen semantics."
-    },
-    {
-      "name": "user_favorite_items",
-      "status": "Future / Excluded",
-      "reason": "Favorite meaning, targets and difference from Saved are not approved."
-    },
-    {
-      "name": "user_preferences",
-      "status": "Future / Excluded",
-      "reason": "No concrete Production preference fields are approved; do not create an empty generic bucket."
+      "reason": "Visit History is a Future Capability and is not synonymous with Seen. A future repeatable event may add visit date, memo, rating and photos."
     },
     {
       "name": "user_stats",
       "status": "Future / Excluded",
-      "reason": "MVP stats are derived from user_visits and canonical relations; a future cache must be rebuildable."
+      "reason": "MVP stats are derived from Saved, Seen, Favorite, ArtWall membership and canonical relations; a future cache must be rebuildable."
     }
   ],
   "externalClientState": [
@@ -666,15 +869,19 @@
   "taskMapping": [
     {
       "order": "Order 200",
-      "responsibility": "Implement profiles, minimal Auth-user bootstrap/backfill, avatar object-path boundary and update timestamps."
+      "responsibility": "Implement profiles and user_preferences, minimal Auth-user bootstrap/backfill, avatar object-path boundary and update timestamps."
     },
     {
-      "order": "Order 210 scope revision or split follow-ups",
-      "responsibility": "Implement Account Saved, approved Visit history, and approved ArtWall settings/membership after Human Decisions are resolved."
+      "order": "Order 210",
+      "responsibility": "Implement user_saved_items, user_seen_items and user_favorite_items with the approved entity scopes and set-membership semantics."
+    },
+    {
+      "order": "Order 215",
+      "responsibility": "Implement user_artwall_settings and user_artwall_items; current ArtWall candidates come only from Seen Exhibitions."
     },
     {
       "order": "Order 220",
-      "responsibility": "Implement typed repositories/API boundaries for Profile, Saved, Visit and ArtWall without exposing raw tables to UI."
+      "responsibility": "Implement typed repositories/API boundaries for Profile, Preferences, Saved, Seen, Favorite and ArtWall without exposing raw tables to UI."
     },
     {
       "order": "Order 230",
@@ -687,33 +894,41 @@
     {
       "order": "Order 250",
       "responsibility": "Approve consent retention/delete/export policy before user_legal_consents migration and finalize account-delete behavior."
-    }
-  ],
-  "humanDecisions": [
-    {
-      "topic": "Seen vs Visit",
-      "recommendation": "Use repeatable user_visits as the MVP Source of Truth and derive 行った / Exhibition / Venue / Artist history.",
-      "alternative": "Add user_seen_items only if direct Artist/Work Seen is approved as a separate Product action."
     },
     {
-      "topic": "Favorite MVP inclusion",
-      "recommendation": "Exclude user_favorite_items from Target v1 until meaning, targets and Saved distinction are approved.",
-      "alternative": "Include a separate action table after Product approves the contract."
+      "order": "Order 252",
+      "responsibility": "Implement Favorite Artist / Venue notification delivery using user_preferences.notification_enabled."
+    },
+    {
+      "order": "Order 254",
+      "responsibility": "Implement Newsletter delivery and subscription synchronization using user_preferences.newsletter_enabled."
+    },
+    {
+      "order": "Order 256",
+      "responsibility": "Apply private Profile Location preferences to Search and Map defaults without public exposure."
+    }
+  ],
+  "humanDecisions": [],
+  "resolvedDecisions": [
+    {
+      "topic": "Seen vs Visit",
+      "decision": "MVP uses user_seen_items for current Personal Action set membership across Exhibition, Artist, Venue and Work. user_visits is Future and is not synonymous with Seen."
+    },
+    {
+      "topic": "Favorite / 推し",
+      "decision": "MVP includes user_favorite_items for Artist and Venue only, distinct from Saved."
     },
     {
       "topic": "ArtWall persisted settings",
-      "recommendation": "Approve only the six explicit Prototype-derived candidates shown in user_artwall_settings, or remove unapproved columns before migration.",
-      "alternative": "Delay presentation settings and ship membership/order first; do not use an unconstrained JSON bag."
-    },
-    {
-      "topic": "Visit memo / rating / photos",
-      "recommendation": "Exclude them from MVP Target v1 and keep user_visits as the minimal event record.",
-      "alternative": "Add dedicated private child records in a later Visit Log task after privacy/rights requirements are approved."
+      "decision": "Approve show_icon, title, comment, background_key, columns and wall_height_mode. Current ArtWall source is Seen Exhibitions only; Public / Shared ArtWall is outside MVP."
     },
     {
       "topic": "Preferences MVP scope",
-      "recommendation": "Exclude user_preferences until concrete fields and ownership are approved.",
-      "alternative": "Add explicit typed columns in a later task; never create an empty generic settings table."
+      "decision": "MVP includes typed notification, newsletter and private Location fields in user_preferences; delivery and Search / Map consumption remain downstream."
+    },
+    {
+      "topic": "Legal Consent",
+      "decision": "Keep user_legal_consents in Target v1, but defer migration until Order 250 approves Privacy, retention and deletion behavior."
     }
   ]
 }

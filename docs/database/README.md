@@ -2,7 +2,7 @@
 
 `supabase/migrations/*.sql` is the Source of Truth for the **Current Physical Schema**.
 
-`docs/database/user-data-target.json` is the separate Source of Truth for the proposed **Target User Data Schema v1**. Target entries marked `Planned` are design contracts only; they are not database tables until a later migration implements them.
+`docs/database/user-data-target.json` is the separate Source of Truth for the **Target User Data Schema v1**. Target entries marked `Planned` are finalized design contracts only; they are not database tables until a later migration implements them.
 
 The files in this directory are generated views of the current migration-derived schema:
 
@@ -11,7 +11,7 @@ The files in this directory are generated views of the current migration-derived
 
 The Target source is version-controlled but is not generated:
 
-- `user-data-target.json` — User Data Target v1 tables, columns, FKs, constraints, delete policy, RLS expectations, downstream Orders, exclusions, and Human Decisions
+- `user-data-target.json` — User Data Target v1 tables, columns, FKs, constraints, delete policy, RLS expectations, downstream Orders, exclusions, and resolved Product Decisions
 
 Do not edit the generated files directly.
 
@@ -42,9 +42,9 @@ Open `docs/database/er-diagram.html` in a browser. It is self-contained and does
 Use the schema switcher to compare:
 
 - **Current Schema** — migration-derived physical schema only
-- **Target v1** — the proposed User Data target, with `Implemented`, `Planned`, and `External / Managed` status labels
+- **Target v1** — the finalized User Data target, with `Implemented`, `Planned`, and `External / Managed` status labels
 
-The Target sidebar also records tables explicitly excluded from Target v1, client-owned Guest Saved state, and the remaining Human Decisions. Status filtering is available in Target v1.
+The Target sidebar also records tables explicitly excluded from Target v1, client-owned Guest Saved state, downstream Order ownership, and resolved Product Decisions. Status filtering is available in Target v1.
 
 Search supports:
 
