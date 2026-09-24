@@ -154,6 +154,12 @@ function cleanIdentifier(value) {
   return value.trim().replace(/^"|"$/g, '').replace(/^public\./i, '').replace(/^"public"\./i, '');
 }
 
+function qualifiedTableName(schemaName, tableName) {
+  const schema = schemaName ? cleanIdentifier(schemaName) : null;
+  const table = cleanIdentifier(tableName);
+  return !schema || schema.toLowerCase() === 'public' ? table : `${schema}.${table}`;
+}
+
 function parseColumnList(value) {
   return splitTopLevel(value).map((part) => cleanIdentifier(part));
 }
@@ -232,12 +238,12 @@ function captureClause(rest, keyword, stopKeywords) {
 }
 
 function parseReference(text) {
-  const match = text.match(/references\s+(?:public\.)?"?([A-Za-z0-9_]+)"?\s*\(\s*"?([A-Za-z0-9_]+)"?\s*\)/i);
+  const match = text.match(/references\s+(?:"?([A-Za-z0-9_]+)"?\s*\.\s*)?"?([A-Za-z0-9_]+)"?\s*\(\s*"?([A-Za-z0-9_]+)"?\s*\)/i);
   if (!match) return null;
   const deleteMatch = text.match(/on\s+delete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)/i);
   return {
-    table: cleanIdentifier(match[1]),
-    column: cleanIdentifier(match[2]),
+    table: qualifiedTableName(match[1], match[2]),
+    column: cleanIdentifier(match[3]),
     onDelete: deleteMatch ? deleteMatch[1].toLowerCase().replace(/\s+/g, ' ') : null,
   };
 }
@@ -297,15 +303,15 @@ function parseTableConstraint(table, definition) {
     if (!table.uniques.some((item) => item.join('|') === columns.join('|'))) table.uniques.push(columns);
     return;
   }
-  match = text.match(/^foreign\s+key\s*\(([^)]+)\)\s+references\s+(?:public\.)?"?([A-Za-z0-9_]+)"?\s*\(([^)]+)\)([\s\S]*)$/i);
+  match = text.match(/^foreign\s+key\s*\(([^)]+)\)\s+references\s+(?:"?([A-Za-z0-9_]+)"?\s*\.\s*)?"?([A-Za-z0-9_]+)"?\s*\(([^)]+)\)([\s\S]*)$/i);
   if (match) {
     const columns = parseColumnList(match[1]);
-    const targetColumns = parseColumnList(match[3]);
-    const deleteMatch = match[4].match(/on\s+delete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)/i);
+    const targetColumns = parseColumnList(match[4]);
+    const deleteMatch = match[5].match(/on\s+delete\s+(cascade|restrict|set\s+null|set\s+default|no\s+action)/i);
     columns.forEach((columnName, index) => {
       const fk = {
         columns: [columnName],
-        table: cleanIdentifier(match[2]),
+        table: qualifiedTableName(match[2], match[3]),
         column: targetColumns[index] ?? targetColumns[0],
         onDelete: deleteMatch ? deleteMatch[1].toLowerCase().replace(/\s+/g, ' ') : null,
       };
@@ -509,6 +515,7 @@ function renderDbml(schema, migrationNames) {
 }
 
 function classifyTable(name) {
+  if (['profiles', 'user_preferences'].includes(name)) return 'User Data';
   if (['venues', 'artists', 'works', 'exhibitions'].includes(name)) return 'Core Master';
   if (/_field_sources$/.test(name) || ['data_sources', 'source_records', 'source_image_candidates', 'import_runs', 'official_venue_crawl_results'].includes(name)) return 'Source / Provenance';
   if (/_tags$/.test(name) || ['exhibition_occurrences', 'exhibition_artists', 'work_artists', 'collection_holdings', 'work_presentations'].includes(name)) return 'Relations';
@@ -561,6 +568,40 @@ function normalizeTargetTable(table) {
   };
 }
 
+function implementedTargetTable(targetTable, currentByName) {
+  const target = normalizeTargetTable(targetTable);
+  const current = currentByName.get(target.name);
+  if (!current) return target;
+
+  const currentColumns = new Map(current.columns.map((column) => [column.name, column]));
+  const targetColumnNames = new Set(target.columns.map((column) => column.name));
+  for (const column of target.columns) {
+    const implemented = currentColumns.get(column.name);
+    if (!implemented) throw new Error(`Implemented Target column is missing from Current schema: ${target.name}.${column.name}`);
+    if (dbmlType(implemented.type) !== dbmlType(column.type)) {
+      throw new Error(`Implemented Target column type differs from Current schema: ${target.name}.${column.name}`);
+    }
+  }
+  const extraColumns = current.columns.filter((column) => !targetColumnNames.has(column.name));
+  if (extraColumns.length) {
+    throw new Error(`Implemented Target table has columns outside the Target contract: ${target.name}.${extraColumns.map((column) => column.name).join(',')}`);
+  }
+  if (current.primaryKey.join('|') !== target.primaryKey.join('|')) {
+    throw new Error(`Implemented Target primary key differs from Current schema: ${target.name}`);
+  }
+  for (const targetForeignKey of target.foreignKeys) {
+    const currentForeignKey = current.foreignKeys.find((foreignKey) =>
+      foreignKey.columns.join('|') === targetForeignKey.columns.join('|')
+      && foreignKey.table === targetForeignKey.table
+      && foreignKey.column === targetForeignKey.column
+    );
+    if (!currentForeignKey || currentForeignKey.onDelete !== targetForeignKey.onDelete) {
+      throw new Error(`Implemented Target FK differs from Current schema: ${target.name}.${targetForeignKey.columns.join(',')}`);
+    }
+  }
+  return { ...target, status: 'Implemented' };
+}
+
 function serializeTargetSchema(currentSchema, targetSpec) {
   const currentByName = new Map(currentSchema.tables.map((table) => [table.name, table]));
   const implementedTables = targetSpec.referenceTables.map((reference) => {
@@ -591,7 +632,7 @@ function serializeTargetSchema(currentSchema, targetSpec) {
   const tables = [
     ...targetSpec.externalTables.map(normalizeTargetTable),
     ...implementedTables,
-    ...targetSpec.plannedTables.map(normalizeTargetTable),
+    ...targetSpec.plannedTables.map((table) => implementedTargetTable(table, currentByName)),
   ];
   const tableNames = new Set();
   for (const table of tables) {

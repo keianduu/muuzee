@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source of Truth: supabase/migrations/*.sql
-// Applied migrations: 202609040001_admin_v0.sql .. 202609190003_relation_visibility_backfill_fix.sql
+// Applied migrations: 202609040001_admin_v0.sql .. 202609250001_user_profile_preferences.sql
 // Regenerate: npm run db:docs
 
 Table artist_external_match_candidates {
@@ -320,6 +320,14 @@ Table official_venue_crawl_results {
   }
 }
 
+Table profiles {
+  user_id uuid [pk, ref: > auth.users.id]
+  display_name text
+  avatar_object_path text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
 Table source_image_candidates {
   id uuid [pk, default: `gen_random_uuid()`]
   source_record_id uuid [not null, ref: > source_records.id]
@@ -391,6 +399,18 @@ Table tags {
   indexes {
     (type, slug) [unique]
   }
+}
+
+Table user_preferences {
+  user_id uuid [pk, ref: > auth.users.id]
+  notification_enabled boolean [not null, default: false]
+  newsletter_enabled boolean [not null, default: false]
+  country_code text
+  region text
+  prefecture text
+  city text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
 }
 
 Table venue_canonical_merge_candidates {
