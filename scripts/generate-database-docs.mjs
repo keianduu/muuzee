@@ -172,6 +172,7 @@ function ensureTable(schema, name) {
       columns: new Map(),
       primaryKey: [],
       uniques: [],
+      checks: [],
       foreignKeys: [],
       indexes: [],
       sourceMigrations: new Set(),
@@ -301,6 +302,12 @@ function parseTableConstraint(table, definition) {
   if (match) {
     const columns = parseColumnList(match[1]);
     if (!table.uniques.some((item) => item.join('|') === columns.join('|'))) table.uniques.push(columns);
+    return;
+  }
+  match = text.match(/^check\s*\(([\s\S]*)\)$/i);
+  if (match) {
+    const expression = match[1].trim();
+    if (!table.checks.includes(expression)) table.checks.push(expression);
     return;
   }
   match = text.match(/^foreign\s+key\s*\(([^)]+)\)\s+references\s+(?:"?([A-Za-z0-9_]+)"?\s*\.\s*)?"?([A-Za-z0-9_]+)"?\s*\(([^)]+)\)([\s\S]*)$/i);
@@ -436,7 +443,7 @@ function parseIndex(schema, statement) {
   if (columns.every((item) => /^"?[A-Za-z_][A-Za-z0-9_]*"?(?:\s+(?:asc|desc))?(?:\s+nulls\s+(?:first|last))?$/i.test(item))) {
     table.indexes.push({
       name: cleanIdentifier(match[2]),
-      columns: columns.map((item) => cleanIdentifier(item.replace(/\s+(?:asc|desc)(?:\s+nulls\s+(?:first|last))?$/i, ''))),
+      columns: columns.map((item) => item.replace(/^"|"(?=\s|$)/g, '').replace(/\s+/g, ' ').toLowerCase()),
       unique: Boolean(match[1]),
       where: match[5]?.trim() ?? null,
     });
@@ -460,6 +467,7 @@ function finalizeSchema(schema) {
       all.findIndex((candidate) => candidate.columns.join('|') === fk.columns.join('|') && candidate.table === fk.table && candidate.column === fk.column) === index
     );
     table.uniques = table.uniques.filter((value, index, all) => all.findIndex((candidate) => candidate.join('|') === value.join('|')) === index);
+    table.checks = table.checks.filter((value, index, all) => all.indexOf(value) === index);
     table.indexes = table.indexes.filter((value, index, all) => all.findIndex((candidate) => candidate.name === value.name) === index);
   }
 }
@@ -515,7 +523,7 @@ function renderDbml(schema, migrationNames) {
 }
 
 function classifyTable(name) {
-  if (['profiles', 'user_preferences'].includes(name)) return 'User Data';
+  if (name === 'profiles' || /^user_/.test(name)) return 'User Data';
   if (['venues', 'artists', 'works', 'exhibitions'].includes(name)) return 'Core Master';
   if (/_field_sources$/.test(name) || ['data_sources', 'source_records', 'source_image_candidates', 'import_runs', 'official_venue_crawl_results'].includes(name)) return 'Source / Provenance';
   if (/_tags$/.test(name) || ['exhibition_occurrences', 'exhibition_artists', 'work_artists', 'collection_holdings', 'work_presentations'].includes(name)) return 'Relations';
@@ -539,6 +547,7 @@ function serializeSchema(schema, migrationNames) {
     })),
     primaryKey: table.primaryKey,
     uniques: table.uniques,
+    checks: table.checks,
     foreignKeys: table.foreignKeys,
     indexes: table.indexes,
     sourceMigrations: [...table.sourceMigrations].sort(),
@@ -568,6 +577,19 @@ function normalizeTargetTable(table) {
   };
 }
 
+function normalizeSqlFragment(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([(),=])\s*/g, '$1');
+}
+
+function normalizeIndexColumns(columns) {
+  return columns.map((column) => normalizeSqlFragment(column));
+}
+
 function implementedTargetTable(targetTable, currentByName) {
   const target = normalizeTargetTable(targetTable);
   const current = currentByName.get(target.name);
@@ -581,6 +603,17 @@ function implementedTargetTable(targetTable, currentByName) {
     if (dbmlType(implemented.type) !== dbmlType(column.type)) {
       throw new Error(`Implemented Target column type differs from Current schema: ${target.name}.${column.name}`);
     }
+    const implementedNotNull = implemented.notNull || implemented.primaryKey;
+    const targetNotNull = column.notNull || column.primaryKey;
+    if (implementedNotNull !== targetNotNull) {
+      throw new Error(`Implemented Target column nullability differs from Current schema: ${target.name}.${column.name}`);
+    }
+    if (normalizeSqlFragment(implemented.default) !== normalizeSqlFragment(column.default)) {
+      throw new Error(`Implemented Target column default differs from Current schema: ${target.name}.${column.name}`);
+    }
+    if (Boolean(implemented.unique) !== Boolean(column.unique)) {
+      throw new Error(`Implemented Target column uniqueness differs from Current schema: ${target.name}.${column.name}`);
+    }
   }
   const extraColumns = current.columns.filter((column) => !targetColumnNames.has(column.name));
   if (extraColumns.length) {
@@ -588,6 +621,27 @@ function implementedTargetTable(targetTable, currentByName) {
   }
   if (current.primaryKey.join('|') !== target.primaryKey.join('|')) {
     throw new Error(`Implemented Target primary key differs from Current schema: ${target.name}`);
+  }
+  for (const targetUnique of target.uniques) {
+    if (!current.uniques.some((currentUnique) => currentUnique.join('|') === targetUnique.join('|'))) {
+      throw new Error(`Implemented Target unique constraint differs from Current schema: ${target.name}.${targetUnique.join(',')}`);
+    }
+  }
+  const currentChecks = new Set((current.checks ?? []).map(normalizeSqlFragment));
+  for (const targetCheck of target.checks) {
+    if (!currentChecks.has(normalizeSqlFragment(targetCheck))) {
+      throw new Error(`Implemented Target CHECK differs from Current schema: ${target.name}.${targetCheck}`);
+    }
+  }
+  for (const targetIndex of target.indexes) {
+    const currentIndex = current.indexes.find((index) =>
+      normalizeIndexColumns(index.columns).join('|') === normalizeIndexColumns(targetIndex.columns).join('|')
+      && Boolean(index.unique) === Boolean(targetIndex.unique)
+      && normalizeSqlFragment(index.where) === normalizeSqlFragment(targetIndex.where)
+    );
+    if (!currentIndex) {
+      throw new Error(`Implemented Target index differs from Current schema: ${target.name}.${targetIndex.name}`);
+    }
   }
   for (const targetForeignKey of target.foreignKeys) {
     const currentForeignKey = current.foreignKeys.find((foreignKey) =>
@@ -706,7 +760,7 @@ function badgeClass(status){if(status==='Planned')return 'planned';if(status==='
 function visibleTables(){return schema.tables.filter(t=>!statusFilter||t.status===statusFilter)}
 function renderMeta(){if(mode==='current'){const latest=schema.migrations.at(-1);meta.textContent=schema.tables.length+' tables · '+schema.migrations.length+' migrations · through '+latest;context.hidden=true;return}meta.textContent=schema.version+' · '+schema.tables.length+' displayed tables · Planned does not mean migrated';context.hidden=false;const excluded=schema.excludedFromTargetV1.map(item=>'<li><strong>'+esc(item.name)+'</strong> — '+esc(item.reason)+'</li>').join('');const decisions=schema.humanDecisions.map(item=>'<li><strong>'+esc(item.topic)+'</strong> — '+esc(item.recommendation)+'</li>').join('');const resolved=schema.resolvedDecisions.map(item=>'<li><strong>'+esc(item.topic)+'</strong> — '+esc(item.decision)+'</li>').join('');const clients=schema.externalClientState.map(item=>'<li><strong>'+esc(item.name)+'</strong> — '+esc(item.notes)+'</li>').join('');const mapping=schema.taskMapping.map(item=>'<li><strong>'+esc(item.order)+'</strong> — '+esc(item.responsibility)+'</li>').join('');context.innerHTML='<h2>Target v1 boundaries</h2><p>'+esc(schema.description)+'</p><h3>Future / excluded</h3><ul>'+excluded+'</ul><h3>External client state</h3><ul>'+clients+'</ul><h3>Task mapping</h3><ul>'+mapping+'</ul>'+(resolved?'<h3>Resolved decisions</h3><ul>'+resolved+'</ul>':'')+(decisions?'<h3>Human decisions</h3><ul>'+decisions+'</ul>':'')}
 function renderToolbar(){const categories=[...new Set(schema.tables.map(t=>t.category))];if(mode==='current'){toolbar.innerHTML=categories.map(c=>'<span class="chip">'+esc(c)+'</span>').join('');return}const statuses=[...new Set(schema.tables.map(t=>t.status))];toolbar.innerHTML='<span class="toolbar-label">Status</span><button class="chip '+(!statusFilter?'active':'')+'" type="button" data-status="">All</button>'+statuses.map(s=>'<button class="chip '+(statusFilter===s?'active':'')+'" type="button" data-status="'+esc(s)+'">'+esc(s)+'</button>').join('')+'<span class="toolbar-label">Category</span>'+categories.map(c=>'<span class="chip">'+esc(c)+'</span>').join('');toolbar.querySelectorAll('button[data-status]').forEach(button=>button.onclick=()=>{statusFilter=button.dataset.status;renderToolbar();render();applySearch()})}
-function renderDetails(table){if(mode!=='target')return '';const rows=[];if(table.implementationOrder)rows.push('<div class="detail-row"><span class="detail-label">Order:</span> '+esc(table.implementationOrder)+'</div>');if(table.owner)rows.push('<div class="detail-row"><span class="detail-label">Owner:</span> '+esc(table.owner)+'</div>');if(table.publicExposure)rows.push('<div class="detail-row"><span class="detail-label">Exposure:</span> '+esc(table.publicExposure)+'</div>');if(table.rlsExpectation)rows.push('<div class="detail-row"><span class="detail-label">RLS:</span> '+esc(table.rlsExpectation)+'</div>');if(table.checks.length)rows.push('<div class="detail-row"><span class="detail-label">CHECK:</span> '+table.checks.map(esc).join(' · ')+'</div>');if(table.uniques.length)rows.push('<div class="detail-row"><span class="detail-label">UNIQUE:</span> '+table.uniques.map(u=>'('+u.map(esc).join(', ')+')').join(' · ')+'</div>');if(table.indexes.length)rows.push('<div class="detail-row"><span class="detail-label">Indexes:</span> '+table.indexes.map(i=>esc(i.name)+' ('+i.columns.map(esc).join(', ')+')'+(i.unique?' UNIQUE':'')+(i.where?' WHERE '+esc(i.where):'')).join(' · ')+'</div>');if(table.foreignKeys.length)rows.push('<div class="detail-row"><span class="detail-label">FK delete:</span> '+table.foreignKeys.map(f=>esc(f.columns.join(', '))+' → '+esc(f.table)+'.'+esc(f.column)+' ON DELETE '+esc(f.onDelete.toUpperCase())).join(' · ')+'</div>');if(table.notes.length)rows.push('<div class="detail-row"><span class="detail-label">Notes:</span> '+table.notes.map(esc).join(' · ')+'</div>');return '<div class="table-details">'+rows.join('')+'</div>'}
+function renderDetails(table){const rows=[];if(mode==='target'&&table.implementationOrder)rows.push('<div class="detail-row"><span class="detail-label">Order:</span> '+esc(table.implementationOrder)+'</div>');if(mode==='target'&&table.owner)rows.push('<div class="detail-row"><span class="detail-label">Owner:</span> '+esc(table.owner)+'</div>');if(mode==='target'&&table.publicExposure)rows.push('<div class="detail-row"><span class="detail-label">Exposure:</span> '+esc(table.publicExposure)+'</div>');if(mode==='target'&&table.rlsExpectation)rows.push('<div class="detail-row"><span class="detail-label">RLS:</span> '+esc(table.rlsExpectation)+'</div>');if(table.checks.length)rows.push('<div class="detail-row"><span class="detail-label">CHECK:</span> '+table.checks.map(esc).join(' · ')+'</div>');if(table.uniques.length)rows.push('<div class="detail-row"><span class="detail-label">UNIQUE:</span> '+table.uniques.map(u=>'('+u.map(esc).join(', ')+')').join(' · ')+'</div>');if(table.indexes.length)rows.push('<div class="detail-row"><span class="detail-label">Indexes:</span> '+table.indexes.map(i=>esc(i.name)+' ('+i.columns.map(esc).join(', ')+')'+(i.unique?' UNIQUE':'')+(i.where?' WHERE '+esc(i.where):'')).join(' · ')+'</div>');if(table.foreignKeys.length)rows.push('<div class="detail-row"><span class="detail-label">FK delete:</span> '+table.foreignKeys.map(f=>esc(f.columns.join(', '))+' → '+esc(f.table)+'.'+esc(f.column)+' ON DELETE '+esc(f.onDelete.toUpperCase())).join(' · ')+'</div>');if(mode==='target'&&table.notes.length)rows.push('<div class="detail-row"><span class="detail-label">Notes:</span> '+table.notes.map(esc).join(' · ')+'</div>');return rows.length?'<div class="table-details">'+rows.join('')+'</div>':''}
 function render(){cards.innerHTML=visibleTables().map(t=>'<section class="table" id="'+tableId(t.name)+'" data-name="'+esc(t.name)+'" data-category="'+esc(t.category)+'"><header class="table-head"><div><div class="table-name">'+esc(t.name)+'</div><div class="category">'+esc(t.category)+'</div></div><div class="head-badges">'+(t.status?'<span class="badge '+badgeClass(t.status)+'">'+esc(t.status)+'</span>':'')+(t.decisionRequired?'<span class="badge decision">Decision Required</span>':'')+'<span class="badge">'+t.columns.length+' cols</span></div></header>'+t.columns.map(c=>{const b=[];if(c.primaryKey)b.push('<span class="badge">PK</span>');if(c.reference)b.push('<span class="badge fk">FK</span>');if(c.unique)b.push('<span class="badge">UQ</span>');if(c.notNull)b.push('<span class="badge">NN</span>');if(c.decisionRequired)b.push('<span class="badge decision">Decision</span>');const target=c.reference?' → '+esc(c.reference.table)+'.'+esc(c.reference.column)+(c.reference.onDelete?' · delete '+esc(c.reference.onDelete):''):'';const defaultValue=c.default!==null&&c.default!==undefined?' · default '+esc(c.default):'';return '<div class="column" id="'+columnId(t.name,c.name)+'" data-table="'+esc(t.name)+'" data-column="'+esc(c.name)+'"><div class="col-main"><div class="col-name">'+esc(c.name)+'</div><div class="col-type">'+esc(c.type)+target+defaultValue+'</div></div><div class="badges">'+b.join('')+'</div></div>'}).join('')+renderDetails(t)+'</section>').join('')||'<div class="empty">No tables for this filter</div>';requestAnimationFrame(()=>drawEdges())}
 function drawEdges(activeTables=new Set()){const canvas=document.getElementById('canvas').getBoundingClientRect();edges.innerHTML='';for(const t of visibleTables()){const from=document.getElementById(tableId(t.name));if(!from)continue;for(const fk of t.foreignKeys){const to=document.getElementById(tableId(fk.table));if(!to)continue;const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();const x1=a.left-canvas.left+a.width/2,y1=a.top-canvas.top+a.height/2,x2=b.left-canvas.left+b.width/2,y2=b.top-canvas.top+b.height/2;const bend=Math.max(30,Math.abs(x2-x1)*.35);const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M '+x1+' '+y1+' C '+(x1+(x2>x1?bend:-bend))+' '+y1+', '+(x2-(x2>x1?bend:-bend))+' '+y2+', '+x2+' '+y2);path.setAttribute('class','edge'+(activeTables.has(t.name)||activeTables.has(fk.table)?' active':''));edges.appendChild(path)}}}
 function searchableEntries(){const items=[];for(const t of visibleTables()){const tableBase=[t.name,t.category,t.status].join(' ');const tableText=[tableBase,t.implementationOrder,t.owner,t.rlsExpectation,...(t.checks||[]),...(t.notes||[])].join(' ');items.push({label:t.name,detail:[t.category,t.status].filter(Boolean).join(' · '),table:t.name,column:null,text:tableText.toLowerCase()});for(const c of t.columns){const target=c.reference?c.reference.table+'.'+c.reference.column:'';items.push({label:t.name+'.'+c.name,detail:c.type+(target?' → '+target:''),table:t.name,column:c.name,text:(tableBase+' '+c.name+' '+c.type+' '+target).toLowerCase()})}}return items}

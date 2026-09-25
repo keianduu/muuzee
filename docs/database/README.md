@@ -21,7 +21,7 @@ Do not edit the generated files directly.
 npm run db:docs
 ```
 
-The generator applies migration files in filename order and reconstructs the current `public` schema from supported `CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, and simple index statements. It then reads `user-data-target.json` only for the separate Target v1 view. It never adds Planned tables to `schema.dbml` or the Current view.
+The generator applies migration files in filename order and reconstructs the current `public` schema from supported `CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, simple table CHECK constraints, and simple/partial index statements. It then reads `user-data-target.json` only for the separate Target v1 view. It never adds Planned tables to `schema.dbml` or the Current view.
 
 After adding or changing a migration, regenerate these files in the same change.
 
@@ -57,6 +57,6 @@ Matching columns are highlighted and non-matching tables are dimmed. Selecting a
 
 ## Scope
 
-The ER documentation is optimized for tables, columns, PKs, FKs, common unique constraints, and searchable relationships. PostgreSQL functions, triggers, RLS policies, check-constraint expressions, and complex / partial expression indexes remain authoritative only in the migrations.
+The ER documentation is optimized for tables, columns, PKs, FKs, common unique constraints, simple table CHECKs, simple/partial indexes, and searchable relationships. PostgreSQL functions, triggers, RLS policies, and complex expression indexes remain authoritative only in the migrations.
 
 When the Current generated view and a migration disagree, the migration wins. When the Target view and `user-data-target.json` disagree, the JSON target source wins. Neither Target source nor Target view proves that a migration has been applied.
