@@ -1,8 +1,33 @@
 # User Data Architecture
 
-Status: Draft architecture contract for Order 180. No migration, Auth configuration, RLS policy, or Production UI implementation is included.
+Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled after Orders 190, 195, 200, 210, 215, and 220.
 
-This document is the technical reference for Production user-owned data. Approved product behavior comes from the Notion requirement **Account / Login / Guest Save** and the confirmed Order 80 Public DTO contract. Prototype files are observations only; they are not schema specifications.
+This document explains ownership and durable architecture. It is not the exact schema, migration, or Data Access Source of Truth. Approved product behavior comes from the Notion requirement **Account / Login / Guest Save** and the confirmed Order 80 Public DTO contract. Prototype files are observations only; they are not schema specifications.
+
+## 0. Current Contract / Supersession
+
+When this document conflicts with a more specific current artifact, use these Sources of Truth:
+
+- Target Schema v1: `docs/database/user-data-target.json`
+- Current Physical Schema: forward SQL under `supabase/migrations/`
+- User Data Access: `docs/user-data-access.md`
+- Auth/session policy: `docs/auth-login-policy.md`
+
+The Candidate Data Model and comparison rationale later in this document are retained as **historical Order 180 design context**. They do not reopen decisions locked by Order 195 or replace implemented migrations.
+
+Current MVP decisions are:
+
+| Domain | Current contract |
+| --- | --- |
+| Saved | Current set membership for Exhibition, Artist, Venue, and Work |
+| Seen | Authenticated current set membership for Exhibition, Artist, Venue, and Work; separate from repeatable Visit history |
+| Favorite | MVP current set membership for Artist and Venue only; distinct from Saved |
+| Preferences | Notification, Newsletter, and private Location fields are adopted; delivery and Location consumers remain downstream |
+| ArtWall | Six typed settings are persisted; current candidates are Seen Exhibitions; selected membership/order/visibility remain separate state |
+| `user_visits` | Future / excluded from Target v1; not synonymous with Seen |
+| Legal Consent | `user_legal_consents` is Target v1 Planned but has no Physical table; migration waits for Order 250 |
+
+The current Physical Schema contains seven User Data tables: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`. All seven have RLS enabled and zero policies pending Order 230.
 
 ## 1. Goals / Non-goals
 
@@ -17,12 +42,11 @@ This document is the technical reference for Production user-owned data. Approve
 
 ### Non-goals
 
-- Creating SQL migrations or modifying the current Supabase schema.
-- Choosing Auth providers or login methods; Order 190 owns that decision.
+- Replacing the Target Schema or migration-derived Physical Schema.
+- Reopening Auth, Personal Action, Preferences, or ArtWall decisions already locked downstream.
 - Implementing Guest Save storage or its Account merge algorithm; Order 240 owns those details.
-- Implementing APIs, repositories, RLS, Storage buckets, or Production Personal UI.
+- Implementing owner RLS policies; Order 230 owns authorization policies and integration tests.
 - Connecting `prototype/` to Supabase or treating prototype localStorage structures as Production contracts.
-- Finalizing Product semantics that are not approved, especially Favorite and Seen history behavior.
 
 ## 2. Domain Boundary
 
@@ -49,7 +73,7 @@ flowchart TD
   Preferences["Private preferences / privacy choices"]
   Saved["Saved items"]
   Seen["Seen items"]
-  Favorite["Favorite items - if retained"]
+  Favorite["Favorite Artist / Venue items"]
   Settings["ArtWall settings"]
   Items["ArtWall exhibition items"]
   Avatar["Avatar storage object"]
@@ -91,7 +115,7 @@ Auth remains the Source of Truth for credential and login email. Production must
 
 ### Profile presentation
 
-MVP candidate fields are deliberately small:
+Current MVP Profile fields are deliberately small:
 
 - `display_name`
 - `avatar_object_path`
@@ -101,14 +125,13 @@ MVP candidate fields are deliberately small:
 
 ### Preferences and private metadata
 
-Preferences are separate from Profile presentation. Prototype candidates include:
+Preferences are separate from Profile presentation. The MVP schema adopts:
 
-- newsletter preference
-- notification preference
-- friend-search visibility
-- country / region / prefecture / city
+- `notification_enabled`
+- `newsletter_enabled`
+- private `country_code`, `region`, `prefecture`, and `city`
 
-These fields are not automatically approved for the Production schema. Newsletter consent may require consent audit semantics rather than a simple UI boolean. Location is private by default and must not enter a public profile DTO without a separate opt-in decision.
+Notification delivery, Newsletter delivery, and Search/Map Location consumption remain downstream. Location is private by default and must not enter a public profile DTO without a separate opt-in decision. Auditable Terms/Privacy consent is a separate planned domain, not the Newsletter boolean.
 
 ## 5. Guest vs Authenticated
 
@@ -116,8 +139,8 @@ These fields are not automatically approved for the Production schema. Newslette
 | --- | --- | --- |
 | Save Exhibition / Venue / Artist / Work | Client-owned persistent state | DB-owned user state |
 | Open and remove items from Saved | Yes | Yes |
-| Seen | No | Yes; exact semantics remain an Open Decision |
-| Favorite / 推し | No Production commitment | Account-owned if Product retains it |
+| Seen | No | Yes; current membership for Exhibition, Artist, Venue, and Work |
+| Favorite / 推し | No | Yes; Artist and Venue only, distinct from Saved |
 | Profile / Preferences | No | Yes |
 | My Art / ArtWall persistence | No | Yes |
 
@@ -148,28 +171,23 @@ Order 180 fixes the input contract only: both guest and authenticated Saved stat
 
 ## 6. Personal Action Matrix
 
-| Action | Product meaning | Candidate targets | Auth boundary | Persistence shape | Status |
+| Action | Product meaning | Current targets | Auth boundary | Persistence shape | Status |
 | --- | --- | --- | --- | --- | --- |
-| Saved | Keep content for later access | Exhibition, Venue/Museum, Artist, Work | Guest + authenticated | Current set membership; one row per user/entity for accounts | Approved boundary |
-| Seen / 観た | Personal acknowledgement of having seen/visited something | Prototype shows Exhibition, Venue, Artist, Work | Authenticated only | Separate table; state vs repeat history is unresolved | Partially approved |
-| Favorite / 推し | Strong affinity distinct from Saved | Prototype shows Artist and Venue | Authenticated if retained | Separate table; do not alias to Saved | Product meaning and targets unresolved |
+| Saved | Keep content for later access | Exhibition, Venue/Museum, Artist, Work | Guest + authenticated | Current set membership; one row per user/entity for accounts | MVP adopted |
+| Seen / 観た | Personal acknowledgement distinct from repeatable Visit history | Exhibition, Venue/Museum, Artist, Work | Authenticated only | Current set membership; one row per user/entity with `seen_at` | MVP adopted |
+| Favorite / 推し | Strong affinity distinct from Saved | Artist, Venue/Museum | Authenticated only | Current set membership; separate table from Saved | MVP adopted |
 
 ### Seen boundary
 
-Seen is not Guest state and must remain separate from ArtWall membership. A timestamp is needed if the Product uses chronology or visit history, but the following decision blocks the final Order 210 schema:
-
-- current state with one `seen_at` per user/entity, or
-- repeatable events with multiple visits and optional first/last aggregation.
-
-Until Product decides, this document recommends a separate `user_seen_items` boundary and reserves `seen_at`, without treating prototype sample dates as approved history semantics.
+Seen is not Guest state and remains separate from ArtWall membership. MVP uses one current membership row per user/entity for Exhibition, Artist, Venue, and Work, with `seen_at`. Repeatable visits are a different future capability represented by a possible `user_visits` domain; they are not inferred from or stored as duplicate Seen rows.
 
 ### Favorite boundary
 
-Favorite is not a Saved alias. Prototype Artist/Venue fixtures demonstrate UI possibilities only. Order 210 must not create `user_favorite_items` until Product confirms meaning, supported targets, and its relationship to My Art.
+Favorite is not a Saved alias. MVP adopts `user_favorite_items` for Artist and Venue only. Exhibition and Work are invalid Favorite targets. Public exposure and downstream notification use remain separate decisions.
 
-## 7. Candidate Data Model
+## 7. Historical Order 180 Data-Model Rationale
 
-This is a conceptual model, not migration SQL. All timestamps use timezone-aware values. Auth-owned foreign keys cascade on account deletion. Master foreign keys use `RESTRICT` for hard delete so a canonical entity cannot silently disappear from user history; archive/unpublish remains the normal Master lifecycle.
+This section preserves the conceptual model used to reach Target v1. It is historical rationale, not the exact current schema. For current columns, checks, indexes, and implementation status, use `docs/database/user-data-target.json` and `supabase/migrations/*.sql`. Auth-owned foreign keys cascade on account deletion. Master foreign keys use `RESTRICT` for hard delete so a canonical entity cannot silently disappear from user history; archive/unpublish remains the normal Master lifecycle.
 
 ### `profiles`
 
@@ -186,7 +204,7 @@ This is a conceptual model, not migration SQL. All timestamps use timezone-aware
 | --- | --- |
 | Primary key | `user_id` |
 | User relation | `user_id → auth.users.id`, one-to-one, `ON DELETE CASCADE` |
-| Candidate fields | notification/newsletter/privacy/location preferences after Product and legal review |
+| MVP fields | `notification_enabled`, `newsletter_enabled`, `country_code`, `region`, `prefecture`, `city` |
 | Default exposure | private |
 
 ### `user_saved_items`
@@ -208,17 +226,17 @@ This is a conceptual model, not migration SQL. All timestamps use timezone-aware
 | --- | --- |
 | Primary key | UUID `id` |
 | Owner | required `user_id → auth.users.id`, `ON DELETE CASCADE` |
-| Entity references | explicit nullable Master FKs; final supported columns depend on Product decision |
+| Entity references | nullable `exhibition_id`, `artist_id`, `venue_id`, `work_id` |
 | Integrity | exactly one entity FK is non-null |
-| State candidate | one row per user/entity with `seen_at` |
-| History candidate | repeat event rows; requires a separate event identity and different uniqueness |
+| State | one current-membership row per user/entity with `seen_at` |
+| Visit history | separate Future `user_visits` domain; excluded from Target v1 |
 | Master delete | `RESTRICT` |
 
 ### `user_favorite_items`
 
 | Field / rule | Candidate contract |
 | --- | --- |
-| Creation gate | only if Product retains Favorite |
+| MVP adoption | included for Artist and Venue only |
 | Primary key / owner | UUID `id`; required `user_id`, `ON DELETE CASCADE` |
 | Entity references | explicit nullable Master FKs for approved targets only |
 | Integrity / uniqueness | exactly one entity FK; one current Favorite per user/entity |
@@ -226,7 +244,7 @@ This is a conceptual model, not migration SQL. All timestamps use timezone-aware
 
 ### `user_artwall_settings`
 
-MVP assumes one ArtWall presentation per authenticated user. The table uses `user_id` as its primary key and account-deletion cascade boundary. Candidate explicit columns are:
+MVP uses one ArtWall presentation per authenticated user. The table uses `user_id` as its primary key and account-deletion cascade boundary. The six adopted persisted settings are:
 
 - `show_icon`
 - `title`
@@ -236,7 +254,7 @@ MVP assumes one ArtWall presentation per authenticated user. The table uses `use
 - `wall_height_mode`
 - `created_at`, `updated_at`
 
-These presentation fields are observed in the prototype, not all Product-approved. Order 210 or a dedicated ArtWall schema task must include only approved fields and validate values with explicit columns/checks rather than an unconstrained JSON settings bag.
+These six fields are approved in Target v1 and implemented with explicit columns/checks rather than an unconstrained JSON settings bag.
 
 ### `user_artwall_items`
 
@@ -275,7 +293,7 @@ Within each action table, explicit nullable Master FKs plus an exactly-one check
 ArtWall is composed from four layers:
 
 ```text
-Seen / visit source history
+Seen Exhibition source
         ↓ derive candidates
 User-selected ArtWall membership and order
         +
@@ -344,7 +362,7 @@ Guest Saved state is owned by the browser/device, not by an Auth account. Accoun
 | --- | --- | --- |
 | Saved | Private | No public scope approved |
 | Seen | Private | No public scope approved |
-| Favorite | Private | Meaning and public scope unresolved |
+| Favorite | Private | MVP meaning/targets are fixed; no public scope approved |
 | Preferences / location | Private | Location requires explicit field-level Product/privacy decision |
 | Profile display name / avatar | Private to authenticated experience until a public profile contract exists | Potential public opt-in |
 | ArtWall | Private | Public sharing is an explicit future opt-in decision |
@@ -355,69 +373,64 @@ Child rows should not rely solely on an application-supplied owner. Inserts/upda
 
 ## 12. Data Access Boundary
 
-Production UI does not know Supabase table names or joins. A candidate responsibility split is:
+Production UI does not know Supabase table names or joins. The current responsibility split is:
 
 ```text
 src/lib/user/
-  profile repository and commands
-  personal-action repositories
-  ArtWall repository
-  guest Saved adapter contract
+  types.ts       typed DTO/input contracts
+  errors.ts      sanitized domain errors
+  repository.ts  Supabase table/query/raw-row ownership
+  service.ts     verified identity, validation and composition
 
-src/lib/viewer/
-  compose ViewerEntityStateDTO for canonical entity IDs
+src/lib/supabase/
+  browser/server/middleware user-session clients
 
-src/app/ route handlers or server actions
-  authenticated request boundary, validation, error mapping
+future Server Actions / Route Handlers
+  consumer transport boundary after owner RLS is implemented
 ```
 
-The exact filenames are Order 220 implementation details. The fixed contract is:
+Order 220 implements this Account DAL. Its fixed contract is:
 
 - read viewer state by a bounded set of canonical IDs;
 - create/remove Saved and approved Personal Actions idempotently;
 - read/update Profile, Preferences, and ArtWall through domain functions;
-- keep guest persistence behind the same Saved semantics without pretending it is an account repository;
+- keep Guest persistence outside this Account DAL while retaining the same canonical EntityRef semantics;
 - return typed domain/DTO values rather than raw database rows;
 - map Loading / Empty / Error / Retry behavior at the consumer boundary.
 
-## 13. Migration Dependencies
+## 13. Implementation / Dependency Status
 
-| Order | Receives from Order 180 | Must decide / implement |
-| --- | --- | --- |
-| 190 Auth | Auth UUID is the Production identity key; Guest Save does not need an account | Provider, login methods, session/recovery, account deletion entry point |
-| 200 Profile | Profile and Preferences are separate from Auth credentials; avatar is a Storage object reference | migrations, profile creation lifecycle, approved MVP fields, avatar bucket/cleanup |
-| 210 Personal schema | separate action tables, explicit Master FKs, exactly-one checks, account cascade and Master restrict; ArtWall settings/items are separate from Seen | Personal Action and ArtWall migrations/indexes after resolving the relevant Product blockers |
-| 240 Guest merge | guest payload and account Saved share canonical kind + UUID identity | storage choice, union/conflict algorithm, idempotency, post-merge and logout behavior |
-| 220 Data access | UI never reads tables directly; Public DTO and Viewer State stay separate | repositories/API/server actions, validation, retry/error contract |
-| 230 RLS | every authenticated row has direct `user_id`; no service-role User Front | policies and owner/anonymous authorization tests |
+| Order | Current result / remaining responsibility |
+| --- | --- |
+| 190 Auth | Done: Supabase Auth UUID, cookie SSR, and Guest boundary are fixed |
+| 195 Schema Lock | Done: `docs/database/user-data-target.json` is Target v1 Source of Truth |
+| 200 Profile | Done: `profiles` and `user_preferences` Physical tables plus Auth bootstrap |
+| 210 Personal Actions | Done: Saved, Seen, and Favorite Physical tables with locked target scopes |
+| 215 ArtWall | Done: settings/items Physical tables; Seen Exhibition is the current source |
+| 220 Data Access | Implemented on task branch: typed Account DAL, Viewer State, safe errors, SSR client foundation |
+| 230 RLS | Pending: owner policies and owner/cross-user/anonymous integration tests |
+| 240 Guest merge | Pending: Guest store, expiry, idempotent Account merge, cleanup and logout behavior |
+| 250 Legal Consent | Pending: approve retention/delete/export policy before `user_legal_consents` migration |
 
-Migration order should be 190 decision → 200 Profile foundation → 210 Personal tables → 240 merge policy → 220 access layer → 230 authorization, matching the approved Production foundation sequence. No migration is created by Order 180.
+## 14. Remaining Downstream Decisions
 
-## 14. Open Product Decisions
+The following remain explicit downstream questions. Resolved Target v1 decisions for Seen, Favorite, Preferences, and the six ArtWall settings are not part of this list:
 
-The following must remain explicit and must not be inferred from prototype fixtures:
+1. Public Profile scope and which fields can be exposed.
+2. Private Location collection purpose, granularity, retention, and Search/Map default behavior.
+3. ArtWall initial generation rule and maximum item count.
+4. Guest Save storage implementation, expiry, clear behavior, cross-device expectations, and post-merge/logout behavior.
+5. UX for Personal Actions that reference archived/unpublished Masters.
+6. Whether public/shared ArtWall becomes a future capability; MVP remains private.
+7. Legal-consent retention, account-delete, and export behavior required before Order 250 creates the Physical table.
 
-1. Favorite / 推し Product meaning and how it differs from Saved.
-2. Favorite target entities and whether Favorite remains in MVP.
-3. Seen meaning and supported entity targets.
-4. Seen as current state versus repeatable visit/view events, including timestamp semantics.
-5. Public profile scope and which fields can be exposed.
-6. Location collection purpose, granularity, retention, and public/private scope.
-7. ArtWall initial generation rule from Seen/history.
-8. ArtWall maximum item count.
-9. Which prototype presentation settings are Product-approved for persistence.
-10. Guest Save storage implementation, expiry, clear behavior, and cross-device expectations.
-11. Guest Saved retention after a successful Account merge and behavior after logout.
-12. UX for Personal Actions that reference an archived/unpublished Master.
-13. Whether public/shared ArtWall is in MVP; default remains private until decided.
+These decisions do not change the current ownership model, canonical UUID strategy, or implemented Personal Action targets.
 
-These decisions do not change the ownership model or canonical UUID strategy. They gate the relevant columns, target checks, and API behavior in downstream tasks.
+## 15. Current Physical State
 
-## Current State Investigation
-
-- Current migrations and generated schema contain canonical Master/Admin tables only; there are no Profile, user-owned Personal Action, ArtWall, or Auth-user FK tables and no existing `auth.uid()` RLS policies.
-- Prototype Saved is split across localStorage keys and includes name/title-based Work/Artist values in places. That is fixture behavior and is not Production identity design.
-- Prototype Seen stores `{type, id, date}` objects and includes Exhibition, Museum, Artist, and Work samples. Product approves authenticated-only Seen, but not this target matrix or date semantics.
-- Prototype Favorite stores Artist/Museum samples. Its Product meaning is not approved.
-- Prototype Profile stores nickname, credential-like email, Base64/avatar URL, preferences, and location in one localStorage object. Production separates Auth email, Profile, Preferences, and Storage avatar ownership.
-- The shared prototype ArtWall store already demonstrates the desired ID-only boundary for committed membership/order and separates presentation from catalog hydration. Its exact presentation fields remain candidates.
+- Seven User Data tables exist: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`.
+- All seven have RLS enabled and policy count 0 pending Order 230.
+- `user_legal_consents` is Target v1 Planned and not present in the Physical Schema; Order 250 is its gate.
+- `user_visits` is Future / excluded from Target v1 and is not synonymous with Seen.
+- Auth/Profile, Personal Actions, and ArtWall reference canonical UUIDs and do not copy Master display values.
+- Prototype localStorage structures remain UX/fixture evidence only and are not Production persistence contracts.

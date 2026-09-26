@@ -16,6 +16,9 @@ export async function createSupabaseServerClient() {
           });
         } catch {
           // Server Components cannot write cookies. middleware.ts refreshes them.
+          // This helper is for server render/User Data DAL operations. Future Auth
+          // mutation Route Handlers must use a response-aware adapter that applies
+          // both cookies and the response/cache headers supplied by SSR setAll.
         }
       },
     },

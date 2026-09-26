@@ -47,8 +47,8 @@ Public DTOs must not receive `isSaved`, `isSeen`, or `isFavorite` fields.
 | Boundary | File | Responsibility |
 | --- | --- | --- |
 | Browser | `src/lib/supabase/client.ts` | Cookie-aware publishable/anon-key client for future Client Components |
-| Server | `src/lib/supabase/server.ts` | Per-request cookie-aware client for Server Components, Server Actions, and Route Handlers |
-| Refresh | `src/lib/supabase/middleware.ts`, root `middleware.ts` | Verify/refresh the session and propagate request/response cookies only |
+| Server | `src/lib/supabase/server.ts` | Per-request cookie-aware client for server render and User Data DAL operations |
+| Refresh | `src/lib/supabase/middleware.ts`, root `middleware.ts` | Verify/refresh the session and propagate cookies plus response/cache headers |
 | Admin | `src/lib/supabase/admin.ts` | Existing elevated maintenance boundary; prohibited from normal User Data access |
 
 The repository keeps the current `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` environment contract. Key-name migration is a separate operational change.
@@ -56,6 +56,8 @@ The repository keeps the current `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUP
 Normal User Data access calls `auth.getClaims()` and derives the owner UUID from verified `claims.sub`. Public service operations do not accept `userId`. `getSession().user` is not an authorization source. A fresh `getUser()` lookup is reserved for sensitive account-lifecycle work outside this order.
 
 The Next.js 15 middleware does not redirect or protect routes. Route UX remains downstream; authorization is enforced at the data boundary and, after Order 230, by RLS.
+
+The current server helper is intentionally scoped to server rendering and User Data DAL reads/writes. Session refresh and response cache-header propagation are handled by `middleware.ts`. Future Auth mutation flows—Login, Register, Auth callbacks, Password Recovery, `updateUser`, and `signOut` Route Handlers—must use a response-aware `createServerClient` adapter that applies both the cookies and the response/cache headers passed to `@supabase/ssr` `setAll`. They must not reuse the generic server-render helper as their response writer.
 
 ## 4. DTO and operation contract
 
@@ -129,7 +131,7 @@ Raw SQL, PostgREST/Auth messages, JWTs, cookies, tokens, stack traces, and provi
 
 ## 7. RLS and current execution status
 
-All eight User Data tables have RLS enabled and currently have zero owner policies. Consequently:
+The seven User Data tables currently present in the Physical Schema—`profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`—have RLS enabled and currently have zero owner policies. `user_legal_consents` remains Target v1 Planned, depends on Order 250, and has no Physical table yet. Consequently:
 
 - Order 220 unit-tests domain/session/repository behavior with fakes and static dependency guards;
 - it does not bypass RLS with `SUPABASE_SERVICE_ROLE_KEY`;
