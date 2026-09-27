@@ -429,7 +429,7 @@ These decisions do not change the current ownership model, canonical UUID strate
 ## 15. Current Physical State
 
 - Seven User Data tables exist: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`.
-- All seven have RLS enabled and policy count 0 pending Order 230.
+- All seven have RLS enabled. Migration `202609270001_user_rls_authorization.sql` grants `authenticated` only the required operations and implements 20 operation-specific owner policies; `anon` has no User Data table privileges. Authorization is validated locally.
 - `user_legal_consents` is Target v1 Planned and not present in the Physical Schema; Order 250 is its gate.
 - `user_visits` is Future / excluded from Target v1 and is not synonymous with Seen.
 - Auth/Profile, Personal Actions, and ArtWall reference canonical UUIDs and do not copy Master display values.
