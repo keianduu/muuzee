@@ -141,12 +141,12 @@ The normal User Data modules contain no import of the Admin client and no servic
 
 ## 8. Guest boundary
 
-Guest Save is not an Account repository operation. Guest browsing creates no Supabase Auth row, and this layer does not read localStorage or merge device state. Order 240 owns the client persistence adapter, expiry/clear behavior, Guest-to-Account union, retry/idempotency, post-merge cleanup, and logout behavior.
+Guest Save is not an Account repository operation. Guest browsing creates no Supabase Auth row, and this layer does not read localStorage or merge device state. `docs/guest-save-sync-policy.md` defines the proposed Order 240 boundary: the client adapter validates canonical refs, while merge calls the normal idempotent Saved add operation only after an authenticated session exists. Account DAL/RLS remains the server write path; successful refs are consumed individually and failed valid refs remain client-owned for retry. The proposal remains pending Human Review.
 
 ## 9. Downstream integration
 
 - **Order 230:** implemented by the forward owner-RLS migration and SQL authorization regression test; deployment beyond the locally validated migration remains an environment-specific release operation.
-- **Order 240:** Guest Saved adapter and Account merge.
+- **Order 240:** policy proposal in `docs/guest-save-sync-policy.md`; downstream implementation owns the Guest Saved adapter, Auth-transition merge orchestrator, partial cleanup/retry, and logout boundary.
 - **User Front wiring:** consume typed service/DTOs through Server Actions or Route Handlers under the owner RLS contract; do not import repository/table names into components.
 - **Public Content hydration:** combine canonical Public DTOs with request-scoped Viewer State at the application boundary.
 
