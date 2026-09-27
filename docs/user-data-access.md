@@ -1,6 +1,6 @@
 # User Data Access Layer
 
-Status: Order 220 implementation contract. The typed layer and unit tests are implemented; authenticated database authorization remains blocked on Order 230 owner RLS policies.
+Status: Current Production User Data access and authorization contract. Order 220 implements the typed Account DAL; Order 230 implements the database grants, owner RLS policies, and authorization regression tests.
 
 ## 1. Scope
 
@@ -11,7 +11,7 @@ This layer provides the server-side Account data boundary for:
 - bounded Viewer State composition;
 - private ArtWall settings, Seen-eligible membership, order, and visibility.
 
-It does not implement Login/Register UI, Auth callback routes, Guest Saved persistence or merge, Public Content hydration, HTTP routes, public/shared ArtWall, RLS policies, or service-role access.
+It does not implement Login/Register UI, Auth callback routes, Guest Saved persistence or merge, Public Content hydration, HTTP routes, public/shared ArtWall, or service-role access. Database grants and RLS policies remain migration-owned rather than DAL-owned.
 
 ## 2. Layering
 
@@ -28,7 +28,7 @@ User Front / Server Component / Server Action
   Supabase table/query details and raw-row mapping
                     |
                     v
-  cookie-aware Supabase user client + future owner RLS
+  cookie-aware Supabase user client + owner RLS
 ```
 
 Public Content stays separate:
@@ -55,7 +55,7 @@ The repository keeps the current `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUP
 
 Normal User Data access calls `auth.getClaims()` and derives the owner UUID from verified `claims.sub`. Public service operations do not accept `userId`. `getSession().user` is not an authorization source. A fresh `getUser()` lookup is reserved for sensitive account-lifecycle work outside this order.
 
-The Next.js 15 middleware does not redirect or protect routes. Route UX remains downstream; authorization is enforced at the data boundary and, after Order 230, by RLS.
+The Next.js 15 middleware does not redirect or protect routes. Route UX remains downstream; authorization is enforced at the data boundary and by RLS.
 
 The current server helper is intentionally scoped to server rendering and User Data DAL reads/writes. Session refresh and response cache-header propagation are handled by `middleware.ts`. Future Auth mutation flows—Login, Register, Auth callbacks, Password Recovery, `updateUser`, and `signOut` Route Handlers—must use a response-aware `createServerClient` adapter that applies both the cookies and the response/cache headers passed to `@supabase/ssr` `setAll`. They must not reuse the generic server-render helper as their response writer.
 
@@ -131,12 +131,11 @@ Raw SQL, PostgREST/Auth messages, JWTs, cookies, tokens, stack traces, and provi
 
 ## 7. RLS and current execution status
 
-The seven User Data tables currently present in the Physical Schema—`profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`—have RLS enabled and currently have zero owner policies. `user_legal_consents` remains Target v1 Planned, depends on Order 250, and has no Physical table yet. Consequently:
+The seven User Data tables currently present in the Physical Schema—`profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`—have RLS enabled. Migration `202609270001_user_rls_authorization.sql` removes `anon` table privileges, grants `authenticated` only the operations required by the DAL, and defines 20 operation-specific owner policies using `(select auth.uid()) = user_id`. INSERT uses `WITH CHECK`; UPDATE uses both `USING` and `WITH CHECK`. RLS remains non-forced, so the existing PostgreSQL `service_role` bypass is unchanged.
 
-- Order 220 unit-tests domain/session/repository behavior with fakes and static dependency guards;
-- it does not bypass RLS with `SUPABASE_SERVICE_ROLE_KEY`;
-- it does not claim live end-to-end authenticated database access;
-- Order 230 must add owner SELECT/INSERT/UPDATE/DELETE policies and real anonymous/cross-user/owner authorization tests before this DAL is connected to User Front.
+`supabase/tests/user_rls_authorization.sql` validates the exact grant and policy metadata plus owner, cross-user, anonymous, owner-reassignment, bootstrap, and account-cascade behavior with transaction rollback. Order 220 unit tests continue to cover domain/session/repository behavior with fakes and static dependency guards. Normal User Data access does not bypass RLS with `SUPABASE_SERVICE_ROLE_KEY`.
+
+`user_legal_consents` remains Target v1 Planned, depends on Order 250, and has no Physical table yet.
 
 The normal User Data modules contain no import of the Admin client and no service-role environment access.
 
@@ -146,14 +145,14 @@ Guest Save is not an Account repository operation. Guest browsing creates no Sup
 
 ## 9. Downstream integration
 
-- **Order 230:** owner RLS policies and real authorization/integration tests.
+- **Order 230:** implemented by the forward owner-RLS migration and SQL authorization regression test; deployment beyond the locally validated migration remains an environment-specific release operation.
 - **Order 240:** Guest Saved adapter and Account merge.
-- **User Front wiring:** consume typed service/DTOs through Server Actions or Route Handlers after RLS is available; do not import repository/table names into components.
+- **User Front wiring:** consume typed service/DTOs through Server Actions or Route Handlers under the owner RLS contract; do not import repository/table names into components.
 - **Public Content hydration:** combine canonical Public DTOs with request-scoped Viewer State at the application boundary.
 
 ## 10. Implementation evidence
 
-Tests cover verified claims identity, missing/invalid claims, Favorite target validation, four-target Saved/Seen, expected duplicate add, missing remove, safe error mapping, retryability, no arbitrary public `userId`, exactly-one row mapping, bounded/deduplicated Viewer State, DTO separation, ArtWall ordering/Seen eligibility/validation/retry convergence, and the Admin/service-role dependency guard.
+Tests cover verified claims identity, missing/invalid claims, Favorite target validation, four-target Saved/Seen, expected duplicate add, missing remove, safe `42501` authorization-error mapping, retryability, no arbitrary public `userId`, exactly-one row mapping, bounded/deduplicated Viewer State, DTO separation, ArtWall ordering/Seen eligibility/validation/retry convergence, the Admin/service-role dependency guard, and database-level owner/cross-user/anonymous authorization.
 
 Official guidance checked for this implementation:
 

@@ -136,12 +136,12 @@ begin
     raise exception 'RLS is not enabled on both User Data tables';
   end if;
 
-  if exists (
-    select 1 from pg_policies
+  if (
+    select count(*) from pg_policies
     where schemaname = 'public'
       and tablename in ('profiles', 'user_preferences')
-  ) then
-    raise exception 'Order 200 must not create owner policies';
+  ) <> 4 then
+    raise exception 'Profile/Preferences owner policy count differs from Order 230';
   end if;
 
   if not exists (

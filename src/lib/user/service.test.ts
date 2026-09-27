@@ -117,6 +117,13 @@ describe("personal action contract", () => {
 });
 
 describe("safe errors", () => {
+  it("maps PostgreSQL authorization denials to non-retryable forbidden", async () => {
+    const repository = fakeRepository({
+      getProfile: vi.fn().mockRejectedValue(new UserRepositoryError({ providerCode: "42501" })),
+    });
+    await expectCode(serviceFor(repository).getProfile(), "forbidden");
+  });
+
   it("maps provider failures without leaking raw SQL/PostgREST text", async () => {
     const repository = fakeRepository({
       getProfile: vi.fn().mockRejectedValue(new UserRepositoryError({ providerCode: "22P02" })),

@@ -295,13 +295,13 @@ begin
     raise exception 'RLS is not enabled on both ArtWall tables';
   end if;
 
-  if exists (
-    select 1
+  if (
+    select count(*)
     from pg_policies
     where schemaname = 'public'
       and tablename in ('user_artwall_settings', 'user_artwall_items')
-  ) then
-    raise exception 'Order 215 must not create owner policies';
+  ) <> 7 then
+    raise exception 'ArtWall owner policy count differs from Order 230';
   end if;
 
   if exists (

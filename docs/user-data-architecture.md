@@ -1,6 +1,6 @@
 # User Data Architecture
 
-Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled after Orders 190, 195, 200, 210, 215, and 220.
+Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled after Orders 190, 195, 200, 210, 215, 220, and 230.
 
 This document explains ownership and durable architecture. It is not the exact schema, migration, or Data Access Source of Truth. Approved product behavior comes from the Notion requirement **Account / Login / Guest Save** and the confirmed Order 80 Public DTO contract. Prototype files are observations only; they are not schema specifications.
 
@@ -27,7 +27,7 @@ Current MVP decisions are:
 | `user_visits` | Future / excluded from Target v1; not synonymous with Seen |
 | Legal Consent | `user_legal_consents` is Target v1 Planned but has no Physical table; migration waits for Order 250 |
 
-The current Physical Schema contains seven User Data tables: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`. All seven have RLS enabled and zero policies pending Order 230.
+The current Physical Schema contains seven User Data tables: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`. All seven have RLS enabled. Migration `202609270001_user_rls_authorization.sql` defines the minimum `authenticated` table grants and 20 operation-specific owner policies; `anon` has no table privileges on these relations.
 
 ## 1. Goals / Non-goals
 
@@ -45,7 +45,7 @@ The current Physical Schema contains seven User Data tables: `profiles`, `user_p
 - Replacing the Target Schema or migration-derived Physical Schema.
 - Reopening Auth, Personal Action, Preferences, or ArtWall decisions already locked downstream.
 - Implementing Guest Save storage or its Account merge algorithm; Order 240 owns those details.
-- Implementing owner RLS policies; Order 230 owns authorization policies and integration tests.
+- Implementing additional authorization surfaces beyond the Order 230 owner RLS contract or exposing private User Data publicly.
 - Connecting `prototype/` to Supabase or treating prototype localStorage structures as Production contracts.
 
 ## 2. Domain Boundary
@@ -367,7 +367,7 @@ Guest Saved state is owned by the browser/device, not by an Auth account. Accoun
 | Profile display name / avatar | Private to authenticated experience until a public profile contract exists | Potential public opt-in |
 | ArtWall | Private | Public sharing is an explicit future opt-in decision |
 
-Every authenticated user-owned table has a direct `user_id` so Order 230 can implement owner policies equivalent to `auth.uid() = user_id`. User Front access must not depend on a service-role client. Privileged service-role operations are limited to server-only account lifecycle or controlled maintenance paths.
+Every authenticated user-owned table has a direct `user_id`. Order 230 implements operation-specific policies equivalent to `(select auth.uid()) = user_id`, including `WITH CHECK` on INSERT and UPDATE. User Front access must not depend on a service-role client. Privileged service-role operations are limited to server-only account lifecycle or controlled maintenance paths.
 
 Child rows should not rely solely on an application-supplied owner. Inserts/updates must be checked by RLS, and any server repository must derive the viewer user ID from the authenticated session rather than accepting an arbitrary client `user_id`.
 
@@ -386,7 +386,7 @@ src/lib/supabase/
   browser/server/middleware user-session clients
 
 future Server Actions / Route Handlers
-  consumer transport boundary after owner RLS is implemented
+  consumer transport boundary protected by the owner RLS contract
 ```
 
 Order 220 implements this Account DAL. Its fixed contract is:
@@ -407,8 +407,8 @@ Order 220 implements this Account DAL. Its fixed contract is:
 | 200 Profile | Done: `profiles` and `user_preferences` Physical tables plus Auth bootstrap |
 | 210 Personal Actions | Done: Saved, Seen, and Favorite Physical tables with locked target scopes |
 | 215 ArtWall | Done: settings/items Physical tables; Seen Exhibition is the current source |
-| 220 Data Access | Implemented on task branch: typed Account DAL, Viewer State, safe errors, SSR client foundation |
-| 230 RLS | Pending: owner policies and owner/cross-user/anonymous integration tests |
+| 220 Data Access | Done: typed Account DAL, Viewer State, safe errors, SSR client foundation |
+| 230 RLS | Implemented on task branch and locally validated: minimum grants, 20 owner policies, and owner/cross-user/anonymous SQL regression tests |
 | 240 Guest merge | Pending: Guest store, expiry, idempotent Account merge, cleanup and logout behavior |
 | 250 Legal Consent | Pending: approve retention/delete/export policy before `user_legal_consents` migration |
 

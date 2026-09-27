@@ -222,12 +222,12 @@ begin
     raise exception 'RLS is not enabled on all Personal Action tables';
   end if;
 
-  if exists (
-    select 1 from pg_policies
+  if (
+    select count(*) from pg_policies
     where schemaname = 'public'
       and tablename in ('user_saved_items', 'user_seen_items', 'user_favorite_items')
-  ) then
-    raise exception 'Order 210 must not create owner policies';
+  ) <> 9 then
+    raise exception 'Personal Action owner policy count differs from Order 230';
   end if;
 end $$;
 
