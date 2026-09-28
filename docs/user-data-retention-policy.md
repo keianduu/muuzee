@@ -1,8 +1,8 @@
 # User Data Retention / Deletion / Export Policy
 
-Status: **Draft Product / Operations policy for Human / Legal review** (Order 250, 2026-09-28).
+Status: **Approved Product / Operations policy** (Order 250, Human Review approved 2026-09-28).
 
-This document is an implementation-facing policy draft. It is not legal advice, a published Privacy Policy, Terms of Service, or a final determination of statutory exceptions. Human / Legal review must approve the five decisions in Section 17 before implementation or publication.
+This document is the approved implementation-facing Product / Operations policy. It is not legal advice, a published Privacy Policy, Terms of Service, or a final determination of statutory exceptions. Order 420 still requires Human / Legal review of the public wording, request procedure, and applicable exceptions before publication.
 
 ## 1. Scope
 
@@ -61,7 +61,7 @@ Official sources reviewed:
 | Guest Saved | browser key `muuzee:guest-saved:v1`, canonical `{kind,id}` only | Browser-local, no Account owner, no PII by contract. Server Account deletion cannot remove it automatically. |
 | Derived values | Saved/Seen/Favorite counts, ArtWall summary | Reproducible and currently not persisted. They are convenience output, not independent source records. |
 
-All seven current Physical User Data tables reference `auth.users.id` with `ON DELETE CASCADE`. `user_legal_consents` remains Planned in Target v1 with the same proposed cascade.
+All seven current Physical User Data tables reference `auth.users.id` with `ON DELETE CASCADE`. `user_legal_consents` remains Planned in Target v1 with the approved cascade contract.
 
 ### 3.2 Operational and future data
 
@@ -94,9 +94,9 @@ Legal, security, or operations records with an independently approved purpose ar
 
 ## 5. Account deletion
 
-### 5.1 Recommended MVP model
+### 5.1 Approved MVP model
 
-Use **immediate hard deletion from active Product systems**, with no reversible soft-delete Account and no grace/recovery window. This minimizes retained data and lifecycle complexity; the Product has no approved Account-restore requirement. This remains Human Decision 1.
+Use **immediate hard deletion from active Product systems**, with no reversible soft-delete Account and no grace/recovery window. This minimizes retained data and lifecycle complexity; the Product has no Account-restore capability or Support restore operation. This is Approved Decision 1.
 
 Before execution, require:
 
@@ -108,7 +108,7 @@ An old cookie session alone is not sufficient. Exact reauthentication UX/API bel
 
 ### 5.2 Server-only orchestration
 
-Recommended order:
+Approved orchestration order:
 
 1. verify fresh identity and destructive confirmation;
 2. optionally generate/download an export if the user requests one;
@@ -125,6 +125,12 @@ The privileged Auth Admin boundary is an explicit Account-lifecycle exception to
 ### 5.3 Re-registration
 
 Re-registering the same email creates a new Auth UUID and a new Account. Muuzee does not restore the prior Profile, Preferences, Saved, Seen, Favorite, ArtWall, or consent rows.
+
+Completed Account deletion is irreversible. Product and Support do not restore a deleted Account, and backup/PITR is not a user-request Account-restore mechanism. Before final confirmation, the UI must state that deletion cannot be undone, list the Account data being removed, offer the optional pre-delete export, and explain that same-email re-registration does not restore prior data.
+
+### 5.4 Partial deletion failure
+
+A system failure during deletion is a **deletion completion / cleanup** incident, not an Account-restore case. Operations must resume or reconcile cleanup until the approved deletion outcome is complete. The recovery objective is not to reconstruct the partial Account into its prior usable state. External cleanup follows the blocking-or-queued-retry contract in Section 12.
 
 ## 6. Storage deletion
 
@@ -159,7 +165,7 @@ The planned `user_legal_consents` record is a versioned audit of Terms/Privacy d
 
 It must not be interpreted as proof that consent is the legal basis for every Muuzee personal-data processing activity. The need for APPI consent depends on the processing context and must be reviewed separately.
 
-### 8.2 Retention recommendation
+### 8.2 Approved retention policy
 
 While the Account exists, keep each accepted document-version record immutable. At Account deletion, delete identifiable consent rows through the planned `user_id → auth.users ON DELETE CASCADE`. Separately archive the published Privacy Policy and Terms documents and their versions as non-user legal artifacts under Order 420.
 
@@ -215,11 +221,15 @@ Ordinary disclosure/export should be free for MVP. If exceptional physical deliv
 
 ## 11. Backup / Logs
 
-Active Product DB/Auth/Storage deletion is immediate after confirmed execution. Backup and PITR copies expire according to documented provider/environment schedules and must not be restored into ordinary processing as though the deletion never occurred.
+Active Product DB/Auth/Storage deletion is immediate after confirmed execution. Backup and PITR copies expire according to documented provider/environment schedules and must not be restored into ordinary processing as though the deletion never occurred. They are not used to restore an individual deleted Account at the user's or Support's request.
 
 Order 260 must define exact backup, PITR, Auth-log, database-log, Vercel-log, and application-log retention for each environment. Order 250 invents no durations.
 
-A Production restore runbook must account for deletions that occurred after the recovered snapshot and prevent deleted Account data from returning to normal use. This draft does not create a tombstone table. Any durable deletion ledger or operational request audit requires a separately justified purpose, minimum fields, restricted access, and fixed Human / Legal-approved term; email, user UUID, or request content must not be retained indefinitely by default.
+A Production restore runbook must account for deletions that occurred after the recovered snapshot and prevent deleted Account data from returning to normal use. This policy does not create a tombstone table. Any durable deletion ledger or operational request audit requires a separately justified purpose, minimum fields, restricted access, and fixed Human / Legal-approved term; email, user UUID, or request content must not be retained indefinitely by default.
+
+### Non-identifying lifecycle analytics
+
+Before Account deletion, Muuzee may increment non-identifying aggregates such as daily signup/deletion counts, active Account counts, signup-cohort deletion counts, or tenure buckets. These aggregates must not permit reconstruction of the deleted Account. A deleted email, User UUID, hashed stable user identifier, or equivalent linkable row is not retained merely for churn, retention, cohort, average-tenure, or net-growth analysis. If future analytics requires User-level post-deletion events, Orders 420 and 470 must complete a separate Privacy review before implementation.
 
 ## 12. External processors
 
@@ -284,25 +294,25 @@ Order 420 owns final public wording and must reconcile at least:
 - a summary of security measures;
 - versioned Privacy/Terms document publication and archive.
 
-Order 470 owns GA4/Search Console/consent configuration and STG/Production measurement separation. Order 260 owns exact environment/provider retention settings. Order 250 remains their Draft lifecycle source, not published legal text.
+Order 470 owns GA4/Search Console/consent configuration and STG/Production measurement separation. Order 260 owns exact environment/provider retention settings. This approved Order 250 policy is their lifecycle source, but is not published legal text.
 
-## 17. Human Decisions Required
+## 17. Approved Product Decisions
 
-| # | Decision | Recommendation |
+| # | Approved decision | Status |
 | --- | --- | --- |
-| 1 | Account deletion uses immediate active hard delete with no soft-delete grace/recovery window. | **YES** |
-| 2 | Identifiable `user_legal_consents` rows cascade on Account deletion; published legal document versions remain in a separate non-user archive. | **YES** |
-| 3 | Offer JSON/ZIP self-service export plus a verified manual electronic disclosure route. | **YES** |
-| 4 | Active systems delete immediately; backups expire under documented provider retention, with exact terms fixed by Order 260. | **YES** |
-| 5 | Ordinary disclosure/export has no fee; internal target is 30 calendar days while legal/public wording remains “without delay.” | **YES**, subject to Human / Legal review |
+| 1 | Account deletion uses immediate active hard delete with no soft-delete grace/recovery window. | **Approved** |
+| 2 | Identifiable `user_legal_consents` rows cascade on Account deletion; published legal document versions remain in a separate non-user archive. | **Approved** |
+| 3 | Offer JSON/ZIP self-service export plus a verified manual electronic disclosure route. | **Approved** |
+| 4 | Active systems delete immediately; backups expire under documented provider retention, with exact terms fixed by Order 260. Backup/PITR is not a deleted-Account restore mechanism. | **Approved** |
+| 5 | Ordinary disclosure/export has no fee; internal target is 30 calendar days while legal/public wording remains “without delay.” | **Approved** |
 
-Until these are reviewed, Order 250 remains `Doing`, this document remains Draft, and no lifecycle implementation or public wording should be treated as approved.
+Human Review approved all five decisions on 2026-09-28. Lifecycle implementation belongs to Order 251; final public/legal wording remains an Order 420 responsibility.
 
 ## 18. Implementation follow-up
 
-After Human / Legal review, propose—not automatically create or start—Order 251: **[Backend] Legal Consent / Account deletion / Data export lifecycleを実装**.
+Order 251 **[Backend] Legal Consent / Account deletion / Data export lifecycleを実装** exists in Notion with Status `Todo` and owns implementation of this approved policy.
 
-Candidate scope:
+Current Order 251 scope:
 
 - `user_legal_consents` migration, RLS, generated DB docs, and tests;
 - versioned Registration consent write boundary;
@@ -315,4 +325,4 @@ Candidate scope:
 - dependency on Order 420 final Privacy/Terms versions and published request channel;
 - operational retention/config dependencies from Order 260 and Analytics classification from Order 470.
 
-Order 250 itself changes no migration, schema, RLS, Auth configuration, Storage, DB data, or Production API/UI.
+Order 250 itself changes no migration, schema, RLS, Auth configuration, Storage, DB data, analytics table, deletion ledger, or Production API/UI. Order 243 Account email change is a separate task and must not be mixed into Order 251.

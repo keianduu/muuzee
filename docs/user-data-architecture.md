@@ -13,7 +13,7 @@ When this document conflicts with a more specific current artifact, use these So
 - User Data Access: `docs/user-data-access.md`
 - Auth/session policy: `docs/auth-login-policy.md`
 - Guest Saved sync policy: `docs/guest-save-sync-policy.md` (approved Order 240 contract)
-- Retention/delete/export policy: `docs/user-data-retention-policy.md` (Order 250 Draft pending Human / Legal review)
+- Retention/delete/export policy: `docs/user-data-retention-policy.md` (approved Order 250 contract)
 
 The Candidate Data Model and comparison rationale later in this document are retained as **historical Order 180 design context**. They do not reopen decisions locked by Order 195 or replace implemented migrations.
 
@@ -27,7 +27,7 @@ Current MVP decisions are:
 | Preferences | Notification, Newsletter, and private Location fields are adopted; delivery and Location consumers remain downstream |
 | ArtWall | Six typed settings are persisted; current candidates are Seen Exhibitions; selected membership/order/visibility remain separate state |
 | `user_visits` | Future / excluded from Target v1; not synonymous with Seen |
-| Legal Consent | `user_legal_consents` is Target v1 Planned but has no Physical table; migration waits for Order 250 |
+| Legal Consent | `user_legal_consents` is Target v1 Planned but has no Physical table; approved lifecycle implementation belongs to Order 251 |
 
 The current Physical Schema contains seven User Data tables: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`. All seven have RLS enabled. Migration `202609270001_user_rls_authorization.sql` defines the minimum `authenticated` table grants and 20 operation-specific owner policies; `anon` has no table privileges on these relations.
 
@@ -339,7 +339,7 @@ Public DTOs must not gain `isSaved`, `isSeen`, or `isFavorite` fields. The viewe
 
 ### Account deletion
 
-The lifecycle contract is defined in `docs/user-data-retention-policy.md`. Its current Draft recommendation is fresh identity verification, optional pre-delete export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth-user deletion, database cascades, verification, and browser-session cleanup. Human / Legal review must approve the policy before implementation.
+The approved lifecycle contract is defined in `docs/user-data-retention-policy.md`: fresh identity verification, optional pre-delete export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth-user deletion, database cascades, verification, and browser-session cleanup. Completed deletion is irreversible; Support and backup/PITR do not restore an individual deleted Account. Order 251 owns implementation.
 
 Logout is not deletion and performs none of these steps.
 
@@ -409,7 +409,8 @@ Order 220 implements this Account DAL. Its fixed contract is:
 | 230 RLS | Done: minimum grants, 20 owner policies, and owner/cross-user/anonymous SQL regression tests |
 | 240 Guest policy | Approved: versioned localStorage, no TTL, idempotent set union, per-ref cleanup/retry, and no logout reverse sync |
 | 242 Guest implementation | Implemented: validated Guest store, bounded Account merge through DAL/RLS, `/auth/complete` handoff, exact latest-store cleanup, retry, and reusable session bootstrap; broad User Front Save/Saved UI wiring remains downstream |
-| 250 Lifecycle policy | Draft documented: retention/delete/export/Legal Consent policy awaits Human / Legal review before `user_legal_consents` or lifecycle implementation |
+| 250 Lifecycle policy | Approved: retention/delete/export/Legal Consent lifecycle contract; implementation handed to Order 251 |
+| 251 Lifecycle implementation | Todo: Legal Consent migration/RLS, export, deletion orchestration, Storage cleanup, aggregate analytics hook, and tests |
 
 ## 14. Remaining Downstream Decisions
 
@@ -420,7 +421,6 @@ The following remain explicit downstream questions. Resolved Target v1 decisions
 3. ArtWall initial generation rule and maximum item count.
 4. UX for Personal Actions that reference archived/unpublished Masters.
 5. Whether public/shared ArtWall becomes a future capability; MVP remains private.
-6. Final Human / Legal approval of the Draft retention/delete/export and consent behavior in `docs/user-data-retention-policy.md`.
 
 These decisions do not change the current ownership model, canonical UUID strategy, or implemented Personal Action targets.
 
@@ -428,7 +428,7 @@ These decisions do not change the current ownership model, canonical UUID strate
 
 - Seven User Data tables exist: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`.
 - All seven have RLS enabled. Migration `202609270001_user_rls_authorization.sql` grants `authenticated` only the required operations and implements 20 operation-specific owner policies; `anon` has no User Data table privileges. Authorization is validated locally.
-- `user_legal_consents` is Target v1 Planned and not present in the Physical Schema; Order 250 is its gate.
+- `user_legal_consents` is Target v1 Planned and not present in the Physical Schema; Order 250 approved its cascade/lifecycle contract and Order 251 owns implementation.
 - `user_visits` is Future / excluded from Target v1 and is not synonymous with Seen.
 - Auth/Profile, Personal Actions, and ArtWall reference canonical UUIDs and do not copy Master display values.
 - Prototype localStorage structures remain UX/fixture evidence only and are not Production persistence contracts.

@@ -101,7 +101,7 @@ The default Auth completion destination is `/auth/complete`. It is a neutral Pro
 
 Invalid or expired callbacks also return to `/auth/complete?authError=<safe-code>`. Provider messages and callback credentials are not copied to that URL.
 
-Terms/Privacy acceptance is not stored in Auth metadata. `user_legal_consents` remains an Order 250 dependency and is not implemented by Order 241.
+Terms/Privacy acceptance is not stored in Auth metadata. Order 250 approved the separate `user_legal_consents` cascade/lifecycle contract; its Physical implementation belongs to Order 251 and is not implemented by Order 241.
 
 ## 6. Password recovery
 
@@ -204,10 +204,10 @@ The repository-local `supabase/config.toml` also mirrors the eight-character min
 ## 12. Deferred scope
 
 - Guest Saved adapter/merge/cleanup: Order 242.
-- Legal consent persistence and Account lifecycle implementation: the Draft policy is now documented in `docs/user-data-retention-policy.md`; it remains pending Human / Legal review and downstream implementation.
+- Legal consent persistence and Account lifecycle implementation: the approved policy is documented in `docs/user-data-retention-policy.md`; implementation belongs to Order 251.
 - STG/Production Auth/SMTP/redirect operations: Order 260.
 - OAuth, passwordless, Phone, MFA, Email change, all-device logout, and final shared Auth UI: Future/downstream.
-- Account deletion: the current Draft recommends fresh reauthentication, optional export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth deletion, cascade verification, and session cleanup. It is not implemented here.
+- Account deletion: the approved contract requires fresh reauthentication, optional export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth deletion, cascade verification, and session cleanup. Completed deletion is irreversible and is not restored by Product, Support, or backup/PITR. It is not implemented here.
 
 ## Official evidence
 
