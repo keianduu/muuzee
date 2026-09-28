@@ -147,6 +147,23 @@ describe("Auth safe domain contract", () => {
     expect(client.updateUser).not.toHaveBeenCalled();
   });
 
+  it("does not update when the mutation-time user differs from the authorized recovery user", async () => {
+    const client = fakeClient({
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { id: "24400000-0000-4000-8000-000000000002" } },
+        error: null,
+      }),
+    });
+    await expect(updatePassword(
+      client,
+      { password: "new-password" },
+      "24400000-0000-4000-8000-000000000001",
+    )).resolves.toMatchObject({
+      error: { code: "unauthenticated" },
+    });
+    expect(client.updateUser).not.toHaveBeenCalled();
+  });
+
   it("updates passwords and signs out only the current session", async () => {
     const client = fakeClient();
     await expect(updatePassword(client, { password: "new-password" })).resolves.toEqual({

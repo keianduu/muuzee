@@ -130,12 +130,16 @@ export async function requestPasswordRecovery(
 export async function updatePassword(
   client: AuthClient,
   input: { password?: unknown },
+  expectedUserId?: string,
 ): Promise<AuthOperationResult> {
   const validated = validatePassword(input.password);
   if (!validated.ok) return validated;
 
   const { data: viewer, error: viewerError } = await client.getUser();
   if (viewerError || !viewer.user) return mapAuthProviderError(viewerError, "authenticated");
+  if (expectedUserId && viewer.user.id !== expectedUserId) {
+    return mapAuthProviderError(null, "authenticated");
+  }
 
   const { error } = await client.updateUser({ password: validated.password });
   if (error) return mapAuthProviderError(error);

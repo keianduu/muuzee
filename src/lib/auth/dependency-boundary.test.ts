@@ -34,4 +34,12 @@ describe("Production Auth dependency boundary", () => {
     expect(source).not.toContain("localStorage");
     expect(source).not.toContain("loginID");
   });
+
+  it("uses a dedicated Recovery marker secret without credential or purpose reuse", () => {
+    const recovery = readFileSync(join(process.cwd(), "src/lib/auth/recovery.ts"), "utf8");
+    expect(recovery).toContain("PASSWORD_RECOVERY_MARKER_SECRET");
+    expect(recovery).not.toContain("ACCOUNT_LIFECYCLE_MARKER_SECRET");
+    expect(recovery).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(recovery).not.toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  });
 });

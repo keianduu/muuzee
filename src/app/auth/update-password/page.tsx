@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { hasPasswordRecoveryMarker } from "@/lib/auth/recovery";
+import {
+  readPasswordRecoveryMarker,
+  verifyPasswordRecoveryMarker,
+} from "@/lib/auth/recovery";
 import { AUTH_COMPLETE_PATH } from "@/lib/auth/validation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { UpdatePasswordForm } from "./update-password-form";
@@ -14,7 +17,11 @@ export default async function UpdatePasswordPage() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   const cookieStore = await cookies();
-  if (error || !data.user || !hasPasswordRecoveryMarker(cookieStore)) {
+  if (
+    error
+    || !data.user
+    || !verifyPasswordRecoveryMarker(readPasswordRecoveryMarker(cookieStore), data.user.id)
+  ) {
     redirect(`${AUTH_COMPLETE_PATH}?authError=expired_or_invalid_link`);
   }
 

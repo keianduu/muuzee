@@ -57,10 +57,10 @@ flowchart TD
   Cookie --> Return["validated internal returnTo"]
   Return --> Complete["/auth/complete or explicit safe User route"]
   Complete --> Handoff["authenticated transition / session bootstrap for Order 242"]
-  Verify -->|recovery only| Marker["short-lived HttpOnly recovery marker"]
-  Update["POST /api/auth/update-password"] --> MarkerCheck["recovery marker required"]
-  MarkerCheck --> Fresh["fresh getUser"]
-  Fresh --> Change["updateUser password"]
+  Verify -->|recovery only| Marker["signed user-bound HttpOnly recovery marker"]
+  Update["POST /api/auth/update-password"] --> Fresh["fresh getUser"]
+  Fresh --> MarkerCheck["signed recovery marker required"]
+  MarkerCheck --> Change["same-user getUser + updateUser password"]
   Logout["POST /api/auth/logout"] --> LocalSignout["signOut scope=local"]
 ```
 
@@ -79,9 +79,9 @@ Both paths require a verified `claims.sub` before success. The final redirect is
 | `/api/auth/register` | POST | `signUp()` | `awaiting_email_confirmation`, or `authenticated` only when the provider returns and verifies an immediate session |
 | `/api/auth/resend-confirmation` | POST | `resend({ type: "signup" })` | `confirmation_requested` |
 | `/api/auth/forgot-password` | POST | `resetPasswordForEmail()` | `recovery_requested` |
-| `/auth/callback` | GET | `verifyOtp()` or `exchangeCodeForSession()` | clean internal redirect after verified session; recovery source also receives the purpose marker |
+| `/auth/callback` | GET | `verifyOtp()` or `exchangeCodeForSession()`, then fresh `getUser()` for Recovery | clean internal redirect after verified session; verified Recovery receives a signed user-bound purpose marker |
 | `/auth/complete` | GET/UI | neutral Auth completion/error surface | default confirmation/Login callback landing and Order 242 handoff surface |
-| `/api/auth/update-password` | POST | recovery marker, fresh `getUser()`, then `updateUser({ password })` | `password_updated`, then marker removal |
+| `/api/auth/update-password` | POST | password validation, fresh `getUser()`, signed marker verification, same-user recheck, then `updateUser({ password })` | `password_updated`, then marker removal |
 | `/api/auth/logout` | POST | `signOut({ scope: "local" })` | `signed_out` |
 | `/auth/update-password` | GET/UI | fresh `getUser()` plus recovery marker | submits only to the guarded update-password route |
 | `/api/account/export` | GET | fresh `getUser()` plus owner-RLS reads | private/no-store JSON attachment |
@@ -114,7 +114,7 @@ Forgot Password request
   -> allow-listed recovery email
   -> /auth/callback (token_hash or PKCE code)
   -> verified cookie session
-  -> short-lived recovery-purpose marker
+  -> 15-minute HMAC recovery-purpose marker bound to fresh Auth UUID
   -> /auth/update-password
   -> marker + fresh getUser()
   -> updateUser({ password })
@@ -123,7 +123,9 @@ Forgot Password request
 
 Unknown-email recovery requests remain neutral. Rate limiting and provider outages use stable safe errors. The update route accepts no `userId` or email as authorization proof and requires both a fresh authenticated user and the recovery-purpose marker. A normal Login session without the marker cannot use the recovery password endpoint.
 
-The marker cookie is `muuzee-password-recovery-v1` with an opaque constant value only. It is HttpOnly, SameSite=Lax, `Path=/`, Secure in Production, and expires after 15 minutes. The root path is required because the same marker is written by `/auth/callback`, read by both `/auth/update-password` and `/api/auth/update-password`, and cleared by `/api/auth/logout`. It contains no password, token, email, user ID, or account data. Callback handling clears any prior marker and sets it again only after a verified transition whose source is `recovery`; Login and signup confirmation never establish recovery purpose.
+The marker cookie is `muuzee-password-recovery-v1`. It is HMAC-SHA256 signed with the dedicated server-only `PASSWORD_RECOVERY_MARKER_SECRET`, which must contain at least 32 UTF-8 bytes and must not reuse Supabase credentials or the Account lifecycle secret. The payload contains only version, `password-recovery` purpose, issue/expiry times, a random nonce, and signature. The fresh Auth UUID participates in the signature input but is not stored in the cookie. Missing/invalid configuration and fixed, malformed, tampered, expired, wrong-purpose, unknown-version, or wrong-user markers fail closed.
+
+The cookie remains HttpOnly, SameSite=Lax, `Path=/`, Secure in Production, and has a 15-minute `Max-Age`; server verification independently enforces the same 15-minute expiry. The root path is required because the marker is written by `/auth/callback`, read by both `/auth/update-password` and `/api/auth/update-password`, and cleared by `/api/auth/logout`. It contains no password, token, email, user ID, or account data. Callback handling clears any prior marker and sets it again only after a verified Recovery transition plus fresh user resolution; Login and signup confirmation never establish Recovery purpose.
 
 Successful password update clears the marker. Retryable update failure leaves it available only for its remaining short lifetime, while Logout clears it regardless of sign-out result.
 
@@ -200,7 +202,7 @@ No dashboard or remote environment setting is changed by Order 241.
 | Email delivery | Supabase CLI Mailpit | approved sandbox in STG; custom SMTP in Production |
 | Password minimum | mirror 8 in app; provider config is authoritative | configure at least 8 in provider |
 | Leaked-password protection | plan-dependent local behavior | enable when available/approved |
-| Keys | public URL/anon key for normal flow | environment secret store; service role remains server-only and unused here |
+| Keys | public URL/anon key for normal flow; separate local Recovery/Account marker secrets | environment secret store; service role remains server-only, and purpose-marker secrets remain dedicated and independent |
 
 The repository-local `supabase/config.toml` also mirrors the eight-character minimum, disables anonymous sign-in, and allow-lists only the localhost callback variants used by the app. Applying those settings to an already-running local stack requires a normal stop/start; it does not require a database reset. Order 260 owns final environment policy, domains, hosted redirect allowlists, SMTP, rate-limit/CAPTCHA, monitoring, and secret rotation.
 

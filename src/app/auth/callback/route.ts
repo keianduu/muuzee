@@ -3,6 +3,7 @@ import { authError } from "@/lib/auth/errors";
 import { clearAccountLifecycleMarker } from "@/lib/account-lifecycle/marker";
 import {
   clearPasswordRecoveryMarker,
+  createPasswordRecoveryMarker,
   setPasswordRecoveryMarker,
 } from "@/lib/auth/recovery";
 import { completeAuthCallback } from "@/lib/auth/service";
@@ -37,6 +38,20 @@ export async function GET(request: NextRequest) {
     result = authError("temporary", true);
   }
 
+  let recoveryMarker: string | null = null;
+  if (result.ok && result.transition?.source === "recovery") {
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        result = authError("unauthenticated");
+      } else {
+        recoveryMarker = createPasswordRecoveryMarker(data.user.id);
+      }
+    } catch {
+      result = authError("temporary", true);
+    }
+  }
+
   const destination = result.ok
     ? buildFinalAuthRedirect(origin, returnTo)
     : buildFinalAuthRedirect(origin, DEFAULT_AUTH_RETURN_TO, result.error.code);
@@ -45,8 +60,8 @@ export async function GET(request: NextRequest) {
   // A recovery-purpose marker must never survive an unrelated callback.
   clearPasswordRecoveryMarker(response);
   clearAccountLifecycleMarker(response);
-  if (result.ok && result.transition?.source === "recovery") {
-    setPasswordRecoveryMarker(response);
+  if (recoveryMarker) {
+    setPasswordRecoveryMarker(response, recoveryMarker);
   }
 
   return response;

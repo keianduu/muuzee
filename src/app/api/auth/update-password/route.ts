@@ -1,13 +1,15 @@
 import { type NextRequest } from "next/server";
-import { authError } from "@/lib/auth/errors";
+import { authError, mapAuthProviderError } from "@/lib/auth/errors";
 import { authJsonResponse, readAuthJson } from "@/lib/auth/http";
 import {
   clearPasswordRecoveryMarker,
-  hasPasswordRecoveryMarker,
+  readPasswordRecoveryMarker,
+  verifyPasswordRecoveryMarker,
 } from "@/lib/auth/recovery";
 import { clearAccountLifecycleMarker } from "@/lib/account-lifecycle/marker";
 import { updatePassword } from "@/lib/auth/service";
 import type { AuthOperationResult } from "@/lib/auth/types";
+import { validatePassword } from "@/lib/auth/validation";
 import { createSupabaseRouteClient } from "@/lib/supabase/route";
 
 export async function POST(request: NextRequest) {
@@ -15,9 +17,26 @@ export async function POST(request: NextRequest) {
   const { supabase, applyAuthState } = createSupabaseRouteClient(request);
   let result: AuthOperationResult;
   try {
-    result = hasPasswordRecoveryMarker(request.cookies)
-      ? await updatePassword(supabase.auth, input)
-      : authError("expired_or_invalid_link");
+    const validated = validatePassword(input.password);
+    if (!validated.ok) {
+      result = validated;
+    } else {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        result = mapAuthProviderError(error, "authenticated");
+      } else if (!verifyPasswordRecoveryMarker(
+        readPasswordRecoveryMarker(request.cookies),
+        data.user.id,
+      )) {
+        result = authError("expired_or_invalid_link");
+      } else {
+        result = await updatePassword(
+          supabase.auth,
+          { password: validated.password },
+          data.user.id,
+        );
+      }
+    }
   } catch {
     result = authError("temporary", true);
   }
