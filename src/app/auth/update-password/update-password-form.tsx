@@ -6,6 +6,7 @@ import { MINIMUM_PASSWORD_LENGTH } from "@/lib/auth/validation";
 
 const ERROR_MESSAGE: Record<string, string> = {
   invalid_input: "8文字以上の新しいパスワードを入力してください。",
+  expired_or_invalid_link: "再設定リンクが無効か、有効期限が切れています。もう一度メールを送信してください。",
   unauthenticated: "再設定リンクの有効期限が切れています。もう一度メールを送信してください。",
   rate_limited: "しばらく待ってから、もう一度お試しください。",
   temporary: "現在更新できません。時間をおいて、もう一度お試しください。",

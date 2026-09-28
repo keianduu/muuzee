@@ -2,7 +2,8 @@ import type { AuthCallbackIntent, AuthErrorResult } from "./types";
 import { authError } from "./errors";
 
 export const AUTH_CALLBACK_PATH = "/auth/callback";
-export const DEFAULT_AUTH_RETURN_TO = "/";
+export const AUTH_COMPLETE_PATH = "/auth/complete";
+export const DEFAULT_AUTH_RETURN_TO = AUTH_COMPLETE_PATH;
 export const PASSWORD_RECOVERY_RETURN_TO = "/auth/update-password";
 export const MINIMUM_PASSWORD_LENGTH = 8;
 

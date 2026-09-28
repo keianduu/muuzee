@@ -36,6 +36,10 @@ describe("safe auth returnTo", () => {
     expect(resolveSafeReturnTo("/auth/callback?code=secret")).toBe(DEFAULT_AUTH_RETURN_TO);
   });
 
+  it("uses the neutral Auth completion page as the default destination", () => {
+    expect(resolveSafeReturnTo(null)).toBe("/auth/complete");
+  });
+
   it("builds a clean final redirect without callback credentials", () => {
     const redirect = buildFinalAuthRedirect("http://localhost:3000", "/saved?tab=art");
     expect(redirect.toString()).toBe("http://localhost:3000/saved?tab=art");

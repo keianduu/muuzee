@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { authJsonResponse, readAuthJson } from "@/lib/auth/http";
+import { clearPasswordRecoveryMarker } from "@/lib/auth/recovery";
 import { registerWithPassword } from "@/lib/auth/service";
 import { buildAuthCallbackUrl } from "@/lib/auth/validation";
 import { createSupabaseRouteClient } from "@/lib/supabase/route";
@@ -16,5 +17,7 @@ export async function POST(request: NextRequest) {
       typeof input.returnTo === "string" ? input.returnTo : null,
     ),
   });
-  return authJsonResponse(result, applyAuthState);
+  const response = await authJsonResponse(result, applyAuthState);
+  clearPasswordRecoveryMarker(response);
+  return response;
 }

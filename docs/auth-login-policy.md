@@ -55,8 +55,11 @@ flowchart TD
   Verify --> Verified
   Verified --> Cookie["SSR cookies + private/no-store response headers"]
   Cookie --> Return["validated internal returnTo"]
-  Return --> Handoff["authenticated transition / session bootstrap for Order 242"]
-  Update["POST /api/auth/update-password"] --> Fresh["fresh getUser"]
+  Return --> Complete["/auth/complete or explicit safe User route"]
+  Complete --> Handoff["authenticated transition / session bootstrap for Order 242"]
+  Verify -->|recovery only| Marker["short-lived HttpOnly recovery marker"]
+  Update["POST /api/auth/update-password"] --> MarkerCheck["recovery marker required"]
+  MarkerCheck --> Fresh["fresh getUser"]
   Fresh --> Change["updateUser password"]
   Logout["POST /api/auth/logout"] --> LocalSignout["signOut scope=local"]
 ```
@@ -76,10 +79,11 @@ Both paths require a verified `claims.sub` before success. The final redirect is
 | `/api/auth/register` | POST | `signUp()` | `awaiting_email_confirmation`, or `authenticated` only when the provider returns and verifies an immediate session |
 | `/api/auth/resend-confirmation` | POST | `resend({ type: "signup" })` | `confirmation_requested` |
 | `/api/auth/forgot-password` | POST | `resetPasswordForEmail()` | `recovery_requested` |
-| `/auth/callback` | GET | `verifyOtp()` or `exchangeCodeForSession()` | clean internal redirect after verified session |
-| `/api/auth/update-password` | POST | fresh `getUser()`, then `updateUser({ password })` | `password_updated` |
+| `/auth/callback` | GET | `verifyOtp()` or `exchangeCodeForSession()` | clean internal redirect after verified session; recovery source also receives the purpose marker |
+| `/auth/complete` | GET/UI | neutral Auth completion/error surface | default confirmation/Login callback landing and Order 242 handoff surface |
+| `/api/auth/update-password` | POST | recovery marker, fresh `getUser()`, then `updateUser({ password })` | `password_updated`, then marker removal |
 | `/api/auth/logout` | POST | `signOut({ scope: "local" })` | `signed_out` |
-| `/auth/update-password` | GET/UI | minimal recovery-session verification surface | submits only to the typed update-password route |
+| `/auth/update-password` | GET/UI | fresh `getUser()` plus recovery marker | submits only to the guarded update-password route |
 
 JSON success and failure bodies contain only typed domain state. Passwords, tokens, cookies, provider messages, SQL text, stack traces, and account-existence hints are never returned.
 
@@ -93,7 +97,9 @@ With confirmation enabled, `signUp()` normally returns no session. The applicati
 
 The confirmation email must return to the allow-listed `/auth/callback` URL. The callback supports both current Supabase server-side email-template `token_hash` verification and PKCE code exchange. After either flow it verifies the resulting session and returns only to a safe internal path.
 
-The current registration fallback is `/`, because a Production Profile Settings destination is not yet available. The existing root route currently redirects to the Admin landing page; User Front integration must supply a valid internal `returnTo` once its destination exists. No nonexistent Profile URL is hardcoded.
+The default Auth completion destination is `/auth/complete`. It is a neutral Production Account surface and never falls through the root `/` route to the Admin landing page. A caller may still supply an explicitly validated internal User route through `returnTo`; no nonexistent Profile URL is hardcoded.
+
+Invalid or expired callbacks also return to `/auth/complete?authError=<safe-code>`. Provider messages and callback credentials are not copied to that URL.
 
 Terms/Privacy acceptance is not stored in Auth metadata. `user_legal_consents` remains an Order 250 dependency and is not implemented by Order 241.
 
@@ -105,12 +111,18 @@ Forgot Password request
   -> allow-listed recovery email
   -> /auth/callback (token_hash or PKCE code)
   -> verified cookie session
+  -> short-lived recovery-purpose marker
   -> /auth/update-password
-  -> fresh getUser()
+  -> marker + fresh getUser()
   -> updateUser({ password })
+  -> recovery-purpose marker removed
 ```
 
-Unknown-email recovery requests remain neutral. Rate limiting and provider outages use stable safe errors. The update route accepts no `userId` or email as authorization proof and refuses a missing/invalid authenticated session.
+Unknown-email recovery requests remain neutral. Rate limiting and provider outages use stable safe errors. The update route accepts no `userId` or email as authorization proof and requires both a fresh authenticated user and the recovery-purpose marker. A normal Login session without the marker cannot use the recovery password endpoint.
+
+The marker cookie is `muuzee-password-recovery-v1` with an opaque constant value only. It is HttpOnly, SameSite=Lax, `Path=/`, Secure in Production, and expires after 15 minutes. The root path is required because the same marker is written by `/auth/callback`, read by both `/auth/update-password` and `/api/auth/update-password`, and cleared by `/api/auth/logout`. It contains no password, token, email, user ID, or account data. Callback handling clears any prior marker and sets it again only after a verified transition whose source is `recovery`; Login and signup confirmation never establish recovery purpose.
+
+Successful password update clears the marker. Retryable update failure leaves it available only for its remaining short lifetime, while Logout clears it regardless of sign-out result.
 
 The recovery callback origin is derived from the incoming request origin, not a hardcoded environment domain. Each environment must explicitly allow that callback. The minimal `/auth/update-password` page is a verification surface, not the final shared Account UI.
 
@@ -120,7 +132,7 @@ The recovery callback origin is derived from the incoming request origin, not a 
 - Muuzee adds no custom token, credential object, URL login flag, or localStorage session.
 - Middleware refreshes/verifies cookie sessions on reload. User Data derives identity from verified `claims.sub` and remains protected by owner RLS.
 - Route Handler mutations use the Response-aware adapter. It applies both cookies and the cache headers supplied by `@supabase/ssr` (`private/no-store`, `Expires`, and `Pragma`) to the exact returned `NextResponse`.
-- Current-browser logout uses local scope. It deletes no Account data and performs no reverse sync to Guest Saved.
+- Current-browser logout uses local scope and clears any recovery-purpose marker. It deletes no Account data and performs no reverse sync to Guest Saved.
 - Authentication proves identity; authorization remains the Order 230 grants/RLS contract.
 
 ## 8. Safe `returnTo`
@@ -141,7 +153,7 @@ Rejected:
 - Auth callback loops;
 - malformed encodings.
 
-Invalid input falls back to a known internal destination. User input never becomes an absolute provider redirect or raw `Location` value.
+Invalid input falls back to `/auth/complete`. Recovery email construction explicitly falls back to `/auth/update-password`. User input never becomes an absolute provider redirect or raw `Location` value.
 
 ## 9. Error and enumeration contract
 
@@ -161,7 +173,7 @@ Registration duplicates return the same `awaiting_email_confirmation` state as a
 Order 241 exposes two intentionally small authenticated-session boundaries:
 
 1. Login/immediate-session registration returns `{ status: "authenticated", transition: { type: "authenticated", source } }` only after verified `claims.sub` exists.
-2. Confirmation/recovery callbacks establish the cookie session, then redirect to a clean internal URL. On reload, middleware plus the normal browser/server Supabase session bootstrap resolves the same authenticated state.
+2. Confirmation/recovery callbacks establish the cookie session, then redirect to a clean internal URL. `/auth/complete` is the neutral default surface where Order 242 can later detect authenticated state plus a non-empty Guest store, perform the merge, and continue to final navigation. On reload, middleware plus the normal browser/server Supabase session bootstrap resolves the same authenticated state.
 
 Order 242 may run Guest Saved merge only when:
 
