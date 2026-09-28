@@ -204,10 +204,10 @@ The repository-local `supabase/config.toml` also mirrors the eight-character min
 ## 12. Deferred scope
 
 - Guest Saved adapter/merge/cleanup: Order 242.
-- Legal consent persistence and account lifecycle policy: Order 250 and later implementation.
+- Legal consent persistence and Account lifecycle implementation: the Draft policy is now documented in `docs/user-data-retention-policy.md`; it remains pending Human / Legal review and downstream implementation.
 - STG/Production Auth/SMTP/redirect operations: Order 260.
 - OAuth, passwordless, Phone, MFA, Email change, all-device logout, and final shared Auth UI: Future/downstream.
-- Account deletion: requires retention, reauthentication, Storage cleanup, and privileged server orchestration; it is not implemented here.
+- Account deletion: the current Draft recommends fresh reauthentication, optional export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth deletion, cascade verification, and session cleanup. It is not implemented here.
 
 ## Official evidence
 

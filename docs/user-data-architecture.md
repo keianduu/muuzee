@@ -13,6 +13,7 @@ When this document conflicts with a more specific current artifact, use these So
 - User Data Access: `docs/user-data-access.md`
 - Auth/session policy: `docs/auth-login-policy.md`
 - Guest Saved sync policy: `docs/guest-save-sync-policy.md` (approved Order 240 contract)
+- Retention/delete/export policy: `docs/user-data-retention-policy.md` (Order 250 Draft pending Human / Legal review)
 
 The Candidate Data Model and comparison rationale later in this document are retained as **historical Order 180 design context**. They do not reopen decisions locked by Order 195 or replace implemented migrations.
 
@@ -338,11 +339,7 @@ Public DTOs must not gain `isSaved`, `isSeen`, or `isFavorite` fields. The viewe
 
 ### Account deletion
 
-1. Authenticate and authorize the deletion request.
-2. Delete or schedule deletion of the user's avatar Storage objects.
-3. Delete the Auth user through the approved privileged account lifecycle.
-4. `ON DELETE CASCADE` removes Profile, Preferences, Personal Actions, ArtWall settings, and ArtWall items.
-5. Verify no user-owned rows or avatar objects remain, subject to a separately approved legal/audit retention policy.
+The lifecycle contract is defined in `docs/user-data-retention-policy.md`. Its current Draft recommendation is fresh identity verification, optional pre-delete export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth-user deletion, database cascades, verification, and browser-session cleanup. Human / Legal review must approve the policy before implementation.
 
 Logout is not deletion and performs none of these steps.
 
@@ -412,7 +409,7 @@ Order 220 implements this Account DAL. Its fixed contract is:
 | 230 RLS | Done: minimum grants, 20 owner policies, and owner/cross-user/anonymous SQL regression tests |
 | 240 Guest policy | Approved: versioned localStorage, no TTL, idempotent set union, per-ref cleanup/retry, and no logout reverse sync |
 | 242 Guest implementation | Implemented: validated Guest store, bounded Account merge through DAL/RLS, `/auth/complete` handoff, exact latest-store cleanup, retry, and reusable session bootstrap; broad User Front Save/Saved UI wiring remains downstream |
-| 250 Legal Consent | Pending: approve retention/delete/export policy before `user_legal_consents` migration |
+| 250 Lifecycle policy | Draft documented: retention/delete/export/Legal Consent policy awaits Human / Legal review before `user_legal_consents` or lifecycle implementation |
 
 ## 14. Remaining Downstream Decisions
 
@@ -423,7 +420,7 @@ The following remain explicit downstream questions. Resolved Target v1 decisions
 3. ArtWall initial generation rule and maximum item count.
 4. UX for Personal Actions that reference archived/unpublished Masters.
 5. Whether public/shared ArtWall becomes a future capability; MVP remains private.
-6. Legal-consent retention, account-delete, and export behavior required before Order 250 creates the Physical table.
+6. Final Human / Legal approval of the Draft retention/delete/export and consent behavior in `docs/user-data-retention-policy.md`.
 
 These decisions do not change the current ownership model, canonical UUID strategy, or implemented Personal Action targets.
 
