@@ -85,7 +85,7 @@ Both paths require a verified `claims.sub` before success. The final redirect is
 | `/api/auth/logout` | POST | `signOut({ scope: "local" })` | `signed_out` |
 | `/auth/update-password` | GET/UI | fresh `getUser()` plus recovery marker | submits only to the guarded update-password route |
 | `/api/account/export` | GET | fresh `getUser()` plus owner-RLS reads | private/no-store JSON attachment |
-| `/api/account/reauthenticate` | POST | fresh `getUser()` then `signInWithPassword()` for the same confirmed identity | short-lived lifecycle marker |
+| `/api/account/reauthenticate` | POST | fresh `getUser()` then `signInWithPassword()` for the same confirmed identity | HMAC-authenticated, user-bound lifecycle marker |
 | `/api/account/delete` | POST | marker + fresh `getUser()` + preconditions + server-only Admin hard delete | `account_deleted` |
 
 JSON success and failure bodies contain only typed domain state. Passwords, tokens, cookies, provider messages, SQL text, stack traces, and account-existence hints are never returned.
@@ -210,7 +210,7 @@ The repository-local `supabase/config.toml` also mirrors the eight-character min
 - Account Settings UI and Registration consent capture remain downstream; the Order 251 persistence and lifecycle server boundaries are implemented.
 - STG/Production Auth/SMTP/redirect operations: Order 260.
 - OAuth, passwordless, Phone, MFA, Email change, all-device logout, and final shared Auth UI: Future/downstream.
-- Account deletion: Order 251 implements fresh password reauthentication, optional JSON export, fail-closed avatar handling, privileged hard deletion, database cascades, best-effort local sign-out, and lifecycle-marker cleanup. A real avatar Storage adapter remains future work; completed deletion is irreversible and is not restored by Product, Support, or backup/PITR.
+- Account deletion: Order 251 implements fresh password reauthentication, optional JSON export, fail-closed avatar handling, privileged hard deletion, database cascades, best-effort local sign-out, and lifecycle-marker cleanup. The 15-minute marker is HMAC-SHA256 signed with the dedicated `ACCOUNT_LIFECYCLE_MARKER_SECRET`; signature verification includes the fresh Auth UUID without placing it or credentials in the cookie payload. Missing configuration, malformed/tampered/expired markers, and markers issued for another user fail closed. A real avatar Storage adapter remains future work; completed deletion is irreversible and is not restored by Product, Support, or backup/PITR.
 
 ## Official evidence
 

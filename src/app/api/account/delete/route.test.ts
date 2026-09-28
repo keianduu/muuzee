@@ -17,7 +17,7 @@ describe("POST /api/account/delete", () => {
     } as never);
   });
 
-  it("passes a missing marker as false and cannot delete", async () => {
+  it("passes a missing marker as null, denies deletion, and clears stale state", async () => {
     vi.mocked(deleteAccount).mockResolvedValue({
       ok: false,
       error: { code: "reauthentication_required", retryable: false },
@@ -27,8 +27,27 @@ describe("POST /api/account/delete", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ confirm: true }),
     }));
-    expect(deleteAccount).toHaveBeenCalledWith(expect.anything(), { confirm: true }, false);
+    expect(deleteAccount).toHaveBeenCalledWith(expect.anything(), { confirm: true }, null);
     expect(response.status).toBe(403);
+    expect(response.cookies.get(ACCOUNT_LIFECYCLE_COOKIE)?.value).toBe("");
+  });
+
+  it("passes the raw marker for server verification and clears it when invalid", async () => {
+    vi.mocked(deleteAccount).mockResolvedValue({
+      ok: false,
+      error: { code: "reauthentication_required", retryable: false },
+    });
+    const response = await POST(new NextRequest("http://localhost:3000/api/account/delete", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: `${ACCOUNT_LIFECYCLE_COOKIE}=1`,
+      },
+      body: JSON.stringify({ confirm: true }),
+    }));
+    expect(deleteAccount).toHaveBeenCalledWith(expect.anything(), { confirm: true }, "1");
+    expect(response.status).toBe(403);
+    expect(response.cookies.get(ACCOUNT_LIFECYCLE_COOKIE)?.value).toBe("");
   });
 
   it("expires the marker after committed deletion", async () => {
@@ -41,7 +60,7 @@ describe("POST /api/account/delete", () => {
       },
       body: JSON.stringify({ confirm: true }),
     }));
-    expect(deleteAccount).toHaveBeenCalledWith(expect.anything(), { confirm: true }, true);
+    expect(deleteAccount).toHaveBeenCalledWith(expect.anything(), { confirm: true }, "1");
     expect(response.cookies.get(ACCOUNT_LIFECYCLE_COOKIE)?.value).toBe("");
   });
 });

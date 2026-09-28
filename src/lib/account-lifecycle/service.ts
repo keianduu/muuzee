@@ -4,6 +4,10 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createUserDataRepository, type UserDataRepository } from "@/lib/user/repository";
 import { listLegalConsents } from "@/lib/legal-consent/service";
+import {
+  createAccountLifecycleMarker,
+  verifyAccountLifecycleMarker,
+} from "./marker";
 import type {
   AccountDeletionAggregate,
   AccountExportDTO,
@@ -21,11 +25,13 @@ export type AccountExportDependencies = {
 
 export type AccountReauthenticationDependencies = {
   auth: ViewerAuthClient;
+  issueMarker(userId: string): string;
 };
 
 export type AccountDeletionDependencies = {
   auth: ViewerAuthClient;
   repository: UserDataRepository;
+  verifyMarker(marker: string | null, userId: string): boolean;
   cleanupExternalProcessors(): Promise<void>;
   deleteAuthUser(userId: string): Promise<{ error: unknown }>;
   emitDeletionAggregate(payload: AccountDeletionAggregate): Promise<void>;
@@ -57,6 +63,7 @@ function defaultDeletionDependencies(client: SupabaseClient): AccountDeletionDep
   return {
     auth: client.auth,
     repository: createUserDataRepository(client),
+    verifyMarker: verifyAccountLifecycleMarker,
     // No Account-linked external processor exists today. Each future
     // integration must choose blocking cleanup or a reviewed minimal retry.
     cleanupExternalProcessors: async () => undefined,
@@ -119,8 +126,11 @@ export async function exportAccountData(
 export async function reauthenticateAccount(
   client: SupabaseClient,
   input: unknown,
-  dependencies: AccountReauthenticationDependencies = { auth: client.auth },
-): Promise<AccountLifecycleResult<{ reauthenticated: true }>> {
+  dependencies: AccountReauthenticationDependencies = {
+    auth: client.auth,
+    issueMarker: createAccountLifecycleMarker,
+  },
+): Promise<AccountLifecycleResult<{ reauthenticated: true; marker: string }>> {
   if (
     !input
     || typeof input !== "object"
@@ -147,7 +157,17 @@ export async function reauthenticateAccount(
   }
   const { data, error } = verification;
   if (error || !data.user || data.user.id !== viewer.id) return failure("invalid_credentials");
-  return { ok: true, data: { reauthenticated: true } };
+  try {
+    return {
+      ok: true,
+      data: {
+        reauthenticated: true,
+        marker: dependencies.issueMarker(viewer.id),
+      },
+    };
+  } catch {
+    return failure("temporary", true);
+  }
 }
 
 export function deletionAggregate(createdAt: string, now = new Date()): AccountDeletionAggregate {
@@ -172,7 +192,7 @@ export function deletionAggregate(createdAt: string, now = new Date()): AccountD
 export async function deleteAccount(
   client: SupabaseClient,
   input: unknown,
-  reauthenticated: boolean,
+  marker: string | null,
   dependencies?: AccountDeletionDependencies,
 ): Promise<AccountLifecycleResult<{ status: "account_deleted" }>> {
   if (
@@ -184,10 +204,19 @@ export async function deleteAccount(
   ) {
     return failure("invalid_input");
   }
-  if (!reauthenticated) return failure("reauthentication_required");
 
   const viewer = await requireFreshUser(dependencies?.auth ?? client.auth);
   if (!viewer) return failure("unauthenticated");
+
+  const markerIsValid = (() => {
+    try {
+      return (dependencies?.verifyMarker ?? verifyAccountLifecycleMarker)(marker, viewer.id);
+    } catch {
+      return false;
+    }
+  })();
+  if (!markerIsValid) return failure("reauthentication_required");
+
   let activeDependencies: AccountDeletionDependencies;
   try {
     activeDependencies = dependencies ?? defaultDeletionDependencies(client);

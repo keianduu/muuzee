@@ -10,6 +10,13 @@ describe("Account lifecycle privileged dependency boundary", () => {
     expect(lifecycle).toContain("createSupabaseAdminClient");
   });
 
+  it("uses a dedicated marker secret instead of Supabase credentials", () => {
+    const source = readFileSync(join(process.cwd(), "src/lib/account-lifecycle/marker.ts"), "utf8");
+    expect(source).toContain("ACCOUNT_LIFECYCLE_MARKER_SECRET");
+    expect(source).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(source).not.toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  });
+
   it("does not expose privileged imports from route modules", () => {
     for (const path of [
       "src/app/api/account/export/route.ts",

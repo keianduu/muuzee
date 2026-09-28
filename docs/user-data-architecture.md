@@ -1,6 +1,6 @@
 # User Data Architecture
 
-Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled through the Order 242 Guest Saved adapter and Account merge implementation.
+Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled through the Order 251 Account lifecycle implementation.
 
 This document explains ownership and durable architecture. It is not the exact schema, migration, or Data Access Source of Truth. Approved product behavior comes from the Notion requirement **Account / Login / Guest Save** and the confirmed Order 80 Public DTO contract. Prototype files are observations only; they are not schema specifications.
 
@@ -339,7 +339,7 @@ Public DTOs must not gain `isSaved`, `isSeen`, or `isFavorite` fields. The viewe
 
 ### Account deletion
 
-The approved lifecycle contract is defined in `docs/user-data-retention-policy.md`. Order 251 implements JSON export, fresh password reauthentication, an opaque 15-minute purpose marker, fail-closed avatar cleanup when a stored path exists, privileged Auth-user hard deletion, database cascades, best-effort local sign-out, and marker cleanup. No avatar Storage adapter or external processor exists yet. Completed deletion is irreversible; Support and backup/PITR do not restore an individual deleted Account.
+The approved lifecycle contract is defined in `docs/user-data-retention-policy.md`. Order 251 implements JSON export, fresh password reauthentication, a 15-minute HMAC-authenticated purpose marker bound to the fresh Auth UUID, fail-closed avatar cleanup when a stored path exists, privileged Auth-user hard deletion, database cascades, best-effort local sign-out, and marker cleanup. The marker contains version, purpose, issue/expiry times, nonce, and signature; the UUID participates only in the server-side signature input and is not stored in the cookie payload. `ACCOUNT_LIFECYCLE_MARKER_SECRET` is dedicated to this purpose and has no insecure fallback. No avatar Storage adapter or external processor exists yet. Completed deletion is irreversible; Support and backup/PITR do not restore an individual deleted Account.
 
 Logout is not deletion and performs none of these steps.
 
@@ -426,7 +426,7 @@ These decisions do not change the current ownership model, canonical UUID strate
 
 ## 15. Current Physical State
 
-- Seven User Data tables exist: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`.
+- Eight User Data tables exist: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, `user_artwall_items`, and `user_legal_consents`.
 - All eight have RLS enabled. Migration `202609270001_user_rls_authorization.sql` grants normal User Data operations through 20 owner policies. Migration `202609280001_user_legal_consents.sql` adds owner SELECT only for Legal Consent; `anon` and normal authenticated writes have no table privileges.
 - Trusted service-role access is limited to the Legal Consent writer and Account lifecycle hard-delete boundary. Normal User Data, Guest Saved, and Auth flows do not import Admin credentials.
 - `user_visits` is Future / excluded from Target v1 and is not synonymous with Seen.

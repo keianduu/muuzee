@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 import { lifecycleJsonResponse, readLifecycleJson } from "@/lib/account-lifecycle/http";
 import {
   clearAccountLifecycleMarker,
-  hasAccountLifecycleMarker,
+  readAccountLifecycleMarker,
 } from "@/lib/account-lifecycle/marker";
 import { deleteAccount } from "@/lib/account-lifecycle/service";
 import { createSupabaseRouteClient } from "@/lib/supabase/route";
@@ -13,9 +13,15 @@ export async function POST(request: NextRequest) {
   const result = await deleteAccount(
     supabase,
     input,
-    hasAccountLifecycleMarker(request.cookies),
+    readAccountLifecycleMarker(request.cookies),
   );
   const response = applyAuthState(lifecycleJsonResponse(result));
-  if (result.ok) clearAccountLifecycleMarker(response);
+  if (
+    result.ok
+    || result.error.code === "reauthentication_required"
+    || result.error.code === "unauthenticated"
+  ) {
+    clearAccountLifecycleMarker(response);
+  }
   return response;
 }

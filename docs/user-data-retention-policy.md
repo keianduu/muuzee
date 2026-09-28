@@ -104,7 +104,7 @@ Before execution, require:
 - a fresh reauthentication or equivalent recent confirmation suitable for a destructive action;
 - clear irreversible-deletion copy covering Account data, Storage, Guest local state, export option, and re-registration behavior.
 
-An old cookie session alone is not sufficient. Order 251 implements password reauthentication with fresh `getUser()` identity and a 15-minute opaque HttpOnly marker; the final Account Settings UX remains downstream.
+An old cookie session alone is not sufficient. Order 251 implements password reauthentication with fresh `getUser()` identity and a 15-minute HttpOnly HMAC marker. The marker is signed with a dedicated secret, validated against server time, and bound to the fresh Auth UUID through the signature input; missing configuration and invalid markers fail closed. The final Account Settings UX remains downstream.
 
 ### 5.2 Server-only orchestration
 
