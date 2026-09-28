@@ -82,7 +82,7 @@ describe("Auth safe domain contract", () => {
     });
     await expect(requestPasswordRecovery(client, {
       email: "unknown@example.com",
-      redirectTo: "http://localhost:3000/auth/callback",
+      buildRedirectTo: () => "http://localhost:3000/auth/callback",
     })).resolves.toEqual({ ok: true, status: "recovery_requested" });
   });
 
@@ -117,7 +117,7 @@ describe("Auth safe domain contract", () => {
     const pkceClient = fakeClient();
     await expect(completeAuthCallback(pkceClient, {
       code: "one-time-code",
-      intent: "confirmation",
+      intent: "recovery",
     })).resolves.toMatchObject({
       ok: true,
       status: "authenticated",
@@ -134,6 +134,21 @@ describe("Auth safe domain contract", () => {
     expect(otpClient.verifyOtp).toHaveBeenCalledWith({
       token_hash: "one-time-token-hash",
       type: "recovery",
+    });
+  });
+
+  it("passes the normalized requested email to recovery redirect construction", async () => {
+    const buildRedirectTo = vi.fn(() => "http://localhost:3000/auth/callback?recovery_state=signed");
+    const client = fakeClient();
+
+    await expect(requestPasswordRecovery(client, {
+      email: " Person@Example.com ",
+      buildRedirectTo,
+    })).resolves.toEqual({ ok: true, status: "recovery_requested" });
+
+    expect(buildRedirectTo).toHaveBeenCalledWith("person@example.com");
+    expect(client.resetPasswordForEmail).toHaveBeenCalledWith("person@example.com", {
+      redirectTo: "http://localhost:3000/auth/callback?recovery_state=signed",
     });
   });
 

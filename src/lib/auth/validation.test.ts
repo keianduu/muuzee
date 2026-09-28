@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAuthCallbackUrl,
   buildFinalAuthRedirect,
   DEFAULT_AUTH_RETURN_TO,
   resolveSafeReturnTo,
@@ -45,5 +46,23 @@ describe("safe auth returnTo", () => {
     expect(redirect.toString()).toBe("http://localhost:3000/saved?tab=art");
     expect(redirect.searchParams.has("code")).toBe(false);
     expect(redirect.searchParams.has("token_hash")).toBe(false);
+  });
+
+  it("carries signed Recovery callback state only on Recovery callback URLs", () => {
+    const recovery = new URL(buildAuthCallbackUrl(
+      "http://localhost:3000",
+      "recovery",
+      null,
+      { recoveryState: "signed-state" },
+    ));
+    const confirmation = new URL(buildAuthCallbackUrl(
+      "http://localhost:3000",
+      "confirmation",
+      null,
+      { recoveryState: "signed-state" },
+    ));
+
+    expect(recovery.searchParams.get("recovery_state")).toBe("signed-state");
+    expect(confirmation.searchParams.has("recovery_state")).toBe(false);
   });
 });

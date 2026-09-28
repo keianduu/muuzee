@@ -1,6 +1,9 @@
 import { type NextRequest } from "next/server";
 import { authJsonResponse, readAuthJson } from "@/lib/auth/http";
-import { clearPasswordRecoveryMarker } from "@/lib/auth/recovery";
+import {
+  clearPasswordRecoveryMarker,
+  createPasswordRecoveryCallbackState,
+} from "@/lib/auth/recovery";
 import { clearAccountLifecycleMarker } from "@/lib/account-lifecycle/marker";
 import { requestPasswordRecovery } from "@/lib/auth/service";
 import { buildAuthCallbackUrl } from "@/lib/auth/validation";
@@ -11,10 +14,11 @@ export async function POST(request: NextRequest) {
   const { supabase, applyAuthState } = createSupabaseRouteClient(request);
   const result = requestPasswordRecovery(supabase.auth, {
     email: input.email,
-    redirectTo: buildAuthCallbackUrl(
+    buildRedirectTo: (normalizedEmail) => buildAuthCallbackUrl(
       request.nextUrl.origin,
       "recovery",
       typeof input.returnTo === "string" ? input.returnTo : null,
+      { recoveryState: createPasswordRecoveryCallbackState(normalizedEmail) },
     ),
   });
   const response = await authJsonResponse(result, applyAuthState);

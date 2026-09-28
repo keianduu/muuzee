@@ -5,6 +5,7 @@ import {
   clearPasswordRecoveryMarker,
   createPasswordRecoveryMarker,
   setPasswordRecoveryMarker,
+  verifyPasswordRecoveryCallbackState,
 } from "@/lib/auth/recovery";
 import { completeAuthCallback } from "@/lib/auth/service";
 import {
@@ -12,6 +13,7 @@ import {
   DEFAULT_AUTH_RETURN_TO,
   PASSWORD_RECOVERY_RETURN_TO,
   resolveSafeReturnTo,
+  validateEmail,
 } from "@/lib/auth/validation";
 import type { AuthCallbackIntent } from "@/lib/auth/types";
 import { createSupabaseRouteClient } from "@/lib/supabase/route";
@@ -23,14 +25,17 @@ function callbackIntent(value: string | null): AuthCallbackIntent | null {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const intent = callbackIntent(searchParams.get("intent"));
+  const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const recoveryState = searchParams.get("recovery_state");
   const fallback = intent === "recovery" ? PASSWORD_RECOVERY_RETURN_TO : DEFAULT_AUTH_RETURN_TO;
   const returnTo = resolveSafeReturnTo(searchParams.get("returnTo"), fallback);
   const { supabase, applyAuthState } = createSupabaseRouteClient(request);
   let result;
   try {
     result = await completeAuthCallback(supabase.auth, {
-      code: searchParams.get("code"),
-      tokenHash: searchParams.get("token_hash"),
+      code,
+      tokenHash,
       type: searchParams.get("type"),
       intent,
     });
@@ -39,11 +44,28 @@ export async function GET(request: NextRequest) {
   }
 
   let recoveryMarker: string | null = null;
-  if (result.ok && result.transition?.source === "recovery") {
+  const providerRecovery = result.ok && result.transition?.source === "recovery";
+  const pkceRecoveryCandidate = result.ok
+    && Boolean(code)
+    && (intent === "recovery" || recoveryState !== null);
+
+  if (pkceRecoveryCandidate && !recoveryState) {
+    result = authError("expired_or_invalid_link");
+  } else if (providerRecovery || pkceRecoveryCandidate) {
     try {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
         result = authError("unauthenticated");
+      } else if (pkceRecoveryCandidate) {
+        const email = validateEmail(data.user.email);
+        if (
+          !email.ok
+          || !verifyPasswordRecoveryCallbackState(recoveryState, email.email)
+        ) {
+          result = authError("expired_or_invalid_link");
+        } else {
+          recoveryMarker = createPasswordRecoveryMarker(data.user.id);
+        }
       } else {
         recoveryMarker = createPasswordRecoveryMarker(data.user.id);
       }

@@ -5,10 +5,13 @@ import type { NextResponse } from "next/server";
 
 export const PASSWORD_RECOVERY_COOKIE = "muuzee-password-recovery-v1";
 export const PASSWORD_RECOVERY_MAX_AGE_SECONDS = 15 * 60;
+export const PASSWORD_RECOVERY_CALLBACK_STATE_MAX_AGE_SECONDS = 60 * 60;
 export const PASSWORD_RECOVERY_MARKER_SECRET_ENV = "PASSWORD_RECOVERY_MARKER_SECRET";
 
 const MARKER_VERSION = "v1";
 const MARKER_PURPOSE = "password-recovery";
+const CALLBACK_STATE_VERSION = "v1";
+const CALLBACK_STATE_PURPOSE = "password-recovery-callback";
 const MINIMUM_SECRET_BYTES = 32;
 const BASE64URL_256_BIT_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const UNIX_SECONDS_PATTERN = /^\d{10,13}$/;
@@ -55,7 +58,7 @@ function markerMessage(input: {
   issuedAt: number;
   expiresAt: number;
   nonce: string;
-  userId: string;
+  binding: string;
 }) {
   return [
     input.version,
@@ -63,8 +66,16 @@ function markerMessage(input: {
     input.issuedAt,
     input.expiresAt,
     input.nonce,
-    input.userId,
+    input.binding,
   ].join("|");
+}
+
+function normalizedEmailBinding(email: string) {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !normalized.includes("@")) {
+    throw new PasswordRecoveryMarkerConfigurationError();
+  }
+  return normalized;
 }
 
 function markerSignature(message: string, secret: string) {
@@ -86,10 +97,89 @@ export function createPasswordRecoveryMarker(userId: string, options: MarkerOpti
     issuedAt,
     expiresAt,
     nonce,
-    userId,
+    binding: userId,
   });
   const signature = markerSignature(message, secret);
   return [MARKER_VERSION, MARKER_PURPOSE, issuedAt, expiresAt, nonce, signature].join(".");
+}
+
+export function createPasswordRecoveryCallbackState(
+  email: string,
+  options: MarkerOptions = {},
+) {
+  const secret = markerSecret(options.secret);
+  const issuedAt = Math.floor((options.now ?? new Date()).getTime() / 1000);
+  const expiresAt = issuedAt + PASSWORD_RECOVERY_CALLBACK_STATE_MAX_AGE_SECONDS;
+  const nonce = options.nonce ?? randomBytes(32).toString("base64url");
+  if (!BASE64URL_256_BIT_PATTERN.test(nonce)) {
+    throw new PasswordRecoveryMarkerConfigurationError();
+  }
+  const message = markerMessage({
+    version: CALLBACK_STATE_VERSION,
+    purpose: CALLBACK_STATE_PURPOSE,
+    issuedAt,
+    expiresAt,
+    nonce,
+    binding: normalizedEmailBinding(email),
+  });
+  const signature = markerSignature(message, secret);
+  return [
+    CALLBACK_STATE_VERSION,
+    CALLBACK_STATE_PURPOSE,
+    issuedAt,
+    expiresAt,
+    nonce,
+    signature,
+  ].join(".");
+}
+
+export function verifyPasswordRecoveryCallbackState(
+  state: string | null,
+  email: string,
+  options: MarkerOptions = {},
+) {
+  if (!state || !email) return false;
+  try {
+    const [version, purpose, issuedAtText, expiresAtText, nonce, signature, ...extra] = state.split(".");
+    if (
+      extra.length
+      || version !== CALLBACK_STATE_VERSION
+      || purpose !== CALLBACK_STATE_PURPOSE
+      || !UNIX_SECONDS_PATTERN.test(issuedAtText)
+      || !UNIX_SECONDS_PATTERN.test(expiresAtText)
+      || !BASE64URL_256_BIT_PATTERN.test(nonce)
+      || !BASE64URL_256_BIT_PATTERN.test(signature)
+    ) {
+      return false;
+    }
+
+    const issuedAt = Number(issuedAtText);
+    const expiresAt = Number(expiresAtText);
+    const now = Math.floor((options.now ?? new Date()).getTime() / 1000);
+    if (
+      !Number.isSafeInteger(issuedAt)
+      || !Number.isSafeInteger(expiresAt)
+      || expiresAt - issuedAt !== PASSWORD_RECOVERY_CALLBACK_STATE_MAX_AGE_SECONDS
+      || issuedAt > now
+      || expiresAt <= now
+    ) {
+      return false;
+    }
+
+    const message = markerMessage({
+      version,
+      purpose,
+      issuedAt,
+      expiresAt,
+      nonce,
+      binding: normalizedEmailBinding(email),
+    });
+    const expected = Buffer.from(markerSignature(message, markerSecret(options.secret)), "base64url");
+    const actual = Buffer.from(signature, "base64url");
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  } catch {
+    return false;
+  }
 }
 
 export function verifyPasswordRecoveryMarker(
@@ -125,7 +215,14 @@ export function verifyPasswordRecoveryMarker(
       return false;
     }
 
-    const message = markerMessage({ version, purpose, issuedAt, expiresAt, nonce, userId });
+    const message = markerMessage({
+      version,
+      purpose,
+      issuedAt,
+      expiresAt,
+      nonce,
+      binding: userId,
+    });
     const expected = Buffer.from(markerSignature(message, markerSecret(options.secret)), "base64url");
     const actual = Buffer.from(signature, "base64url");
     return expected.length === actual.length && timingSafeEqual(expected, actual);

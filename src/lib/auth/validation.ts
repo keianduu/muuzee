@@ -38,6 +38,7 @@ export function buildAuthCallbackUrl(
   requestOrigin: string,
   intent: AuthCallbackIntent,
   returnTo?: string | null,
+  options: { recoveryState?: string } = {},
 ) {
   const callback = new URL(AUTH_CALLBACK_PATH, requestOrigin);
   callback.searchParams.set("intent", intent);
@@ -48,6 +49,9 @@ export function buildAuthCallbackUrl(
       intent === "recovery" ? PASSWORD_RECOVERY_RETURN_TO : DEFAULT_AUTH_RETURN_TO,
     ),
   );
+  if (intent === "recovery" && options.recoveryState) {
+    callback.searchParams.set("recovery_state", options.recoveryState);
+  }
   return callback.toString();
 }
 

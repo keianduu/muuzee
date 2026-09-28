@@ -115,13 +115,13 @@ export async function resendRegistrationConfirmation(
 
 export async function requestPasswordRecovery(
   client: AuthClient,
-  input: { email?: unknown; redirectTo: string },
+  input: { email?: unknown; buildRedirectTo: (normalizedEmail: string) => string },
 ): Promise<AuthOperationResult> {
   const validated = validateEmail(input.email);
   if (!validated.ok) return validated;
 
   const { error } = await client.resetPasswordForEmail(validated.email, {
-    redirectTo: input.redirectTo,
+    redirectTo: input.buildRedirectTo(validated.email),
   });
   if (error && !isNeutralAccountLookupError(error)) return mapAuthProviderError(error);
   return success("recovery_requested");
@@ -174,7 +174,9 @@ export async function completeAuthCallback(
     if (error) return mapAuthProviderError(error, "callback");
   }
 
-  const source = input.intent === "recovery" || input.type === "recovery"
+  // `intent` is a navigation hint only. A token-hash callback has provider
+  // recovery proof; PKCE recovery purpose is verified by the route's signed state.
+  const source = hasTokenHash && input.type === "recovery"
     ? "recovery"
     : "confirmation";
   return requireVerifiedSession(client, source);

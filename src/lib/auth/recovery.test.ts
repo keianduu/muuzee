@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearPasswordRecoveryMarker,
+  createPasswordRecoveryCallbackState,
   createPasswordRecoveryMarker,
+  PASSWORD_RECOVERY_CALLBACK_STATE_MAX_AGE_SECONDS,
   PASSWORD_RECOVERY_COOKIE,
   PASSWORD_RECOVERY_MAX_AGE_SECONDS,
   PasswordRecoveryMarkerConfigurationError,
   readPasswordRecoveryMarker,
   setPasswordRecoveryMarker,
+  verifyPasswordRecoveryCallbackState,
   verifyPasswordRecoveryMarker,
 } from "./recovery";
 
@@ -115,5 +118,84 @@ describe("password recovery purpose marker", () => {
     vi.stubEnv("NODE_ENV", "production");
     const response = setPasswordRecoveryMarker(NextResponse.json({ ok: true }), marker());
     expect(response.headers.get("set-cookie")).toContain("Secure");
+  });
+});
+
+describe("password recovery callback state", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  function callbackState(email = "person@example.com", now = ISSUED_AT) {
+    return createPasswordRecoveryCallbackState(email, {
+      secret: SECRET,
+      now,
+      nonce: NONCE,
+    });
+  }
+
+  it("accepts a valid signed state only for the normalized requested email", () => {
+    const state = callbackState(" Person@Example.com ");
+    expect(verifyPasswordRecoveryCallbackState(state, "person@example.com", {
+      secret: SECRET,
+      now: new Date("2026-09-28T00:59:59.000Z"),
+    })).toBe(true);
+    expect(verifyPasswordRecoveryCallbackState(state, "other@example.com", {
+      secret: SECRET,
+      now: new Date("2026-09-28T00:01:00.000Z"),
+    })).toBe(false);
+  });
+
+  it.each([
+    ["a malformed state", "not.a.valid.state"],
+    ["an unknown version", callbackState().replace(/^v1\./, "v2.")],
+    ["the marker purpose", callbackState().replace(
+      ".password-recovery-callback.",
+      ".password-recovery.",
+    )],
+  ])("rejects %s", (_label, value) => {
+    expect(verifyPasswordRecoveryCallbackState(value, "person@example.com", {
+      secret: SECRET,
+      now: new Date("2026-09-28T00:01:00.000Z"),
+    })).toBe(false);
+  });
+
+  it("rejects tampered and expired states using server-side verification", () => {
+    const segments = callbackState().split(".");
+    const signature = segments.at(-1) ?? "";
+    segments[segments.length - 1] = `${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`;
+
+    expect(verifyPasswordRecoveryCallbackState(segments.join("."), "person@example.com", {
+      secret: SECRET,
+      now: new Date("2026-09-28T00:01:00.000Z"),
+    })).toBe(false);
+    expect(verifyPasswordRecoveryCallbackState(callbackState(), "person@example.com", {
+      secret: SECRET,
+      now: new Date(ISSUED_AT.getTime() + PASSWORD_RECOVERY_CALLBACK_STATE_MAX_AGE_SECONDS * 1000),
+    })).toBe(false);
+  });
+
+  it("fails closed when the shared dedicated secret is unavailable", () => {
+    vi.stubEnv("PASSWORD_RECOVERY_MARKER_SECRET", "");
+    expect(() => createPasswordRecoveryCallbackState("person@example.com", {
+      now: ISSUED_AT,
+      nonce: NONCE,
+    })).toThrow(PasswordRecoveryMarkerConfigurationError);
+    expect(verifyPasswordRecoveryCallbackState(callbackState(), "person@example.com", {
+      secret: "short",
+      now: new Date("2026-09-28T00:01:00.000Z"),
+    })).toBe(false);
+  });
+
+  it("keeps identity and credentials out of the callback payload", () => {
+    const state = callbackState();
+    for (const sensitive of [
+      "person@example.com",
+      USER_A,
+      "password123",
+      "access-token",
+      "refresh-token",
+      SECRET,
+    ]) {
+      expect(state).not.toContain(sensitive);
+    }
   });
 });

@@ -57,7 +57,7 @@ flowchart TD
   Cookie --> Return["validated internal returnTo"]
   Return --> Complete["/auth/complete or explicit safe User route"]
   Complete --> Handoff["authenticated transition / session bootstrap for Order 242"]
-  Verify -->|recovery only| Marker["signed user-bound HttpOnly recovery marker"]
+  Verify -->|provider Recovery token hash or signed PKCE Recovery state| Marker["signed user-bound HttpOnly recovery marker"]
   Update["POST /api/auth/update-password"] --> Fresh["fresh getUser"]
   Fresh --> MarkerCheck["signed recovery marker required"]
   MarkerCheck --> Change["same-user getUser + updateUser password"]
@@ -69,7 +69,7 @@ flowchart TD
 - `token_hash` plus an allowed email OTP `type`, then calls `verifyOtp()`; or
 - a PKCE `code`, then calls `exchangeCodeForSession()`.
 
-Both paths require a verified `claims.sub` before success. The final redirect is rebuilt from the validated destination, so `code` and `token_hash` are removed from the browser URL.
+Both paths require a verified `claims.sub` before success. For PKCE, the mutable `intent` query is only a navigation hint and never proves Recovery purpose. Forgot Password creates a separate HMAC-authenticated `recovery_state`, bound to the normalized requested email; after code exchange the callback verifies that state against the fresh `getUser().email`. For token-hash callbacks, only the provider-verified `type=recovery` establishes Recovery purpose. The final redirect is rebuilt from the validated destination, so `code`, `token_hash`, and `recovery_state` are removed from the browser URL.
 
 ## 4. Route and result contract
 
@@ -79,7 +79,7 @@ Both paths require a verified `claims.sub` before success. The final redirect is
 | `/api/auth/register` | POST | `signUp()` | `awaiting_email_confirmation`, or `authenticated` only when the provider returns and verifies an immediate session |
 | `/api/auth/resend-confirmation` | POST | `resend({ type: "signup" })` | `confirmation_requested` |
 | `/api/auth/forgot-password` | POST | `resetPasswordForEmail()` | `recovery_requested` |
-| `/auth/callback` | GET | `verifyOtp()` or `exchangeCodeForSession()`, then fresh `getUser()` for Recovery | clean internal redirect after verified session; verified Recovery receives a signed user-bound purpose marker |
+| `/auth/callback` | GET | `verifyOtp()` or `exchangeCodeForSession()`; Recovery additionally requires provider `type=recovery` or signed email-bound PKCE state plus fresh `getUser()` | clean internal redirect after verified session; verified Recovery receives a signed user-bound purpose marker |
 | `/auth/complete` | GET/UI | neutral Auth completion/error surface | default confirmation/Login callback landing and Order 242 handoff surface |
 | `/api/auth/update-password` | POST | password validation, fresh `getUser()`, signed marker verification, same-user recheck, then `updateUser({ password })` | `password_updated`, then marker removal |
 | `/api/auth/logout` | POST | `signOut({ scope: "local" })` | `signed_out` |
@@ -111,9 +111,10 @@ Terms/Privacy acceptance is not stored in Auth metadata. Order 251 implements th
 ```text
 Forgot Password request
   -> neutral recovery_requested result
-  -> allow-listed recovery email
+  -> allow-listed recovery email with signed email-bound callback state
   -> /auth/callback (token_hash or PKCE code)
   -> verified cookie session
+  -> provider Recovery type OR valid PKCE callback state for fresh user email
   -> 15-minute HMAC recovery-purpose marker bound to fresh Auth UUID
   -> /auth/update-password
   -> marker + fresh getUser()
@@ -121,13 +122,15 @@ Forgot Password request
   -> recovery-purpose marker removed
 ```
 
-Unknown-email recovery requests remain neutral. Rate limiting and provider outages use stable safe errors. The update route accepts no `userId` or email as authorization proof and requires both a fresh authenticated user and the recovery-purpose marker. A normal Login session without the marker cannot use the recovery password endpoint.
+Unknown-email recovery requests remain neutral. The same callback-state construction runs before the provider lookup and does not disclose whether the normalized email exists. Rate limiting and provider outages use stable safe errors. The update route accepts no `userId` or email as authorization proof and requires both a fresh authenticated user and the recovery-purpose marker. A normal Login session without the marker cannot use the recovery password endpoint.
+
+The PKCE callback state uses the same dedicated `PASSWORD_RECOVERY_MARKER_SECRET` but a distinct versioned `password-recovery-callback` purpose and wire format from the 15-minute update marker. Its HMAC input includes the normalized requested email without placing the email in the state payload. The state payload contains only version, purpose, issue/expiry times, a random nonce, and signature. Server verification allows one hour, independently enforces issue/expiry time, and still requires the provider code to be valid; it does not extend the provider link lifetime. The repository-local Supabase config does not override `auth.email.otp_expiry`, whose current provider default is also 3,600 seconds, so LOCAL does not shorten a valid provider link. Order 260 must keep each deployed provider expiry and this application limit aligned. Missing configuration, unsigned `intent=recovery`, malformed/tampered/expired state, or a state issued for a different fresh Auth email fails closed and never creates the update marker.
 
 The marker cookie is `muuzee-password-recovery-v1`. It is HMAC-SHA256 signed with the dedicated server-only `PASSWORD_RECOVERY_MARKER_SECRET`, which must contain at least 32 UTF-8 bytes and must not reuse Supabase credentials or the Account lifecycle secret. The payload contains only version, `password-recovery` purpose, issue/expiry times, a random nonce, and signature. The fresh Auth UUID participates in the signature input but is not stored in the cookie. Missing/invalid configuration and fixed, malformed, tampered, expired, wrong-purpose, unknown-version, or wrong-user markers fail closed.
 
 The cookie remains HttpOnly, SameSite=Lax, `Path=/`, Secure in Production, and has a 15-minute `Max-Age`; server verification independently enforces the same 15-minute expiry. The root path is required because the marker is written by `/auth/callback`, read by both `/auth/update-password` and `/api/auth/update-password`, and cleared by `/api/auth/logout`. It contains no password, token, email, user ID, or account data. Callback handling clears any prior marker and sets it again only after a verified Recovery transition plus fresh user resolution; Login and signup confirmation never establish Recovery purpose.
 
-Successful password update clears the marker. Retryable update failure leaves it available only for its remaining short lifetime, while Logout clears it regardless of sign-out result.
+Successful password update clears the marker. Retryable update failure leaves it available only for its remaining short lifetime, while Logout and other Auth transitions clear it regardless of provider result. The `/auth/update-password` Server Component can validate and redirect but cannot attach a cookie-clearing response. Therefore an invalid marker encountered only by that page remains inert until its cookie `Max-Age` expires or until the next Auth/API transition clears it; the mutation API always clears invalid markers in its own response. This is a cleanup boundary, not an authorization gap, because both page and mutation independently reject invalid markers server-side.
 
 The recovery callback origin is derived from the incoming request origin, not a hardcoded environment domain. Each environment must explicitly allow that callback. The minimal `/auth/update-password` page is a verification surface, not the final shared Account UI.
 
@@ -222,6 +225,7 @@ Official Supabase and Next.js sources checked for Order 241:
 - [Creating a Supabase client for SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs)
 - [Advanced SSR guide](https://supabase.com/docs/guides/auth/server-side/advanced-guide)
 - [Password-based Auth](https://supabase.com/docs/guides/auth/passwords)
+- [Supabase CLI config (`auth.email.otp_expiry`)](https://supabase.com/docs/guides/local-development/cli/config)
 - [Email Templates](https://supabase.com/docs/guides/auth/auth-email-templates)
 - [Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
 - [JavaScript Auth API](https://supabase.com/docs/reference/javascript/auth-signinwithpassword)
