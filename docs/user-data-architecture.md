@@ -1,6 +1,6 @@
 # User Data Architecture
 
-Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled after Orders 190, 195, 200, 210, 215, 220, 230, and the approved Order 240 Guest Saved policy.
+Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled through the Order 241 Auth mutation/callback foundation and the approved Order 240 Guest Saved policy.
 
 This document explains ownership and durable architecture. It is not the exact schema, migration, or Data Access Source of Truth. Approved product behavior comes from the Notion requirement **Account / Login / Guest Save** and the confirmed Order 80 Public DTO contract. Prototype files are observations only; they are not schema specifications.
 

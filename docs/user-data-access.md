@@ -11,7 +11,7 @@ This layer provides the server-side Account data boundary for:
 - bounded Viewer State composition;
 - private ArtWall settings, Seen-eligible membership, order, and visibility.
 
-It does not implement Login/Register UI, Auth callback routes, Guest Saved persistence or merge, Public Content hydration, HTTP routes, public/shared ArtWall, or service-role access. Database grants and RLS policies remain migration-owned rather than DAL-owned.
+It does not own Login/Register UI, Auth mutation/callback implementation, Guest Saved persistence or merge, Public Content hydration, HTTP transport, public/shared ArtWall, or service-role access. Database grants and RLS policies remain migration-owned rather than DAL-owned. The current Auth implementation is documented in `docs/auth-login-policy.md` and stays outside this DAL.
 
 ## 2. Layering
 
@@ -49,6 +49,7 @@ Public DTOs must not receive `isSaved`, `isSeen`, or `isFavorite` fields.
 | Browser | `src/lib/supabase/client.ts` | Cookie-aware publishable/anon-key client for future Client Components |
 | Server | `src/lib/supabase/server.ts` | Per-request cookie-aware client for server render and User Data DAL operations |
 | Refresh | `src/lib/supabase/middleware.ts`, root `middleware.ts` | Verify/refresh the session and propagate cookies plus response/cache headers |
+| Auth Route Handler | `src/lib/supabase/route.ts` | Per-request Auth mutation/callback client; applies SSR cookies plus response/cache headers to the final `NextResponse` |
 | Admin | `src/lib/supabase/admin.ts` | Existing elevated maintenance boundary; prohibited from normal User Data access |
 
 The repository keeps the current `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` environment contract. Key-name migration is a separate operational change.
@@ -57,7 +58,7 @@ Normal User Data access calls `auth.getClaims()` and derives the owner UUID from
 
 The Next.js 15 middleware does not redirect or protect routes. Route UX remains downstream; authorization is enforced at the data boundary and by RLS.
 
-The current server helper is intentionally scoped to server rendering and User Data DAL reads/writes. Session refresh and response cache-header propagation are handled by `middleware.ts`. Future Auth mutation flows—Login, Register, Auth callbacks, Password Recovery, `updateUser`, and `signOut` Route Handlers—must use a response-aware `createServerClient` adapter that applies both the cookies and the response/cache headers passed to `@supabase/ssr` `setAll`. They must not reuse the generic server-render helper as their response writer.
+The generic server helper is intentionally scoped to server rendering and User Data DAL reads/writes. Session refresh is handled by `middleware.ts`. Order 241 Auth mutations—Login, Register, Auth callbacks, Password Recovery, `updateUser`, and `signOut`—use the response-aware Route Handler adapter, which applies both cookies and response/cache headers passed to `@supabase/ssr` `setAll`. They do not reuse the generic server-render helper as their response writer.
 
 ## 4. DTO and operation contract
 
