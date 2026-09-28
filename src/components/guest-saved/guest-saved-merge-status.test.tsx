@@ -7,18 +7,21 @@ vi.stubGlobal("React", React);
 
 describe("Guest Saved merge feedback", () => {
   it("renders the in-progress and success status copy", () => {
-    expect(renderToStaticMarkup(<GuestSavedMergeFeedback status="merging" onRetry={vi.fn()} />))
+    expect(renderToStaticMarkup(<GuestSavedMergeFeedback status="merging" retryable={false} onRetry={vi.fn()} />))
       .toContain("保存した内容を引き継いでいます");
-    expect(renderToStaticMarkup(<GuestSavedMergeFeedback status="merged" onRetry={vi.fn()} />))
+    expect(renderToStaticMarkup(<GuestSavedMergeFeedback status="merged" retryable={false} onRetry={vi.fn()} />))
       .toContain("保存した内容をアカウントへ引き継ぎました。");
   });
 
-  it.each(["partial", "unauthenticated", "storage_unavailable", "temporary"] as const)(
-    "renders a retry action for %s",
-    (status) => {
-      const markup = renderToStaticMarkup(<GuestSavedMergeFeedback status={status} onRetry={vi.fn()} />);
-      expect(markup).toContain("もう一度試す");
-      expect(markup).toContain('role="alert"');
-    },
-  );
+  it("renders Retry only for a retryable outcome", () => {
+    const retryable = renderToStaticMarkup(
+      <GuestSavedMergeFeedback status="partial" retryable onRetry={vi.fn()} />,
+    );
+    const nonRetryable = renderToStaticMarkup(
+      <GuestSavedMergeFeedback status="request_error" retryable={false} onRetry={vi.fn()} />,
+    );
+    expect(retryable).toContain("もう一度試す");
+    expect(nonRetryable).not.toContain("もう一度試す");
+    expect(nonRetryable).toContain('role="alert"');
+  });
 });

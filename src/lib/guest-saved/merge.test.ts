@@ -76,6 +76,40 @@ describe("Guest Saved merge orchestrator", () => {
     expect(readGuestSaved(storage)).toEqual({ ok: true, value: [failed] });
   });
 
+  it("marks a partial outcome non-retryable when every failure is non-retryable", async () => {
+    const merged = ref(1);
+    const forbidden = ref(2);
+    const storage = memoryStorage([merged, forbidden]);
+    const fetcher = vi.fn(async () => jsonResponse({
+      merged: [merged],
+      failed: [{ ref: forbidden, code: "forbidden", retryable: false }],
+    }));
+    await expect(mergeGuestSaved({ storage, isAuthenticated: async () => true, fetcher })).resolves.toMatchObject({
+      status: "partial",
+      retryable: false,
+    });
+    expect(readGuestSaved(storage)).toEqual({ ok: true, value: [forbidden] });
+  });
+
+  it("marks a mixed partial outcome retryable when any failure is retryable", async () => {
+    const merged = ref(1);
+    const forbidden = ref(2);
+    const temporary = ref(3);
+    const storage = memoryStorage([merged, forbidden, temporary]);
+    const fetcher = vi.fn(async () => jsonResponse({
+      merged: [merged],
+      failed: [
+        { ref: forbidden, code: "forbidden", retryable: false },
+        { ref: temporary, code: "temporary", retryable: true },
+      ],
+    }));
+    await expect(mergeGuestSaved({ storage, isAuthenticated: async () => true, fetcher })).resolves.toMatchObject({
+      status: "partial",
+      retryable: true,
+    });
+    expect(readGuestSaved(storage)).toEqual({ ok: true, value: [forbidden, temporary] });
+  });
+
   it("re-reads the latest store so a ref added during the request is retained", async () => {
     const original = ref(1);
     const addedDuringRequest = ref(2);
@@ -111,14 +145,74 @@ describe("Guest Saved merge orchestrator", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
-  it("retains refs on a whole-request 401", async () => {
+  it("retains refs and preserves a non-retryable unauthenticated response", async () => {
     const item = ref(1);
     const storage = memoryStorage([item]);
     await expect(mergeGuestSaved({
       storage,
       isAuthenticated: async () => true,
-      fetcher: async () => jsonResponse({ error: { code: "unauthenticated", retryable: true } }, 401),
-    })).resolves.toMatchObject({ status: "unauthenticated", merged: 0 });
+      fetcher: async () => jsonResponse({ error: { code: "unauthenticated", retryable: false } }, 401),
+    })).resolves.toEqual({
+      status: "unauthenticated",
+      merged: 0,
+      failed: [],
+      retryable: false,
+      error: { code: "unauthenticated", retryable: false },
+    });
+    expect(storage.value).toBe(JSON.stringify([item]));
+  });
+
+  it.each([
+    { status: 403, code: "forbidden" as const },
+    { status: 400, code: "invalid_input" as const },
+  ])("preserves safe non-retryable request error $code", async ({ status, code }) => {
+    const item = ref(1);
+    const storage = memoryStorage([item]);
+    await expect(mergeGuestSaved({
+      storage,
+      isAuthenticated: async () => true,
+      fetcher: async () => jsonResponse({ error: { code, retryable: false } }, status),
+    })).resolves.toEqual({
+      status: "request_error",
+      merged: 0,
+      failed: [],
+      retryable: false,
+      error: { code, retryable: false },
+    });
+    expect(storage.value).toBe(JSON.stringify([item]));
+  });
+
+  it("preserves a safe retryable temporary response", async () => {
+    const item = ref(1);
+    const storage = memoryStorage([item]);
+    await expect(mergeGuestSaved({
+      storage,
+      isAuthenticated: async () => true,
+      fetcher: async () => jsonResponse({ error: { code: "temporary", retryable: true } }, 503),
+    })).resolves.toEqual({
+      status: "temporary",
+      merged: 0,
+      failed: [],
+      retryable: true,
+      error: { code: "temporary", retryable: true },
+    });
+    expect(storage.value).toBe(JSON.stringify([item]));
+  });
+
+  it("falls back to retryable temporary for a malformed non-2xx response", async () => {
+    const item = ref(1);
+    const storage = memoryStorage([item]);
+    await expect(mergeGuestSaved({
+      storage,
+      isAuthenticated: async () => true,
+      fetcher: async () => jsonResponse({ message: "raw provider detail" }, 500),
+    })).resolves.toEqual({
+      status: "temporary",
+      merged: 0,
+      failed: [],
+      retryable: true,
+      error: { code: "temporary", retryable: true },
+    });
     expect(storage.value).toBe(JSON.stringify([item]));
   });
 

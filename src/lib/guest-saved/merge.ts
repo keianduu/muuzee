@@ -1,6 +1,7 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { UserDataErrorCode } from "@/lib/user/errors";
 import type { MergeSavedFailure, MergeSavedResult } from "@/lib/user/types";
 import {
   canonicalEntityRefs,
@@ -12,11 +13,27 @@ import {
 
 export const GUEST_SAVED_MERGE_BATCH_LIMIT = 50;
 
+const USER_DATA_ERROR_CODES = new Set<UserDataErrorCode>([
+  "unauthenticated",
+  "invalid_input",
+  "invalid_target",
+  "forbidden",
+  "not_found",
+  "temporary",
+  "data_integrity",
+]);
+
+type RequestWideError = {
+  code: UserDataErrorCode;
+  retryable: boolean;
+};
+
 export type GuestSavedMergeOutcome = {
-  status: "empty" | "merged" | "partial" | "unauthenticated" | "storage_unavailable" | "temporary";
+  status: "empty" | "merged" | "partial" | "unauthenticated" | "request_error" | "storage_unavailable" | "temporary";
   merged: number;
   failed: MergeSavedFailure[];
   retryable: boolean;
+  error?: RequestWideError;
 };
 
 type MergeDependencies = {
@@ -37,7 +54,23 @@ async function hasAuthenticatedBrowserSession() {
 }
 
 function temporaryOutcome(merged = 0, failed: MergeSavedFailure[] = []): GuestSavedMergeOutcome {
-  return { status: merged ? "partial" : "temporary", merged, failed, retryable: true };
+  return {
+    status: merged ? "partial" : "temporary",
+    merged,
+    failed,
+    retryable: true,
+    error: { code: "temporary", retryable: true },
+  };
+}
+
+function safeRequestWideError(input: unknown): RequestWideError | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const error = (input as Record<string, unknown>).error;
+  if (!error || typeof error !== "object" || Array.isArray(error)) return null;
+  const record = error as Record<string, unknown>;
+  if (typeof record.code !== "string" || !USER_DATA_ERROR_CODES.has(record.code as UserDataErrorCode)) return null;
+  if (typeof record.retryable !== "boolean") return null;
+  return { code: record.code as UserDataErrorCode, retryable: record.retryable };
 }
 
 function safeMergeResult(input: unknown, requested: Set<string>): MergeSavedResult | null {
@@ -45,13 +78,12 @@ function safeMergeResult(input: unknown, requested: Set<string>): MergeSavedResu
   const record = input as Record<string, unknown>;
   if (!Array.isArray(record.merged) || !Array.isArray(record.failed)) return null;
   const merged = canonicalEntityRefs(record.merged).filter((ref) => requested.has(`${ref.kind}:${ref.id}`));
-  const safeCodes = new Set(["unauthenticated", "invalid_input", "invalid_target", "forbidden", "not_found", "temporary", "data_integrity"]);
   const failed = record.failed.flatMap((item): MergeSavedFailure[] => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return [];
     const failure = item as Record<string, unknown>;
     const refs = canonicalEntityRefs([failure.ref]);
     const ref = refs[0];
-    if (!ref || !requested.has(`${ref.kind}:${ref.id}`) || typeof failure.code !== "string" || !safeCodes.has(failure.code) || typeof failure.retryable !== "boolean") {
+    if (!ref || !requested.has(`${ref.kind}:${ref.id}`) || typeof failure.code !== "string" || !USER_DATA_ERROR_CODES.has(failure.code as UserDataErrorCode) || typeof failure.retryable !== "boolean") {
       return [];
     }
     return [{ ref, code: failure.code as MergeSavedFailure["code"], retryable: failure.retryable }];
@@ -69,7 +101,13 @@ async function runMerge(dependencies: MergeDependencies): Promise<GuestSavedMerg
 
   const isAuthenticated = dependencies.isAuthenticated ?? hasAuthenticatedBrowserSession;
   if (!await isAuthenticated()) {
-    return { status: "unauthenticated", merged: 0, failed: [], retryable: true };
+    return {
+      status: "unauthenticated",
+      merged: 0,
+      failed: [],
+      retryable: false,
+      error: { code: "unauthenticated", retryable: false },
+    };
   }
 
   const fetcher = dependencies.fetcher ?? fetch;
@@ -89,10 +127,21 @@ async function runMerge(dependencies: MergeDependencies): Promise<GuestSavedMerg
       return temporaryOutcome(mergedCount, failures);
     }
 
-    if (response.status === 401) {
-      return { status: "unauthenticated", merged: mergedCount, failed: failures, retryable: true };
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const error = safeRequestWideError(body) ?? { code: "temporary" as const, retryable: true };
+      return {
+        status: error.code === "unauthenticated"
+          ? "unauthenticated"
+          : error.code === "temporary"
+            ? "temporary"
+            : "request_error",
+        merged: mergedCount,
+        failed: failures,
+        retryable: error.retryable || failures.some((failure) => failure.retryable),
+        error,
+      };
     }
-    if (!response.ok) return temporaryOutcome(mergedCount, failures);
 
     const body = await response.json().catch(() => null);
     const requested = new Set(refs.map((ref) => `${ref.kind}:${ref.id}`));
@@ -108,7 +157,7 @@ async function runMerge(dependencies: MergeDependencies): Promise<GuestSavedMerg
   }
 
   return failures.length
-    ? { status: "partial", merged: mergedCount, failed: failures, retryable: true }
+    ? { status: "partial", merged: mergedCount, failed: failures, retryable: failures.some((failure) => failure.retryable) }
     : { status: "merged", merged: mergedCount, failed: [], retryable: false };
 }
 

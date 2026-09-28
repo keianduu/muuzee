@@ -8,9 +8,11 @@ type Status = "checking" | "merging" | GuestSavedMergeOutcome["status"];
 
 export function GuestSavedMergeFeedback({
   status,
+  retryable,
   onRetry,
 }: {
   status: Exclude<Status, "checking" | "empty">;
+  retryable: boolean;
   onRetry: () => void;
 }) {
   if (status === "merging") return <p className="notice" role="status">保存した内容を引き継いでいます</p>;
@@ -25,29 +27,40 @@ export function GuestSavedMergeFeedback({
   return (
     <div className="error" role="alert">
       <p>{message}</p>
-      <button className="button secondary" type="button" onClick={onRetry}>もう一度試す</button>
+      {retryable
+        ? <button className="button secondary" type="button" onClick={onRetry}>もう一度試す</button>
+        : null}
     </div>
   );
 }
 
 export function GuestSavedMergeStatus() {
-  const [status, setStatus] = useState<Status>("checking");
+  const [feedback, setFeedback] = useState<{ status: Status; retryable: boolean }>({
+    status: "checking",
+    retryable: false,
+  });
 
   const run = useCallback(async () => {
     const pending = readGuestSaved();
     if (pending.ok && !pending.value.length) {
-      setStatus("empty");
+      setFeedback({ status: "empty", retryable: false });
       return;
     }
-    if (pending.ok) setStatus("merging");
+    if (pending.ok) setFeedback({ status: "merging", retryable: false });
     const outcome = await mergeGuestSaved();
-    setStatus(outcome.status);
+    setFeedback({ status: outcome.status, retryable: outcome.retryable });
   }, []);
 
   useEffect(() => {
     void run();
   }, [run]);
 
-  if (status === "checking" || status === "empty") return null;
-  return <GuestSavedMergeFeedback status={status} onRetry={() => void run()} />;
+  if (feedback.status === "checking" || feedback.status === "empty") return null;
+  return (
+    <GuestSavedMergeFeedback
+      status={feedback.status}
+      retryable={feedback.retryable}
+      onRetry={() => void run()}
+    />
+  );
 }
