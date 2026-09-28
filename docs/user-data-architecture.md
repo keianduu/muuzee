@@ -1,6 +1,6 @@
 # User Data Architecture
 
-Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled through the Order 241 Auth mutation/callback foundation and the approved Order 240 Guest Saved policy.
+Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled through the Order 242 Guest Saved adapter and Account merge implementation.
 
 This document explains ownership and durable architecture. It is not the exact schema, migration, or Data Access Source of Truth. Approved product behavior comes from the Notion requirement **Account / Login / Guest Save** and the confirmed Order 80 Public DTO contract. Prototype files are observations only; they are not schema specifications.
 
@@ -45,7 +45,7 @@ The current Physical Schema contains seven User Data tables: `profiles`, `user_p
 
 - Replacing the Target Schema or migration-derived Physical Schema.
 - Reopening Auth, Personal Action, Preferences, or ArtWall decisions already locked downstream.
-- Implementing Guest Save storage or its Account merge algorithm; the approved Order 240 contract defines the behavior and Order 242 owns implementation.
+- Building the broad Production User Front Save/Saved UI; Order 242 implements the shared Guest store and merge contracts without porting Prototype screens.
 - Implementing additional authorization surfaces beyond the Order 230 owner RLS contract or exposing private User Data publicly.
 - Connecting `prototype/` to Supabase or treating prototype localStorage structures as Production contracts.
 
@@ -410,7 +410,8 @@ Order 220 implements this Account DAL. Its fixed contract is:
 | 215 ArtWall | Done: settings/items Physical tables; Seen Exhibition is the current source |
 | 220 Data Access | Done: typed Account DAL, Viewer State, safe errors, SSR client foundation |
 | 230 RLS | Done: minimum grants, 20 owner policies, and owner/cross-user/anonymous SQL regression tests |
-| 240 Guest merge | Approved: versioned localStorage, no TTL, idempotent set union, per-ref cleanup/retry, and no logout reverse sync; implementation is pending Order 242 |
+| 240 Guest policy | Approved: versioned localStorage, no TTL, idempotent set union, per-ref cleanup/retry, and no logout reverse sync |
+| 242 Guest implementation | Implemented: validated Guest store, bounded Account merge through DAL/RLS, `/auth/complete` handoff, exact latest-store cleanup, retry, and reusable session bootstrap; broad User Front Save/Saved UI wiring remains downstream |
 | 250 Legal Consent | Pending: approve retention/delete/export policy before `user_legal_consents` migration |
 
 ## 14. Remaining Downstream Decisions
@@ -434,3 +435,4 @@ These decisions do not change the current ownership model, canonical UUID strate
 - `user_visits` is Future / excluded from Target v1 and is not synonymous with Seen.
 - Auth/Profile, Personal Actions, and ArtWall reference canonical UUIDs and do not copy Master display values.
 - Prototype localStorage structures remain UX/fixture evidence only and are not Production persistence contracts.
+- Production Guest Saved uses only `muuzee:guest-saved:v1`; Prototype keys are not scanned or migrated.

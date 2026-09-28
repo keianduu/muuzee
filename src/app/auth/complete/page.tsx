@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { AuthErrorCode } from "@/lib/auth/types";
+import { GuestSavedMergeStatus } from "@/components/guest-saved/guest-saved-merge-status";
 
 export const metadata: Metadata = {
   title: "認証完了 | Muuzee",
@@ -39,6 +40,7 @@ export default async function AuthCompletePage({
             ? ERROR_MESSAGES[errorCode]
             : "Muuzeeのアカウント認証が完了しました。"}
         </p>
+        {!errorCode ? <GuestSavedMergeStatus /> : null}
       </section>
     </main>
   );

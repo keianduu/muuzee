@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { UserDataError, UserRepositoryError } from "./errors";
 import type { UserDataRepository } from "./repository";
-import { createUserDataService, requireAuthenticatedViewer, VIEWER_STATE_BATCH_LIMIT } from "./service";
+import {
+  createUserDataService,
+  GUEST_SAVED_MERGE_BATCH_LIMIT,
+  requireAuthenticatedViewer,
+  VIEWER_STATE_BATCH_LIMIT,
+} from "./service";
 import type { EntityKind, EntityRef, PersonalActionDTO, SaveArtWallItemInput } from "./types";
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -113,6 +118,58 @@ describe("personal action contract", () => {
     expect(service.updateProfile.length).toBe(1);
     expect(service.addAction.length).toBe(2);
     expect(service.getViewerEntityStates.length).toBe(1);
+    expect(service.mergeSavedRefs.length).toBe(1);
+  });
+
+  it("merges a bounded Saved batch with one viewer resolution and duplicate success", async () => {
+    const repository = fakeRepository({
+      addAction: vi.fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new UserRepositoryError({
+          providerCode: "23505",
+          constraint: "user_saved_items_artist_uq",
+        })),
+    });
+    const resolveViewer = vi.fn(async () => ({ userId: USER_ID, repository }));
+    const service = createUserDataService({ resolveViewer });
+    const refs = [
+      { kind: "exhibition" as const, id: IDS.exhibition },
+      { kind: "artist" as const, id: IDS.artist },
+    ];
+    await expect(service.mergeSavedRefs(refs)).resolves.toEqual({ merged: refs, failed: [] });
+    expect(resolveViewer).toHaveBeenCalledOnce();
+    expect(repository.addAction).toHaveBeenNthCalledWith(1, USER_ID, "saved", refs[0]);
+    expect(repository.addAction).toHaveBeenNthCalledWith(2, USER_ID, "saved", refs[1]);
+  });
+
+  it("returns safe per-ref failures while preserving successful refs", async () => {
+    const repository = fakeRepository({
+      addAction: vi.fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("raw network detail")),
+    });
+    const refs = [
+      { kind: "venue" as const, id: IDS.venue },
+      { kind: "work" as const, id: IDS.work },
+    ];
+    await expect(serviceFor(repository).mergeSavedRefs(refs)).resolves.toEqual({
+      merged: [refs[0]],
+      failed: [{ ref: refs[1], code: "temporary", retryable: true }],
+    });
+  });
+
+  it("validates the whole merge batch before writing and rejects over-limit input", async () => {
+    const repository = fakeRepository();
+    const service = serviceFor(repository);
+    await expectCode(service.mergeSavedRefs([
+      { kind: "artist", id: IDS.artist },
+      { kind: "artist", id: "invalid" },
+    ]), "invalid_input");
+    await expectCode(service.mergeSavedRefs(Array.from(
+      { length: GUEST_SAVED_MERGE_BATCH_LIMIT + 1 },
+      () => ({ kind: "artist" as const, id: IDS.artist }),
+    )), "invalid_input");
+    expect(repository.addAction).not.toHaveBeenCalled();
   });
 });
 

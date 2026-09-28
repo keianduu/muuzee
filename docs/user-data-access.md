@@ -1,6 +1,6 @@
 # User Data Access Layer
 
-Status: Current Production User Data access and authorization contract. Order 220 implements the typed Account DAL; Order 230 implements the database grants, owner RLS policies, and authorization regression tests.
+Status: Current Production User Data access and authorization contract. Order 220 implements the typed Account DAL, Order 230 implements the database grants and owner RLS policies, and Order 242 adds the bounded Guest Saved merge service operation without changing the repository or authorization model.
 
 ## 1. Scope
 
@@ -11,7 +11,7 @@ This layer provides the server-side Account data boundary for:
 - bounded Viewer State composition;
 - private ArtWall settings, Seen-eligible membership, order, and visibility.
 
-It does not own Login/Register UI, Auth mutation/callback implementation, Guest Saved persistence or merge, Public Content hydration, HTTP transport, public/shared ArtWall, or service-role access. Database grants and RLS policies remain migration-owned rather than DAL-owned. The current Auth implementation is documented in `docs/auth-login-policy.md` and stays outside this DAL.
+It does not own Login/Register UI, Guest browser persistence, Public Content hydration, general HTTP transport, public/shared ArtWall, or service-role access. Order 242 adds one narrow merge operation and endpoint at this boundary; browser storage remains under `src/lib/guest-saved`. Database grants and RLS policies remain migration-owned rather than DAL-owned. The current Auth implementation is documented in `docs/auth-login-policy.md` and stays outside this DAL.
 
 ## 2. Layering
 
@@ -142,19 +142,19 @@ The normal User Data modules contain no import of the Admin client and no servic
 
 ## 8. Guest boundary
 
-Guest Save is not an Account repository operation. Guest browsing creates no Supabase Auth row, and this layer does not read localStorage or merge device state. `docs/guest-save-sync-policy.md` defines the approved Order 240 boundary: the client adapter validates canonical refs, while merge calls the normal idempotent Saved add operation only after an authenticated session exists. Account DAL/RLS remains the server write path; successful refs are consumed individually and failed valid refs remain client-owned for retry. Implementation is pending Order 242.
+Guest Save is not an Account repository operation. Guest browsing creates no Supabase Auth row, and the Account repository never reads localStorage. `docs/guest-save-sync-policy.md` defines the approved boundary. Order 242 implements `mergeSavedRefs` as a bounded service operation that resolves the viewer once, validates every ref, and calls the normal idempotent Saved repository operation under owner RLS. `POST /api/user/saved/merge` accepts no `user_id` and returns safe per-ref results. Successful cleanup and failed-ref retention remain client-owned.
 
 ## 9. Downstream integration
 
 - **Order 230:** implemented by the forward owner-RLS migration and SQL authorization regression test; deployment beyond the locally validated migration remains an environment-specific release operation.
 - **Order 240:** approved policy in `docs/guest-save-sync-policy.md`.
-- **Order 242:** implementation owner for the Guest Saved adapter, Auth-transition merge orchestrator, partial cleanup/retry, and logout boundary; implementation is pending.
+- **Order 242:** implements the Guest Saved adapter, bounded merge endpoint/service, `/auth/complete` handoff, partial cleanup/retry, single-flight browser orchestration, reusable shell bootstrap, and logout/no-reverse-sync boundary. Broad User Front Save/Saved UI wiring remains downstream.
 - **User Front wiring:** consume typed service/DTOs through Server Actions or Route Handlers under the owner RLS contract; do not import repository/table names into components.
 - **Public Content hydration:** combine canonical Public DTOs with request-scoped Viewer State at the application boundary.
 
 ## 10. Implementation evidence
 
-Tests cover verified claims identity, missing/invalid claims, Favorite target validation, four-target Saved/Seen, expected duplicate add, missing remove, safe `42501` authorization-error mapping, retryability, no arbitrary public `userId`, exactly-one row mapping, bounded/deduplicated Viewer State, DTO separation, ArtWall ordering/Seen eligibility/validation/retry convergence, the Admin/service-role dependency guard, and database-level owner/cross-user/anonymous authorization.
+Tests cover verified claims identity, missing/invalid claims, Favorite target validation, four-target Saved/Seen, expected duplicate add, missing remove, safe `42501` authorization-error mapping, retryability, no arbitrary public `userId`, exactly-one row mapping, bounded/deduplicated Viewer State, bounded Guest Saved merge with one viewer resolution, partial safe outcomes, DTO separation, ArtWall ordering/Seen eligibility/validation/retry convergence, the Admin/service-role dependency guard, and database-level owner/cross-user/anonymous authorization.
 
 Official guidance checked for this implementation:
 

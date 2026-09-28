@@ -173,7 +173,7 @@ Registration duplicates return the same `awaiting_email_confirmation` state as a
 Order 241 exposes two intentionally small authenticated-session boundaries:
 
 1. Login/immediate-session registration returns `{ status: "authenticated", transition: { type: "authenticated", source } }` only after verified `claims.sub` exists.
-2. Confirmation/recovery callbacks establish the cookie session, then redirect to a clean internal URL. `/auth/complete` is the neutral default surface where Order 242 can later detect authenticated state plus a non-empty Guest store, perform the merge, and continue to final navigation. On reload, middleware plus the normal browser/server Supabase session bootstrap resolves the same authenticated state.
+2. Confirmation/recovery callbacks establish the cookie session, then redirect to a clean internal URL. `/auth/complete` is the neutral default surface where Order 242 now verifies authenticated state plus a non-empty Guest store and performs the merge. On reload, middleware plus the normal browser/server Supabase session bootstrap resolves the same authenticated state.
 
 Order 242 may run Guest Saved merge only when:
 
@@ -183,7 +183,7 @@ AND
 guest store contains valid refs
 ```
 
-It may react to the explicit mutation result for in-page Login, and to normal session bootstrap/auth-state observation after callback or reload. No custom event bus is required. Order 241 does not implement the Guest adapter, merge, cleanup, or retry orchestration.
+The Order 242 implementation connects `/auth/complete` and exports `GuestSavedMergeBootstrap` for the future authenticated User Front shell. The broad shell is not present yet, so the bootstrap is intentionally not mounted globally and no claim is made that every Production page retries merge on restore. Future in-page Login UI can call the same single-flight orchestrator after an authenticated transition. No custom event bus is used.
 
 ## 11. Environment dependencies
 

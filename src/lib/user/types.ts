@@ -1,9 +1,22 @@
+import type { UserDataErrorCode } from "./errors";
+
 export const ENTITY_KINDS = ["exhibition", "artist", "venue", "work"] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
 export type EntityRef = {
   kind: EntityKind;
   id: string;
+};
+
+export type MergeSavedFailure = {
+  ref: EntityRef;
+  code: UserDataErrorCode;
+  retryable: boolean;
+};
+
+export type MergeSavedResult = {
+  merged: EntityRef[];
+  failed: MergeSavedFailure[];
 };
 
 export const PERSONAL_ACTION_KINDS = ["saved", "seen", "favorite"] as const;

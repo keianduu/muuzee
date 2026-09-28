@@ -11,7 +11,12 @@ function filesUnder(directory: string): string[] {
 
 describe("User Data dependency boundary", () => {
   it("does not import or reference Admin/service-role credentials", () => {
-    const roots = [join(process.cwd(), "src/lib/user"), join(process.cwd(), "src/lib/viewer")];
+    const roots = [
+      join(process.cwd(), "src/lib/user"),
+      join(process.cwd(), "src/lib/viewer"),
+      join(process.cwd(), "src/lib/guest-saved"),
+      join(process.cwd(), "src/app/api/user"),
+    ];
     const files = roots.flatMap((root) => {
       try { return filesUnder(root); } catch { return []; }
     }).filter((file) => file.endsWith(".ts") && !file.endsWith("dependency-boundary.test.ts"));
@@ -29,5 +34,27 @@ describe("User Data dependency boundary", () => {
     expect(publicSource).not.toMatch(/\bisSaved\b/);
     expect(publicSource).not.toMatch(/\bisSeen\b/);
     expect(publicSource).not.toMatch(/\bisFavorite\b/);
+  });
+
+  it("does not reverse-sync Account Saved from the logout route", () => {
+    const source = readFileSync(join(process.cwd(), "src/app/api/auth/logout/route.ts"), "utf8");
+    expect(source).not.toContain("guest-saved");
+    expect(source).not.toContain("muuzee:guest-saved:v1");
+  });
+
+  it("does not import Prototype storage keys into the Production Guest Saved boundary", () => {
+    const roots = [join(process.cwd(), "src/lib/guest-saved"), join(process.cwd(), "src/app/api/user")];
+    const source = roots.flatMap(filesUnder)
+      .filter((file) => !file.endsWith(".test.ts") && !file.endsWith(".test.tsx"))
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+    for (const key of [
+      "muuzee:saved-exhibitions",
+      "muuzee:saved-museums",
+      "muuzee:saved-artists",
+      "muuzee:seen-items",
+    ]) {
+      expect(source).not.toContain(key);
+    }
   });
 });

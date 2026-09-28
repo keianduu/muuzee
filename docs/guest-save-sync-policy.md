@@ -1,6 +1,6 @@
 # Guest Saved → Account Saved Sync Policy
 
-Status: Approved Production contract for Order 240. This task defines policy only; it does not implement a browser adapter, merge orchestration, Auth routes, UI wiring, migration, schema change, RLS change, or DB operation. Implementation is owned by Order 242.
+Status: Approved + Implemented by Order 242. The Production storage adapter, bounded Account merge, per-ref cleanup/retry, and `/auth/complete` handoff are implemented. The broad Production User Front Save/Saved surfaces and shell-level session-restore mount remain downstream UI wiring; no migration, schema, RLS, or DB operation was added.
 
 Approved Product behavior comes from the Notion requirement **Account / Login / Guest Save**. The ownership and identity contracts come from `docs/user-data-architecture.md`, `docs/auth-login-policy.md`, and `docs/user-data-access.md`. Prototype localStorage keys and Prototype Auth are observations only and are not Production contracts.
 
@@ -214,21 +214,23 @@ The downstream implementation depends on:
 
 Auth mutation Route Handlers must use the response-aware Supabase SSR adapter required by `docs/user-data-access.md`. Guest merge is triggered after session establishment; it is not embedded in the signup request before email confirmation.
 
-## 13. Downstream Implementation Task
+## 13. Order 242 Implementation
 
 Order 242: **[Backend/User Front] Guest Saved adapter / Account mergeを実装**
 
-Implementation scope:
+Implemented scope:
 
 - Production `localStorage` adapter with schema validation, canonicalization, deduplication, and safe storage failures;
-- Guest Save toggle/read and Guest Saved-page data source;
-- authenticated transition/session-restore merge orchestration;
+- Guest Save toggle/read data source contract for future Save and Saved-page consumers;
+- `/auth/complete` authenticated transition integration plus a reusable session-restore bootstrap;
 - bounded idempotent union through Account DAL/RLS;
 - per-ref successful cleanup, partial-failure retention, and non-blocking retry UX;
 - logout/no-reverse-sync and multi-account boundaries;
 - unit/integration tests for malformed data, duplicates, partial failure, retries, session loss, logout, and multiple accounts.
 
-Dependency: implement or coordinate with Production Login/Register/Auth callback so the merge runs only after a verified authenticated session exists. Order 240 does not authorize implementation; Order 242 owns it.
+The merge endpoint is `POST /api/user/saved/merge`. It accepts only `{ refs }`, limits each request to 50 refs, derives the viewer from verified claims through the existing User Data service, and returns safe per-ref outcomes. The browser orchestrator chunks larger stores, keeps one run in flight per browser context, and removes confirmed merged refs from the latest store snapshot only.
+
+Current Production does not yet have a broad User Front shell or shared Save UI. `GuestSavedMergeBootstrap` is therefore exported for that future shell but is not mounted globally, especially not under `/admin` or Password Recovery. `/auth/complete` is the currently connected post-auth surface. The adapter remains the future Guest Saved-page data source; this order intentionally does not create a new `/saved` page.
 
 ## 14. Approved Product Decisions
 
@@ -242,12 +244,12 @@ Human Review approved these five Product decisions on 2026-09-27:
 
 ## 15. Explicit Non-changes
 
-Order 240 introduces:
+Orders 240 and 242 introduce:
 
 - Migration: 0
 - Schema change: 0
 - DB operation: 0
 - RLS change: 0
 - Auth configuration change: 0
-- Production adapter/merge/UI/Auth route implementation: 0
+- Production adapter/merge/Auth handoff implementation: implemented without schema or DB changes
 - Prototype compatibility migration: 0

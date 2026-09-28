@@ -10,6 +10,7 @@ import type {
   ArtWallDTO,
   ArtWallSettingsDTO,
   EntityRef,
+  MergeSavedResult,
   PersonalActionDTO,
   PersonalActionKind,
   PreferencesDTO,
@@ -23,6 +24,7 @@ import type {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const VIEWER_STATE_BATCH_LIMIT = 100;
+export const GUEST_SAVED_MERGE_BATCH_LIMIT = 50;
 
 const DEFAULT_ARTWALL_SETTINGS: ArtWallSettingsDTO = {
   showIcon: true,
@@ -210,6 +212,28 @@ export function createUserDataService(
       await repository.removeAction(userId, action, ref);
     }),
 
+    mergeSavedRefs: (input: EntityRef[]) => run(async ({ userId, repository }): Promise<MergeSavedResult> => {
+      if (!Array.isArray(input) || input.length > GUEST_SAVED_MERGE_BATCH_LIMIT) return invalidInput();
+      const refs = [...new Map(input.map(validateEntityRef).map((ref) => [`${ref.kind}:${ref.id}`, ref])).values()];
+      const result: MergeSavedResult = { merged: [], failed: [] };
+
+      for (const ref of refs) {
+        try {
+          await repository.addAction(userId, "saved", ref);
+          result.merged.push(ref);
+        } catch (error) {
+          if (isExpectedActionDuplicate(error, "saved", ref)) {
+            result.merged.push(ref);
+            continue;
+          }
+          const safeError = toUserDataError(error);
+          result.failed.push({ ref, code: safeError.code, retryable: safeError.retryable });
+        }
+      }
+
+      return result;
+    }),
+
     getViewerEntityStates: (input: EntityRef[]) => run(async ({ userId, repository }): Promise<ViewerEntityStateDTO[]> => {
       if (!Array.isArray(input) || input.length > VIEWER_STATE_BATCH_LIMIT) return invalidInput();
       const refs = [...new Map(input.map(validateEntityRef).map((ref) => [`${ref.kind}:${ref.id}`, ref])).values()];
@@ -276,6 +300,7 @@ export const updatePreferences = service.updatePreferences;
 export const listPersonalActions = service.listActions;
 export const addPersonalAction = service.addAction;
 export const removePersonalAction = service.removeAction;
+export const mergeSavedRefs = service.mergeSavedRefs;
 export const getViewerEntityStates = service.getViewerEntityStates;
 export const getArtWall = service.getArtWall;
 export const updateArtWallSettings = service.updateArtWallSettings;
