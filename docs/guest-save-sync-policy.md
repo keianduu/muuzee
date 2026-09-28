@@ -1,12 +1,12 @@
 # Guest Saved → Account Saved Sync Policy
 
-Status: Proposed Production contract for Order 240, pending Human Review. This task defines policy only; it does not implement a browser adapter, merge orchestration, Auth routes, UI wiring, migration, schema change, RLS change, or DB operation.
+Status: Approved Production contract for Order 240. This task defines policy only; it does not implement a browser adapter, merge orchestration, Auth routes, UI wiring, migration, schema change, RLS change, or DB operation. Implementation is owned by Order 242.
 
 Approved Product behavior comes from the Notion requirement **Account / Login / Guest Save**. The ownership and identity contracts come from `docs/user-data-architecture.md`, `docs/auth-login-policy.md`, and `docs/user-data-access.md`. Prototype localStorage keys and Prototype Auth are observations only and are not Production contracts.
 
 ## 1. Decision Summary
 
-| Topic | Proposed MVP contract |
+| Topic | Approved MVP contract |
 | --- | --- |
 | Guest-owned data | Saved only |
 | Supported entities | Exhibition, Artist, Venue/Museum, Work |
@@ -214,11 +214,11 @@ The downstream implementation depends on:
 
 Auth mutation Route Handlers must use the response-aware Supabase SSR adapter required by `docs/user-data-access.md`. Guest merge is triggered after session establishment; it is not embedded in the signup request before email confirmation.
 
-## 13. Downstream Implementation Task Proposal
+## 13. Downstream Implementation Task
 
-Proposed task: **[Backend/User Front] Guest Saved adapter / Account mergeを実装**
+Order 242: **[Backend/User Front] Guest Saved adapter / Account mergeを実装**
 
-Proposed scope:
+Implementation scope:
 
 - Production `localStorage` adapter with schema validation, canonicalization, deduplication, and safe storage failures;
 - Guest Save toggle/read and Guest Saved-page data source;
@@ -228,19 +228,17 @@ Proposed scope:
 - logout/no-reverse-sync and multi-account boundaries;
 - unit/integration tests for malformed data, duplicates, partial failure, retries, session loss, logout, and multiple accounts.
 
-Dependency: implement or coordinate with Production Login/Register/Auth callback so the merge runs only after a verified authenticated session exists. This proposal does not authorize implementation in Order 240.
+Dependency: implement or coordinate with Production Login/Register/Auth callback so the merge runs only after a verified authenticated session exists. Order 240 does not authorize implementation; Order 242 owns it.
 
-## 14. Human Decisions Required
+## 14. Approved Product Decisions
 
-Human Review should confirm these five Product decisions:
+Human Review approved these five Product decisions on 2026-09-27:
 
-1. **Use Production `localStorage` at `muuzee:guest-saved:v1`?** Recommended: **YES**. It is the smallest implementation for canonical UUID set membership and avoids anonymous server identity.
-2. **Use no automatic expiry/TTL?** Recommended: **YES — no TTL**. Guest Saved persists until removal, successful merge consumption, or browser data clearing.
-3. **Consume each Guest ref after successful/already-present Account add?** Recommended: **YES**. It prevents the same browser Guest state from being attributed to a later account.
-4. **Never reverse-sync Account Saved into Guest storage on logout?** Recommended: **YES**. This avoids exposing Account Personal Data after logout on a shared device.
-5. **On partial failure, consume successes and retain failed valid refs?** Recommended: **YES**. It preserves progress and makes retry idempotent without a server journal.
-
-Until Human Review accepts these recommendations, this document remains a Proposed contract and Order 240 remains `Doing`.
+1. Production Guest Saved uses browser `localStorage` at `muuzee:guest-saved:v1`. This is the smallest implementation for canonical UUID set membership and avoids anonymous server identity.
+2. Automatic expiry/TTL is not used. Guest Saved persists until removal, successful merge consumption, or browser data clearing.
+3. Each Guest ref is consumed only after successful or already-present Account add. This prevents the same browser Guest state from being attributed to a later account.
+4. Logout never reverse-syncs Account Saved into Guest storage. This avoids exposing Account Personal Data after logout on a shared device.
+5. Partial failure consumes successful refs and retains failed valid refs. This preserves progress and makes retry idempotent without a server journal.
 
 ## 15. Explicit Non-changes
 

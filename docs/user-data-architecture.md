@@ -1,6 +1,6 @@
 # User Data Architecture
 
-Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled after Orders 190, 195, 200, 210, 215, 220, and 230. Order 240 Guest Saved policy is proposed pending Human Review.
+Status: Current Production user-data architecture overview. Originally written for Order 180; reconciled after Orders 190, 195, 200, 210, 215, 220, 230, and the approved Order 240 Guest Saved policy.
 
 This document explains ownership and durable architecture. It is not the exact schema, migration, or Data Access Source of Truth. Approved product behavior comes from the Notion requirement **Account / Login / Guest Save** and the confirmed Order 80 Public DTO contract. Prototype files are observations only; they are not schema specifications.
 
@@ -12,7 +12,7 @@ When this document conflicts with a more specific current artifact, use these So
 - Current Physical Schema: forward SQL under `supabase/migrations/`
 - User Data Access: `docs/user-data-access.md`
 - Auth/session policy: `docs/auth-login-policy.md`
-- Guest Saved sync policy proposal: `docs/guest-save-sync-policy.md` (Order 240; pending Human Review)
+- Guest Saved sync policy: `docs/guest-save-sync-policy.md` (approved Order 240 contract)
 
 The Candidate Data Model and comparison rationale later in this document are retained as **historical Order 180 design context**. They do not reopen decisions locked by Order 195 or replace implemented migrations.
 
@@ -45,7 +45,7 @@ The current Physical Schema contains seven User Data tables: `profiles`, `user_p
 
 - Replacing the Target Schema or migration-derived Physical Schema.
 - Reopening Auth, Personal Action, Preferences, or ArtWall decisions already locked downstream.
-- Implementing Guest Save storage or its Account merge algorithm; Order 240 owns those details.
+- Implementing Guest Save storage or its Account merge algorithm; the approved Order 240 contract defines the behavior and Order 242 owns implementation.
 - Implementing additional authorization surfaces beyond the Order 230 owner RLS contract or exposing private User Data publicly.
 - Connecting `prototype/` to Supabase or treating prototype localStorage structures as Production contracts.
 
@@ -151,17 +151,17 @@ Notification delivery, Newsletter delivery, and Search/Map Location consumption 
 - Guest records carry only an entity kind plus canonical Master UUID. Display data is hydrated from the Master read contract.
 - The guest persistence adapter must be replaceable without changing UI action semantics.
 
-Candidate storage comparison:
+Historical Order 180 candidate storage comparison:
 
 | Candidate | Strength | Cost / risk | Order 180 position |
 | --- | --- | --- | --- |
-| localStorage | Smallest MVP implementation, durable per browser, already proven in prototype | Synchronous, device-local, limited structure | Order 240 recommendation; pending Human Review |
-| IndexedDB | Structured and asynchronous; better for larger offline data | More lifecycle and migration complexity than Saved IDs need | Use only if Order 240 identifies a concrete need |
+| localStorage | Smallest MVP implementation, durable per browser, already proven in prototype | Synchronous, device-local, limited structure | Adopted by the approved Order 240 contract with versioned key `muuzee:guest-saved:v1` |
+| IndexedDB | Structured and asynchronous; better for larger offline data | More lifecycle and migration complexity than Saved IDs need | Not adopted for MVP |
 | guest cookie/session identifier + server rows | Cross-request server identity can support richer sync | Introduces anonymous server ownership, retention, consent, and abuse controls | Not required by the approved Guest Save boundary |
 
 ### Guest to Account
 
-Both Guest and authenticated Saved state identify items by canonical entity kind and UUID. `docs/guest-save-sync-policy.md` proposes the Order 240 contract: merge after a verified authenticated session, use set union through the normal Account DAL/RLS path, consume only successful/already-present refs, and retain failed valid refs for retry. It remains pending Human Review.
+Both Guest and authenticated Saved state identify items by canonical entity kind and UUID. The approved contract in `docs/guest-save-sync-policy.md` uses browser `localStorage` with a versioned key and no TTL. After a verified authenticated session, merge is set union through the normal Account DAL/RLS path: consume only successful/already-present refs, retain failed valid refs for retry, and never reverse-sync Account Saved on logout.
 
 ### Logout
 
@@ -355,7 +355,7 @@ Logout is not deletion and performs none of these steps.
 
 ### Guest retention
 
-Guest Saved state is owned by the browser/device, not by an Auth account. Account deletion therefore does not automatically clear unrelated device-local Guest Saved state. The Order 240 proposal uses no automatic TTL, consumes successfully merged refs, and retains unmerged refs; see `docs/guest-save-sync-policy.md` pending Human Review.
+Guest Saved state is owned by the browser/device, not by an Auth account. Account deletion therefore does not automatically clear unrelated device-local Guest Saved state. The approved Order 240 contract uses no automatic TTL, consumes successfully merged refs, and retains unmerged refs; see `docs/guest-save-sync-policy.md`.
 
 ## 11. Privacy / RLS Implications
 
@@ -410,7 +410,7 @@ Order 220 implements this Account DAL. Its fixed contract is:
 | 215 ArtWall | Done: settings/items Physical tables; Seen Exhibition is the current source |
 | 220 Data Access | Done: typed Account DAL, Viewer State, safe errors, SSR client foundation |
 | 230 RLS | Done: minimum grants, 20 owner policies, and owner/cross-user/anonymous SQL regression tests |
-| 240 Guest merge | Proposed pending Human Review: versioned localStorage, no TTL, idempotent set union, per-ref cleanup/retry, and no logout reverse sync |
+| 240 Guest merge | Approved: versioned localStorage, no TTL, idempotent set union, per-ref cleanup/retry, and no logout reverse sync; implementation is pending Order 242 |
 | 250 Legal Consent | Pending: approve retention/delete/export policy before `user_legal_consents` migration |
 
 ## 14. Remaining Downstream Decisions
@@ -420,10 +420,9 @@ The following remain explicit downstream questions. Resolved Target v1 decisions
 1. Public Profile scope and which fields can be exposed.
 2. Private Location collection purpose, granularity, retention, and Search/Map default behavior.
 3. ArtWall initial generation rule and maximum item count.
-4. Human confirmation of the five recommended Guest Saved decisions in `docs/guest-save-sync-policy.md`.
-5. UX for Personal Actions that reference archived/unpublished Masters.
-6. Whether public/shared ArtWall becomes a future capability; MVP remains private.
-7. Legal-consent retention, account-delete, and export behavior required before Order 250 creates the Physical table.
+4. UX for Personal Actions that reference archived/unpublished Masters.
+5. Whether public/shared ArtWall becomes a future capability; MVP remains private.
+6. Legal-consent retention, account-delete, and export behavior required before Order 250 creates the Physical table.
 
 These decisions do not change the current ownership model, canonical UUID strategy, or implemented Personal Action targets.
 
