@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source of Truth: supabase/migrations/*.sql
-// Applied migrations: 202609040001_admin_v0.sql .. 202609270001_user_rls_authorization.sql
+// Applied migrations: 202609040001_admin_v0.sql .. 202609280001_user_legal_consents.sql
 // Regenerate: npm run db:docs
 
 Table artist_external_match_candidates {
@@ -433,6 +433,19 @@ Table user_favorite_items {
   artist_id uuid [ref: > artists.id]
   venue_id uuid [ref: > venues.id]
   created_at timestamptz [not null, default: `now()`]
+}
+
+Table user_legal_consents {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null, ref: > auth.users.id]
+  consent_type text [not null]
+  document_version text [not null]
+  consented_at timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, consent_type, document_version) [unique]
+  }
 }
 
 Table user_preferences {

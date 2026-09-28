@@ -768,14 +768,15 @@
     {
       "name": "user_legal_consents",
       "category": "User Data",
-      "status": "Planned",
-      "implementationOrder": "Order 250 dependency; migration only after legal/retention approval",
+      "status": "Implemented",
+      "implementationOrder": "Order 251",
       "owner": "Authenticated user / legal audit domain",
       "publicExposure": "Private",
-      "rlsExpectation": "Owner read; write path and retention/deletion policy require Order 250 approval",
+      "rlsExpectation": "Authenticated owner SELECT only; trusted server service-role writes; anon and normal authenticated writes denied",
       "notes": [
         "Registration consent is not stored in Auth metadata.",
-        "The Target assumes account-delete cascade unless Order 250 requires a separately retained or pseudonymized audit record."
+        "Identifiable consent history cascades on Account deletion under the Order 250 approved lifecycle policy.",
+        "Registration capture waits for Order 420 final document versions; no placeholder acceptance is recorded."
       ],
       "columns": [
         {
@@ -896,6 +897,10 @@
       "responsibility": "Approve consent retention/delete/export policy before user_legal_consents migration and finalize account-delete behavior."
     },
     {
+      "order": "Order 251",
+      "responsibility": "Implement Legal Consent persistence, owner-read/trusted-write authorization, JSON Account export, fresh reauthentication, and hard-delete lifecycle orchestration."
+    },
+    {
       "order": "Order 252",
       "responsibility": "Implement Favorite Artist / Venue notification delivery using user_preferences.notification_enabled."
     },
@@ -928,7 +933,7 @@
     },
     {
       "topic": "Legal Consent",
-      "decision": "Keep user_legal_consents in Target v1, but defer migration until Order 250 approves Privacy, retention and deletion behavior."
+      "decision": "Implement user_legal_consents in Order 251 with immutable versioned acceptance, authenticated owner read, trusted server-only write, and auth.users delete cascade. Registration capture waits for Order 420 final legal document versions."
     }
   ]
 }

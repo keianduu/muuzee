@@ -27,9 +27,9 @@ Current MVP decisions are:
 | Preferences | Notification, Newsletter, and private Location fields are adopted; delivery and Location consumers remain downstream |
 | ArtWall | Six typed settings are persisted; current candidates are Seen Exhibitions; selected membership/order/visibility remain separate state |
 | `user_visits` | Future / excluded from Target v1; not synonymous with Seen |
-| Legal Consent | `user_legal_consents` is Target v1 Planned but has no Physical table; approved lifecycle implementation belongs to Order 251 |
+| Legal Consent | `user_legal_consents` is Physical in Order 251; authenticated owner SELECT, trusted server-only write, and Auth-user delete cascade |
 
-The current Physical Schema contains seven User Data tables: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`. All seven have RLS enabled. Migration `202609270001_user_rls_authorization.sql` defines the minimum `authenticated` table grants and 20 operation-specific owner policies; `anon` has no table privileges on these relations.
+The current Physical Schema contains eight User Data tables: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, `user_artwall_items`, and `user_legal_consents`. All eight have RLS enabled. The first seven use the normal owner DAL policies from migration `202609270001_user_rls_authorization.sql`; Legal Consent permits authenticated owner SELECT only and uses an isolated trusted server writer.
 
 ## 1. Goals / Non-goals
 
@@ -133,7 +133,7 @@ Preferences are separate from Profile presentation. The MVP schema adopts:
 - `newsletter_enabled`
 - private `country_code`, `region`, `prefecture`, and `city`
 
-Notification delivery, Newsletter delivery, and Search/Map Location consumption remain downstream. Location is private by default and must not enter a public profile DTO without a separate opt-in decision. Auditable Terms/Privacy consent is a separate planned domain, not the Newsletter boolean.
+Notification delivery, Newsletter delivery, and Search/Map Location consumption remain downstream. Location is private by default and must not enter a public profile DTO without a separate opt-in decision. Auditable Terms/Privacy consent is a separate implemented domain, not the Newsletter boolean; capture waits for final Order 420 document versions.
 
 ## 5. Guest vs Authenticated
 
@@ -339,7 +339,7 @@ Public DTOs must not gain `isSaved`, `isSeen`, or `isFavorite` fields. The viewe
 
 ### Account deletion
 
-The approved lifecycle contract is defined in `docs/user-data-retention-policy.md`: fresh identity verification, optional pre-delete export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth-user deletion, database cascades, verification, and browser-session cleanup. Completed deletion is irreversible; Support and backup/PITR do not restore an individual deleted Account. Order 251 owns implementation.
+The approved lifecycle contract is defined in `docs/user-data-retention-policy.md`. Order 251 implements JSON export, fresh password reauthentication, an opaque 15-minute purpose marker, fail-closed avatar cleanup when a stored path exists, privileged Auth-user hard deletion, database cascades, best-effort local sign-out, and marker cleanup. No avatar Storage adapter or external processor exists yet. Completed deletion is irreversible; Support and backup/PITR do not restore an individual deleted Account.
 
 Logout is not deletion and performs none of these steps.
 
@@ -410,7 +410,7 @@ Order 220 implements this Account DAL. Its fixed contract is:
 | 240 Guest policy | Approved: versioned localStorage, no TTL, idempotent set union, per-ref cleanup/retry, and no logout reverse sync |
 | 242 Guest implementation | Implemented: validated Guest store, bounded Account merge through DAL/RLS, `/auth/complete` handoff, exact latest-store cleanup, retry, and reusable session bootstrap; broad User Front Save/Saved UI wiring remains downstream |
 | 250 Lifecycle policy | Approved: retention/delete/export/Legal Consent lifecycle contract; implementation handed to Order 251 |
-| 251 Lifecycle implementation | Todo: Legal Consent migration/RLS, export, deletion orchestration, Storage cleanup, aggregate analytics hook, and tests |
+| 251 Lifecycle implementation | Doing: Legal Consent migration/RLS/trusted writer, JSON export, fresh reauthentication, hard-delete orchestration, fail-closed avatar boundary, typed aggregate hook, and tests implemented; Human Review pending |
 
 ## 14. Remaining Downstream Decisions
 
@@ -427,8 +427,8 @@ These decisions do not change the current ownership model, canonical UUID strate
 ## 15. Current Physical State
 
 - Seven User Data tables exist: `profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`.
-- All seven have RLS enabled. Migration `202609270001_user_rls_authorization.sql` grants `authenticated` only the required operations and implements 20 operation-specific owner policies; `anon` has no User Data table privileges. Authorization is validated locally.
-- `user_legal_consents` is Target v1 Planned and not present in the Physical Schema; Order 250 approved its cascade/lifecycle contract and Order 251 owns implementation.
+- All eight have RLS enabled. Migration `202609270001_user_rls_authorization.sql` grants normal User Data operations through 20 owner policies. Migration `202609280001_user_legal_consents.sql` adds owner SELECT only for Legal Consent; `anon` and normal authenticated writes have no table privileges.
+- Trusted service-role access is limited to the Legal Consent writer and Account lifecycle hard-delete boundary. Normal User Data, Guest Saved, and Auth flows do not import Admin credentials.
 - `user_visits` is Future / excluded from Target v1 and is not synonymous with Seen.
 - Auth/Profile, Personal Actions, and ArtWall reference canonical UUIDs and do not copy Master display values.
 - Prototype localStorage structures remain UX/fixture evidence only and are not Production persistence contracts.

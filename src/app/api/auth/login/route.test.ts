@@ -1,6 +1,7 @@
 import { NextRequest, type NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/recovery";
+import { ACCOUNT_LIFECYCLE_COOKIE } from "@/lib/account-lifecycle/marker";
 import { loginWithPassword } from "@/lib/auth/service";
 import { createSupabaseRouteClient } from "@/lib/supabase/route";
 import { POST } from "./route";
@@ -39,5 +40,6 @@ describe("Login recovery-purpose isolation", () => {
 
     expect(response.status).toBe(200);
     expect(response.cookies.get(PASSWORD_RECOVERY_COOKIE)?.value).toBe("");
+    expect(response.cookies.get(ACCOUNT_LIFECYCLE_COOKIE)?.value).toBe("");
   });
 });

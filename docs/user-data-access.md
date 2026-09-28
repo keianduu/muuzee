@@ -132,11 +132,13 @@ Raw SQL, PostgREST/Auth messages, JWTs, cookies, tokens, stack traces, and provi
 
 ## 7. RLS and current execution status
 
-The seven User Data tables currently present in the Physical Schema—`profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`—have RLS enabled. Migration `202609270001_user_rls_authorization.sql` removes `anon` table privileges, grants `authenticated` only the operations required by the DAL, and defines 20 operation-specific owner policies using `(select auth.uid()) = user_id`. INSERT uses `WITH CHECK`; UPDATE uses both `USING` and `WITH CHECK`. RLS remains non-forced, so the existing PostgreSQL `service_role` bypass is unchanged.
+The eight User Data tables currently present in the Physical Schema have RLS enabled. Migration `202609270001_user_rls_authorization.sql` covers the seven normal DAL tables—`profiles`, `user_preferences`, `user_saved_items`, `user_seen_items`, `user_favorite_items`, `user_artwall_settings`, and `user_artwall_items`—with minimum authenticated grants and 20 operation-specific owner policies. Migration `202609280001_user_legal_consents.sql` adds `user_legal_consents` with authenticated owner SELECT only; `anon` and normal authenticated INSERT/UPDATE/DELETE have no table privileges. RLS remains non-forced, so the existing PostgreSQL `service_role` bypass is unchanged.
 
 `supabase/tests/user_rls_authorization.sql` validates the exact grant and policy metadata plus owner, cross-user, anonymous, owner-reassignment, bootstrap, and account-cascade behavior with transaction rollback. Order 220 unit tests continue to cover domain/session/repository behavior with fakes and static dependency guards. Normal User Data access does not bypass RLS with `SUPABASE_SERVICE_ROLE_KEY`.
 
-`user_legal_consents` remains Target v1 Planned, depends on Order 250, and has no Physical table yet.
+`user_legal_consents` writes are isolated in `src/lib/legal-consent/service.ts`. The service derives the current user with fresh `getUser()`, supplies `consented_at` server-side, and treats only the exact version duplicate as success/no-op without updating the original timestamp. Owner history reads use the normal request client and RLS. Registration capture waits for Order 420 final document versions.
+
+Order 251 Account lifecycle routes use a separate server-only exception under `src/lib/account-lifecycle/`: JSON export reads the viewer's normal RLS-scoped repositories, reauthentication uses the response-aware Auth client, and hard deletion alone uses Admin Auth after `{confirm:true}`, the purpose marker, fresh identity, and Storage preconditions. Neither raw Auth metadata nor service credentials are returned.
 
 The normal User Data modules contain no import of the Admin client and no service-role environment access.
 

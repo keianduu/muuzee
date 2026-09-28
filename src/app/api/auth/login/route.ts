@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { authJsonResponse, readAuthJson } from "@/lib/auth/http";
 import { clearPasswordRecoveryMarker } from "@/lib/auth/recovery";
+import { clearAccountLifecycleMarker } from "@/lib/account-lifecycle/marker";
 import { loginWithPassword } from "@/lib/auth/service";
 import { createSupabaseRouteClient } from "@/lib/supabase/route";
 
@@ -10,5 +11,6 @@ export async function POST(request: NextRequest) {
   const result = loginWithPassword(supabase.auth, input);
   const response = await authJsonResponse(result, applyAuthState);
   clearPasswordRecoveryMarker(response);
+  clearAccountLifecycleMarker(response);
   return response;
 }

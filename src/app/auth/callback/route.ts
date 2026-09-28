@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { authError } from "@/lib/auth/errors";
+import { clearAccountLifecycleMarker } from "@/lib/account-lifecycle/marker";
 import {
   clearPasswordRecoveryMarker,
   setPasswordRecoveryMarker,
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
 
   // A recovery-purpose marker must never survive an unrelated callback.
   clearPasswordRecoveryMarker(response);
+  clearAccountLifecycleMarker(response);
   if (result.ok && result.transition?.source === "recovery") {
     setPasswordRecoveryMarker(response);
   }

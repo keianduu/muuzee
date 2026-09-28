@@ -1,6 +1,6 @@
 # Auth / Login Policy
 
-Status: Current Production Auth contract. Order 190 selected the policy; Order 241 implements the Email + Password mutation, callback, session, logout, and recovery foundation.
+Status: Current Production Auth contract. Order 190 selected the policy; Order 241 implements the Email + Password foundation; Order 251 adds Account lifecycle reauthentication and hard-delete boundaries.
 
 Approved Product behavior comes from the Notion requirement **Account / Login / Guest Save**. `docs/user-data-architecture.md` owns user-data boundaries, `docs/user-data-access.md` owns the Account DAL/RLS boundary, and `docs/guest-save-sync-policy.md` owns the approved Guest Saved merge policy. Prototype Auth remains a UX reference only.
 
@@ -20,7 +20,7 @@ Approved Product behavior comes from the Notion requirement **Account / Login / 
 | Normal Auth credentials | Never stored in URL state or custom `localStorage` |
 | Elevated access | Service-role/Admin Auth is prohibited from normal Login/Register/Recovery/User Data flows |
 
-OAuth, Magic Link, Phone, MFA, Email change, Account deletion, and Production Admin authentication are not part of Order 241.
+OAuth, Magic Link, Phone, MFA, Email change, and Production Admin authentication remain outside the current implementation. Account deletion is implemented by the isolated Order 251 lifecycle boundary, not by normal Auth flows.
 
 ## 2. Current implementation
 
@@ -84,6 +84,9 @@ Both paths require a verified `claims.sub` before success. The final redirect is
 | `/api/auth/update-password` | POST | recovery marker, fresh `getUser()`, then `updateUser({ password })` | `password_updated`, then marker removal |
 | `/api/auth/logout` | POST | `signOut({ scope: "local" })` | `signed_out` |
 | `/auth/update-password` | GET/UI | fresh `getUser()` plus recovery marker | submits only to the guarded update-password route |
+| `/api/account/export` | GET | fresh `getUser()` plus owner-RLS reads | private/no-store JSON attachment |
+| `/api/account/reauthenticate` | POST | fresh `getUser()` then `signInWithPassword()` for the same confirmed identity | short-lived lifecycle marker |
+| `/api/account/delete` | POST | marker + fresh `getUser()` + preconditions + server-only Admin hard delete | `account_deleted` |
 
 JSON success and failure bodies contain only typed domain state. Passwords, tokens, cookies, provider messages, SQL text, stack traces, and account-existence hints are never returned.
 
@@ -101,7 +104,7 @@ The default Auth completion destination is `/auth/complete`. It is a neutral Pro
 
 Invalid or expired callbacks also return to `/auth/complete?authError=<safe-code>`. Provider messages and callback credentials are not copied to that URL.
 
-Terms/Privacy acceptance is not stored in Auth metadata. Order 250 approved the separate `user_legal_consents` cascade/lifecycle contract; its Physical implementation belongs to Order 251 and is not implemented by Order 241.
+Terms/Privacy acceptance is not stored in Auth metadata. Order 251 implements the separate `user_legal_consents` table and trusted writer. Registration does not invoke it until Order 420 supplies final Terms/Privacy document versions.
 
 ## 6. Password recovery
 
@@ -204,10 +207,10 @@ The repository-local `supabase/config.toml` also mirrors the eight-character min
 ## 12. Deferred scope
 
 - Guest Saved adapter/merge/cleanup: Order 242.
-- Legal consent persistence and Account lifecycle implementation: the approved policy is documented in `docs/user-data-retention-policy.md`; implementation belongs to Order 251.
+- Account Settings UI and Registration consent capture remain downstream; the Order 251 persistence and lifecycle server boundaries are implemented.
 - STG/Production Auth/SMTP/redirect operations: Order 260.
 - OAuth, passwordless, Phone, MFA, Email change, all-device logout, and final shared Auth UI: Future/downstream.
-- Account deletion: the approved contract requires fresh reauthentication, optional export, Storage API cleanup, external-processor cleanup where applicable, privileged Auth deletion, cascade verification, and session cleanup. Completed deletion is irreversible and is not restored by Product, Support, or backup/PITR. It is not implemented here.
+- Account deletion: Order 251 implements fresh password reauthentication, optional JSON export, fail-closed avatar handling, privileged hard deletion, database cascades, best-effort local sign-out, and lifecycle-marker cleanup. A real avatar Storage adapter remains future work; completed deletion is irreversible and is not restored by Product, Support, or backup/PITR.
 
 ## Official evidence
 

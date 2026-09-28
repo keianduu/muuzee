@@ -14,7 +14,7 @@ This policy defines the intended Production lifecycle for Muuzee Account data:
 - how verified disclosure, correction, suspension, and deletion requests remain available;
 - how Legal Consent records, Storage objects, external processors, logs, and backups cross the lifecycle boundary.
 
-It does not implement a migration, `user_legal_consents`, Account deletion, export, Storage cleanup, provider configuration, or public legal text. Current implementation Sources of Truth remain:
+Order 251 implements the first-party lifecycle boundary: `user_legal_consents`, owner-readable consent history with trusted server-only writes, JSON Account export, fresh password reauthentication, and server-only hard-delete orchestration. It does not add avatar Storage infrastructure, external processors, an analytics sink, Account Settings UI, provider configuration, or public legal text. Current implementation Sources of Truth remain:
 
 - Target Schema v1: `docs/database/user-data-target.json`
 - Physical schema: `supabase/migrations/*.sql`
@@ -57,11 +57,11 @@ Official sources reviewed:
 | `user_preferences` | notification/newsletter booleans; private country, region, prefecture, city; timestamps | Account data. Location is private and is not Public Profile data. |
 | Personal Actions | `user_saved_items`, `user_seen_items`, `user_favorite_items`: canonical Master UUIDs and timestamps | Account data. Master Exhibition/Artist/Venue/Work records are not user-owned. |
 | ArtWall | `user_artwall_settings`, `user_artwall_items` | Account data. Hydrated Master title/image/venue/artist fields are not duplicated User Data. |
-| Legal Consent | planned `user_legal_consents` | Target v1 Planned; no Physical table. It records document-version acceptance, not a universal legal basis for all processing. |
+| Legal Consent | `user_legal_consents` | Physical and private. Owner SELECT is allowed; writes use the trusted server boundary. It records immutable document-version acceptance, not a universal legal basis for all processing. |
 | Guest Saved | browser key `muuzee:guest-saved:v1`, canonical `{kind,id}` only | Browser-local, no Account owner, no PII by contract. Server Account deletion cannot remove it automatically. |
 | Derived values | Saved/Seen/Favorite counts, ArtWall summary | Reproducible and currently not persisted. They are convenience output, not independent source records. |
 
-All seven current Physical User Data tables reference `auth.users.id` with `ON DELETE CASCADE`. `user_legal_consents` remains Planned in Target v1 with the approved cascade contract.
+All eight current Physical User Data tables reference `auth.users.id` with `ON DELETE CASCADE`, including `user_legal_consents`.
 
 ### 3.2 Operational and future data
 
@@ -104,7 +104,7 @@ Before execution, require:
 - a fresh reauthentication or equivalent recent confirmation suitable for a destructive action;
 - clear irreversible-deletion copy covering Account data, Storage, Guest local state, export option, and re-registration behavior.
 
-An old cookie session alone is not sufficient. Exact reauthentication UX/API belongs to downstream implementation.
+An old cookie session alone is not sufficient. Order 251 implements password reauthentication with fresh `getUser()` identity and a 15-minute opaque HttpOnly marker; the final Account Settings UX remains downstream.
 
 ### 5.2 Server-only orchestration
 
@@ -150,13 +150,13 @@ Supabase currently documents two material boundaries:
 - a user owning Storage objects may not be deletable until those objects are removed;
 - deleting the Auth user invalidates refresh/session continuation, but an already-issued access JWT can remain cryptographically valid until its expiry.
 
-The database ownership tree prevents a deleted Auth UUID from recreating Account rows because the owner foreign keys require an existing `auth.users` row and RLS requires the authenticated owner. For especially sensitive post-deletion operations, a future security task may additionally validate `session_id` against the live Auth sessions table. Order 250 does not add that mechanism.
+The database ownership tree prevents a deleted Auth UUID from recreating Account rows because the owner foreign keys require an existing `auth.users` row and RLS requires the authenticated owner. Existing access JWTs may remain cryptographically valid until expiry; Order 251 uses fresh `getUser()` for sensitive lifecycle operations. Live `session_id` validation against Auth sessions remains an Order 260 responsibility.
 
 ## 8. Legal Consent
 
 ### 8.1 Meaning
 
-The planned `user_legal_consents` record is a versioned audit of Terms/Privacy document acceptance or acknowledgement:
+The implemented `user_legal_consents` record is a versioned audit of Terms/Privacy document acceptance or acknowledgement:
 
 - `user_id`
 - `consent_type` (`terms` or `privacy`)
@@ -167,11 +167,11 @@ It must not be interpreted as proof that consent is the legal basis for every Mu
 
 ### 8.2 Approved retention policy
 
-While the Account exists, keep each accepted document-version record immutable. At Account deletion, delete identifiable consent rows through the planned `user_id → auth.users ON DELETE CASCADE`. Separately archive the published Privacy Policy and Terms documents and their versions as non-user legal artifacts under Order 420.
+While the Account exists, keep each accepted document-version record immutable. At Account deletion, delete identifiable consent rows through the implemented `user_id → auth.users ON DELETE CASCADE`. Separately archive the published Privacy Policy and Terms documents and their versions as non-user legal artifacts under Order 420.
 
 Alternative B—retaining individual consent evidence after Account deletion for a legal-defense period—is **not adopted** in this draft. Adopting it later requires Human / Legal approval of a specific purpose, fixed retention term, restricted access, Privacy Policy disclosure, and anonymization/pseudonymization assessment in a separate lifecycle.
 
-The current Target v1 JSON already matches the recommended cascade model and requires no change in Order 250.
+Order 251 implements this cascade model. Registration does not yet write acceptance because Order 420 still owns the final Terms/Privacy document versions; no placeholder version is recorded.
 
 ## 9. Export / Disclosure
 
@@ -190,7 +190,7 @@ Include:
 - Profile and Preferences;
 - Saved, Seen, and Favorite canonical refs/timestamps;
 - ArtWall settings and items;
-- Legal Consent rows once implemented;
+- Legal Consent rows;
 - the user's uploaded avatar file, when present.
 
 Canonical Master UUIDs remain the source references. Current display labels may be resolved and included as supplemental convenience fields, but Muuzee must not copy full Master records into User Data. Derived counts may be included only as explicitly derived convenience values.
@@ -306,23 +306,19 @@ Order 470 owns GA4/Search Console/consent configuration and STG/Production measu
 | 4 | Active systems delete immediately; backups expire under documented provider retention, with exact terms fixed by Order 260. Backup/PITR is not a deleted-Account restore mechanism. | **Approved** |
 | 5 | Ordinary disclosure/export has no fee; internal target is 30 calendar days while legal/public wording remains “without delay.” | **Approved** |
 
-Human Review approved all five decisions on 2026-09-28. Lifecycle implementation belongs to Order 251; final public/legal wording remains an Order 420 responsibility.
+Human Review approved all five decisions on 2026-09-28. Order 251 implements the lifecycle server boundaries; final public/legal wording remains an Order 420 responsibility.
 
 ## 18. Implementation follow-up
 
-Order 251 **[Backend] Legal Consent / Account deletion / Data export lifecycleを実装** exists in Notion with Status `Todo` and owns implementation of this approved policy.
+Order 251 **[Backend] Legal Consent / Account deletion / Data export lifecycleを実装** implements this policy and remains `Doing` until Human Review.
 
-Current Order 251 scope:
+Implemented Order 251 scope:
 
-- `user_legal_consents` migration, RLS, generated DB docs, and tests;
-- versioned Registration consent write boundary;
-- typed Account export service and reviewed JSON/ZIP contract;
-- fresh-reauthenticated Account deletion orchestrator;
-- User avatar Storage enumeration/removal and verification;
-- external-processor hooks where integrations actually exist;
-- server-only Auth Admin deletion, cascade verification, and browser-session cleanup;
-- tests for failure/retry/idempotency, issued-JWT boundary, re-registration, and no restoration;
-- dependency on Order 420 final Privacy/Terms versions and published request channel;
-- operational retention/config dependencies from Order 260 and Analytics classification from Order 470.
+- `user_legal_consents` migration, owner-read RLS, trusted writer, generated DB docs, and rollback SQL tests;
+- UTF-8 JSON Account export at `GET /api/account/export`; non-null avatar paths are reported as unavailable until a real Storage export adapter exists;
+- password reauthentication at `POST /api/account/reauthenticate` with an opaque 15-minute purpose marker;
+- hard-delete orchestration at `POST /api/account/delete`, with `{confirm:true}`, fresh `getUser()`, fail-closed avatar handling, isolated Admin Auth deletion, best-effort local sign-out, and marker expiry;
+- an explicit no-op external-processor boundary because none is implemented;
+- a typed, non-identifying deletion aggregate hook with no durable sink pending Order 470.
 
-Order 250 itself changes no migration, schema, RLS, Auth configuration, Storage, DB data, analytics table, deletion ledger, or Production API/UI. Order 243 Account email change is a separate task and must not be mixed into Order 251.
+The current deletion flow deliberately blocks before Auth deletion when `avatar_object_path` is non-null because no User avatar bucket/cleanup adapter exists. Existing access JWTs may remain cryptographically valid until expiry; sensitive lifecycle routes perform fresh `getUser()` checks, while live `session_id` validation remains Order 260 scope. Account Settings UI, Registration consent capture, avatar Storage infrastructure, and public legal wording remain downstream.

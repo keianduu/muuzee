@@ -5,6 +5,7 @@ import {
   clearPasswordRecoveryMarker,
   hasPasswordRecoveryMarker,
 } from "@/lib/auth/recovery";
+import { clearAccountLifecycleMarker } from "@/lib/account-lifecycle/marker";
 import { updatePassword } from "@/lib/auth/service";
 import type { AuthOperationResult } from "@/lib/auth/types";
 import { createSupabaseRouteClient } from "@/lib/supabase/route";
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
     || (!result.ok && ["expired_or_invalid_link", "unauthenticated"].includes(result.error.code))
   ) {
     clearPasswordRecoveryMarker(response);
+    clearAccountLifecycleMarker(response);
   }
 
   return response;
