@@ -118,6 +118,8 @@ Recommended order:
 6. let `auth.users` foreign-key cascades remove Profile, Preferences, Personal Actions, ArtWall, and—if implemented as recommended—Legal Consent rows;
 7. verify active-system cleanup and clear the current browser Auth session/cookies.
 
+An external cleanup failure follows the integration-specific blocking-or-queued-retry decision required by Section 12; it must not leave the deletion lifecycle indefinitely suspended or silently retain broad Account data.
+
 The privileged Auth Admin boundary is an explicit Account-lifecycle exception to the normal owner DAL. Service-role/secret credentials must never reach the browser.
 
 ### 5.3 Re-registration
@@ -199,6 +201,8 @@ Exclude:
 
 Self-service export is not the exclusive APPI disclosure procedure. Order 420 must publish a verified manual channel for purpose notification, disclosure, correction, suspension of use, and deletion requests, including electronic response where appropriate.
 
+Current Muuzee does not establish that any APPI third-party-provision record exists. If a future disclosure to another party requires such a record, that record may itself fall within the scope of a verified disclosure request and must be handled through the Order 420 manual procedure. Human / Legal review must distinguish a processor/outsourced handling arrangement from a third-party provision for each integration. This policy does not require every such record to be included automatically in the self-service Account export.
+
 Ordinary disclosure/export should be free for MVP. If exceptional physical delivery or another fee is considered later, Human / Legal review must confirm that it is reasonable. Operational handling should target completion within 30 calendar days, while public/legal wording remains **“without delay”**; 30 days is not represented as an APPI statutory deadline.
 
 ## 10. Correction / Suspension
@@ -229,6 +233,8 @@ Before adding a notification, newsletter, analytics, support, or similar process
 - required Privacy Policy/Cookie disclosure.
 
 Account deletion should invoke available delete/unsubscribe operations for Account-linked records unless a separately reviewed legal obligation requires limited retention. Orders 252 and 254 own notification/newsletter integration. Orders 420 and 470 must classify Cookie/Analytics identifiers and any Account linkage; this policy never assumes analytics data is anonymous.
+
+Each external integration must decide before implementation whether a cleanup failure blocks Account deletion or is accepted into a queued retry. A failure must not leave the overall Account deletion indefinitely in an undocumented partial state. If queued retry is adopted, retain only the minimum identifier needed to retry, and define its specific purpose, fixed retention, access restriction, completion/expiry handling, and operational owner before launch. Account Personal Data must not be retained long-term merely because it is convenient for retry. Order 250 creates no queue, table, or concrete retry mechanism because no such external processor integration is implemented today.
 
 ## 13. Guest Saved
 
