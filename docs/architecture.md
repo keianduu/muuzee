@@ -7,12 +7,14 @@ The first Admin vertical slice is Approved. The Master Data Architecture extensi
 ```text
 Browser
   ↓
-Next.js App Router / Vercel (future deployment target)
+Next.js App Router / Vercel
   ↓
 Supabase PostgreSQL / private Storage
 ```
 
 The Admin UI uses server-side Next.js code and route handlers. The Supabase service-role key is server-only and must never be exposed through a `NEXT_PUBLIC_*` variable or client bundle. Until Admin authentication exists, `/admin` is local-only or must be protected separately in staging.
+
+`docs/environment-strategy.md` owns the Draft LOCAL / STG / Production isolation, deployment-promotion, migration, secret, and rollback contract. Remote projects are not provisioned by that planning document: Orders 270–340 perform the environment-specific setup after Human Review.
 
 ## Data architecture
 
@@ -92,13 +94,14 @@ It reuses `data_sources`, `source_records`, `source_image_candidates`, `media_as
 - `src/lib/`: integration, matching, persistence, and validation logic.
 - `supabase/migrations/`: versioned database and Storage Source of Truth.
 - `docs/master-data-architecture.md`: technical master-data Source of Truth.
+- `docs/environment-strategy.md`: environment and release-operating Source of Truth after Human Review approval.
 - Notion: concise product/design context and decision log.
 - Git: implementation history.
 
 ## Deliberate current constraints
 
 - No ORM; Supabase client plus SQL migrations.
-- No remote Supabase project or deployment in this scope.
+- No remote Supabase/Vercel project has been provisioned by the environment-planning scope.
 - No new master Admin screens or external master APIs.
 - No automatic entity, content, or rights approval.
 - No Admin auth yet; production exposure is prohibited.

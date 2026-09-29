@@ -223,7 +223,7 @@ Ordinary disclosure/export should be free for MVP. If exceptional physical deliv
 
 Active Product DB/Auth/Storage deletion is immediate after confirmed execution. Backup and PITR copies expire according to documented provider/environment schedules and must not be restored into ordinary processing as though the deletion never occurred. They are not used to restore an individual deleted Account at the user's or Support's request.
 
-Order 260 must define exact backup, PITR, Auth-log, database-log, Vercel-log, and application-log retention for each environment. Order 250 invents no durations.
+Order 260's `docs/environment-strategy.md` records the provider-backed retention baseline and the Production PITR/plan decision that must receive Human Review before provisioning. Until that review is approved, the values remain proposed rather than an active provider guarantee.
 
 A Production restore runbook must account for deletions that occurred after the recovered snapshot and prevent deleted Account data from returning to normal use. This policy does not create a tombstone table. Any durable deletion ledger or operational request audit requires a separately justified purpose, minimum fields, restricted access, and fixed Human / Legal-approved term; email, user UUID, or request content must not be retained indefinitely by default.
 
@@ -294,7 +294,7 @@ Order 420 owns final public wording and must reconcile at least:
 - a summary of security measures;
 - versioned Privacy/Terms document publication and archive.
 
-Order 470 owns GA4/Search Console/consent configuration and STG/Production measurement separation. Order 260 owns exact environment/provider retention settings. This approved Order 250 policy is their lifecycle source, but is not published legal text.
+Order 470 owns GA4/Search Console/consent configuration and STG/Production measurement separation. Order 260 owns the reviewed environment/provider retention settings in `docs/environment-strategy.md`. This approved Order 250 policy is their lifecycle source, but is not published legal text.
 
 ## 17. Approved Product Decisions
 

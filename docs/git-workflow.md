@@ -71,6 +71,12 @@ Do not create multiple parallel `work`, `squash`, `final`, or `sync` branches fo
 - Do not merge `main` into the task branch merely to synchronize history. Prefer rebasing the task branch onto the latest `origin/main` before integration.
 - If an external tool, connector, or automation can write to GitHub, do not let it write directly to remote `main` while the local repository may contain unpublished work. Either verify that local `main` is synchronized first or use a task branch.
 
+## Branches are not environments
+
+`main` is also the canonical release input for both STG and Production. Muuzee does not keep a long-lived `develop` or `staging` branch. STG/Production isolation and release promotion belong to separate provider projects and environment configuration, not duplicate Git history.
+
+The Draft operating contract is `docs/environment-strategy.md`: STG may update automatically from `main`, while a same-SHA Production build remains staged until explicit promotion. This does not change the task-branch and fast-forward integration rules in this document.
+
 ## Before integrating a completed task
 
 Run the task-specific validation required by `AGENTS.md`, then update the branch against the latest remote `main`:

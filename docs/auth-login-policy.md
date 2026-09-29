@@ -195,19 +195,20 @@ The Order 242 implementation connects `/auth/complete` and exports `GuestSavedMe
 
 ## 11. Environment dependencies
 
-No dashboard or remote environment setting is changed by Order 241.
+No dashboard or remote environment setting is changed by Order 241. `docs/environment-strategy.md` is the detailed Draft operating Source of Truth for Order 260.
 
-| Setting | LOCAL | STG / Production |
-| --- | --- | --- |
-| Site URL | local Next.js origin | environment/canonical HTTPS origin |
-| Redirect allowlist | exact local `/auth/callback` URL | exact environment `/auth/callback` URL; avoid broad wildcard use |
-| Email confirmation | `supabase/config.toml` enables it for Product-equivalent Mailpit testing | required |
-| Email delivery | Supabase CLI Mailpit | approved sandbox in STG; custom SMTP in Production |
-| Password minimum | mirror 8 in app; provider config is authoritative | configure at least 8 in provider |
-| Leaked-password protection | plan-dependent local behavior | enable when available/approved |
-| Keys | public URL/anon key for normal flow; separate local Recovery/Account marker secrets | environment secret store; service role remains server-only, and purpose-marker secrets remain dedicated and independent |
+| Setting | LOCAL | STG | Production |
+| --- | --- | --- | --- |
+| Site URL | local Next.js origin | exact stable STG HTTPS origin | exact canonical HTTPS origin |
+| Redirect allowlist | exact local `/auth/callback` URLs | exact STG `/auth/callback` URL | exact Production `/auth/callback` URL; no wildcard |
+| Email confirmation | enabled for Product-equivalent Mailpit testing | required | required |
+| Email delivery | Supabase CLI Mailpit | approved sandbox SMTP | approved Production SMTP |
+| Password minimum | mirror 8 in app; provider config is authoritative | configure at least 8 | configure at least 8 |
+| Email OTP/link expiry | 3,600 seconds | 3,600 seconds | 3,600 seconds |
+| Leaked-password protection | plan-dependent local behavior | enable when available/approved | enable when available/approved |
+| Keys | public URL/anon key plus separate local marker secrets | STG-only secret store values | Production-only secret store values; service role remains server-only |
 
-The repository-local `supabase/config.toml` also mirrors the eight-character minimum, disables anonymous sign-in, and allow-lists only the localhost callback variants used by the app. Applying those settings to an already-running local stack requires a normal stop/start; it does not require a database reset. Order 260 owns final environment policy, domains, hosted redirect allowlists, SMTP, rate-limit/CAPTCHA, monitoring, and secret rotation.
+The repository-local `supabase/config.toml` explicitly mirrors the eight-character minimum and 3,600-second email-link expiry, disables anonymous sign-in, and allow-lists only the localhost callback variants used by the app. Applying those settings to an already-running local stack requires a normal stop/start; it does not require a database reset. Order 260 documents final environment policy, domains, hosted redirect allowlists, SMTP, rate-limit/CAPTCHA, monitoring, and secret rotation; Orders 270–340 perform provider configuration after Human Review.
 
 ## 12. Deferred scope
 
