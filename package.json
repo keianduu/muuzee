@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:seed:smoke": "node scripts/apply-stg-smoke-seed.mjs",
     "db:docs": "node scripts/generate-database-docs.mjs",
     "db:docs:check": "node scripts/generate-database-docs.mjs --check"
   },
