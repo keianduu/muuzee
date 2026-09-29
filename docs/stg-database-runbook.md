@@ -15,6 +15,7 @@ This runbook applies only to the Muuzee STG Supabase project:
 - Apply remote migrations only after a LOCAL clean rebuild and migration diff review.
 - Apply the remote smoke seed only after the Order 300 Phase A Human Review approves it.
 - The seed runner rejects a remote target unless both the connection identity and explicit confirmation match `steibqgeoqcsfsafaqcv`.
+- Future public objects require explicit `service_role` grants in the migration that creates them; default privileges must not expose future tables or sequences automatically.
 
 ## LOCAL clean rebuild
 
