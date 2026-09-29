@@ -43,3 +43,12 @@ Read it before any task that will create commits, push, merge, rebase, rewrite h
 
 ### Assets
 ./assets
+
+
+## ChatGPT / Codex Workflow
+
+Cross-chat orchestration and handoff rule:
+
+./docs/codex-orchestration-workflow.md
+
+Read it when ChatGPT is selecting/reviewing Notion Tasks and preparing instructions for Codex. A new ChatGPT conversation should be able to resume Muuzee work from the durable project sources without requiring the user to restate previous-chat history.
