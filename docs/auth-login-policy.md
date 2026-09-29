@@ -195,7 +195,7 @@ The Order 242 implementation connects `/auth/complete` and exports `GuestSavedMe
 
 ## 11. Environment dependencies
 
-No dashboard or remote environment setting is changed by Order 241. `docs/environment-strategy.md` is the detailed Draft operating Source of Truth for Order 260.
+No dashboard or remote environment setting is changed by Order 241. `docs/environment-strategy.md` is the approved environment-policy Source of Truth; downstream environment Orders own remote provisioning.
 
 | Setting | LOCAL | STG | Production |
 | --- | --- | --- | --- |
@@ -208,13 +208,13 @@ No dashboard or remote environment setting is changed by Order 241. `docs/enviro
 | Leaked-password protection | plan-dependent local behavior | enable when available/approved | enable when available/approved |
 | Keys | public URL/anon key plus separate local marker secrets | STG-only secret store values | Production-only secret store values; service role remains server-only |
 
-The repository-local `supabase/config.toml` explicitly mirrors the eight-character minimum and 3,600-second email-link expiry, disables anonymous sign-in, and allow-lists only the localhost callback variants used by the app. Applying those settings to an already-running local stack requires a normal stop/start; it does not require a database reset. Order 260 documents final environment policy, domains, hosted redirect allowlists, SMTP, rate-limit/CAPTCHA, monitoring, and secret rotation; Orders 270–340 perform provider configuration after Human Review.
+The repository-local `supabase/config.toml` explicitly mirrors the eight-character minimum and 3,600-second email-link expiry, disables anonymous sign-in, and allow-lists only the localhost callback variants used by the app. Applying those settings to an already-running local stack requires a normal stop/start; it does not require a database reset. Order 260 defines the approved environment policy. Orders 270–340 provision the hosted environment, redirect, rate-limit, and secret settings; Order 410 owns SMTP selection; Order 460 owns monitoring/operations; a hosted Auth setup or separate Security task owns CAPTCHA only if the launch decision adopts it.
 
 ## 12. Deferred scope
 
 - Guest Saved adapter/merge/cleanup: Order 242.
 - Account Settings UI and Registration consent capture remain downstream; the Order 251 persistence and lifecycle server boundaries are implemented.
-- STG/Production Auth/SMTP/redirect operations: Order 260.
+- STG/Production Auth and redirect operations: Orders 270/300 and 310/340; SMTP selection: Order 410; environment secrets: Orders 290/330.
 - OAuth, passwordless, Phone, MFA, Email change, all-device logout, and final shared Auth UI: Future/downstream.
 - Account deletion: Order 251 implements fresh password reauthentication, optional JSON export, fail-closed avatar handling, privileged hard deletion, database cascades, best-effort local sign-out, and lifecycle-marker cleanup. The 15-minute marker is HMAC-SHA256 signed with the dedicated `ACCOUNT_LIFECYCLE_MARKER_SECRET`; signature verification includes the fresh Auth UUID without placing it or credentials in the cookie payload. Missing configuration, malformed/tampered/expired markers, and markers issued for another user fail closed. A real avatar Storage adapter remains future work; completed deletion is irreversible and is not restored by Product, Support, or backup/PITR.
 

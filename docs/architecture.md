@@ -12,9 +12,9 @@ Next.js App Router / Vercel
 Supabase PostgreSQL / private Storage
 ```
 
-The Admin UI uses server-side Next.js code and route handlers. The Supabase service-role key is server-only and must never be exposed through a `NEXT_PUBLIC_*` variable or client bundle. Until Admin authentication exists, `/admin` is local-only or must be protected separately in staging.
+The Admin UI uses server-side Next.js code and route handlers. The Supabase service-role key is server-only and must never be exposed through a `NEXT_PUBLIC_*` variable or client bundle. Until Production Admin authorization exists, `/admin` is local-only or protected staging. The public Production domain must not launch while anonymous `/admin` is reachable; Order 480 must authorize or block/isolate that route.
 
-`docs/environment-strategy.md` owns the Draft LOCAL / STG / Production isolation, deployment-promotion, migration, secret, and rollback contract. Remote projects are not provisioned by that planning document: Orders 270–340 perform the environment-specific setup after Human Review.
+`docs/environment-strategy.md` owns the approved LOCAL / STG / Production isolation, deployment-promotion, migration, secret, backup, and rollback policy. It does not provision providers: Orders 270–340 perform environment setup, and the later domain, provider, email, monitoring, and Admin authorization Orders own their respective launch gates.
 
 ## Data architecture
 

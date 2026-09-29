@@ -1,8 +1,8 @@
 # Environment Strategy
 
-Status: **Draft for Human Review** (Order 260). This document defines the proposed LOCAL / STG / Production operating contract. It does not provision a remote project, set a credential, deploy an application, apply a migration, or create CI/CD.
+Status: **Approved Environment Policy pending provider provisioning** (Order 260 Human Review, 2026-09-29). This document defines the LOCAL / STG / Production operating contract. It does not provision a remote project, set a credential, deploy an application, apply a migration, or create CI/CD.
 
-`main` and the current repository files are the implementation Source of Truth. This document is the operating Source of Truth once the Human Review decisions in Section 15 are approved.
+`main` and the current repository files are the implementation Source of Truth. This document is the approved environment-policy Source of Truth; downstream Orders own concrete provider provisioning and verification.
 
 ## 1. Decision summary
 
@@ -40,7 +40,7 @@ The current `/admin` surface has no Production Admin authentication. STG must us
 
 | Option | Evaluation |
 | --- | --- |
-| **A. Separate STG/Production projects; both track `main`; STG automatic; Production staged then manually promoted** | **Recommended.** One linear Git history, exact SHA comparison, project-level environment isolation, no Production traffic switch on a push, and clear Vercel deployment rollback. |
+| **A. Separate STG/Production projects; both track `main`; STG automatic; Production staged then manually promoted** | **Adopted.** One linear Git history, exact SHA comparison, project-level environment isolation, no Production traffic switch on a push, and clear Vercel deployment rollback. |
 | B. Long-lived `staging` branch promoted or merged into `main` | Rejected. It creates a second release history, merge/cherry-pick drift, and ambiguity over which SHA STG actually approved. |
 | C. One Vercel project with a Custom Environment | Rejected for the current small-team baseline. It can isolate environment variables, but keeps STG and Production in one project control plane, adds plan/workflow concepts, and weakens the explicit separate-project boundary without a current benefit. |
 
@@ -51,17 +51,20 @@ The current `/admin` surface has no Production Admin authentication. STG must us
 - Connect the Muuzee GitHub repository.
 - Set Production Branch to `main`.
 - Keep automatic deployment and domain assignment enabled for successful `main` builds.
-- Require Vercel Authentication with **All Deployments** scope so the persistent STG production domain is protected as well as generated URLs. This currently requires the applicable Pro add-on or Enterprise capability and is part of the plan decision; Standard Protection alone does not protect a production domain.
+- Require **Vercel Authentication** with **All Deployments** scope so the persistent STG production domain and generated URLs are protected. Current Vercel behavior makes this authentication scope available at no additional cost on every plan. Password Protection, Trusted IPs, and their plan constraints are separate protection methods and are not requirements of this policy.
 - Store only STG values in this project.
+- Task-branch Preview deployments may be enabled when useful, but they receive only STG configuration and STG credentials and must never reach Production data or secrets.
 
 **Production Vercel project**
 
 - Connect the same repository and set Production Branch to `main`.
 - Disable **Auto-assign Custom Production Domains**. Each `main` commit may build, but it remains `Staged` and cannot receive public traffic until explicitly promoted.
+- Normal Git-triggered builds are limited to `main`. Configure a project-specific Ignored Build Step or equivalent branch filter in Order 320 so feature, Order task, and temporary branches are skipped in this project.
+- Do not assign Production service-role or marker secrets to the Preview environment. Order 330 verifies secret scopes, and Orders 320/330 jointly prove that a non-`main` branch cannot reach Production Supabase or Production data.
 - Use Standard Deployment Protection for generated deployment URLs. The public canonical domain is assigned only to the promoted Current deployment.
 - Store only Production values in this project.
 
-This setting is project-specific and therefore must be configured in Vercel rather than committed as a repository-wide `vercel.json` `git.deploymentEnabled` rule. A shared rule would apply to both projects and cannot express “STG automatic, Production staged.”
+The domain-assignment and Preview-build rules are project-specific and therefore must be configured in Vercel rather than committed as a shared `vercel.json` rule. A repository-wide rule cannot safely express “STG previews allowed, Production project builds only `main`.”
 
 ### 3.3 Release gate
 
@@ -72,7 +75,7 @@ For release SHA `S`:
 3. Apply the migrations present at `S` to STG through the controlled migration procedure.
 4. Run STG schema verification, Auth checks, data checks, and application smoke tests.
 5. If STG fails, stop. Do not promote Production.
-6. Confirm the Production backup/PITR state, migration scope, rollback/forward-fix plan, secret inventory, and human approval.
+6. Confirm the latest Production daily backup is available, then confirm migration scope, rollback/forward-fix plan, secret inventory, and human approval. PITR is not part of the approved MVP launch baseline.
 7. Apply exactly the pending migrations present at `S` to the Production Supabase project.
 8. Smoke-test the protected staged Production deployment against Production configuration. Never use destructive test data or a real-user credential for this check.
 9. Manually promote the staged Production deployment for `S` to Current. Promotion must not rebuild.
@@ -86,7 +89,7 @@ No deployment command, hook, CI workflow, or provider project is created by Orde
 - **Environment variables:** an Instant Rollback does not rebuild a deployment, so it also does not apply newly edited environment variables. Config rollback requires selecting a deployment built with the required values or rotating the values and creating a new staged build.
 - **Database:** application rollback never rolls back a database migration. Prefer backward-compatible expand/contract changes so both the old and new application SHAs can run during rollback.
 - **Database correction:** prefer a reviewed forward-fix migration. A reverse migration is permitted only when it was tested, does not destroy required data, and has explicit human approval.
-- **Restore:** before a risky Production migration, verify that the selected backup/PITR capability is active and usable. A restore is an incident operation with downtime and data-reconciliation consequences, not a normal release step.
+- **Restore:** before a risky Production migration, verify that the latest approved daily backup is available and usable. A restore is an incident operation with downtime and data-reconciliation consequences, not a normal release step. If PITR is adopted later, its restore point and runbook become part of this gate.
 - **Deleted Accounts:** a restored snapshot can contain data deleted after the restore point. The Production restore runbook must reconcile those deletions before normal processing resumes; backup/PITR is never a user-request Account restoration feature.
 
 If a migration is not backward compatible with the previously Current app, it is not eligible for ordinary promotion. Split it into expand, application adoption, and later contract migrations.
@@ -147,7 +150,8 @@ Vercel/Supabase system variables, project IDs, deployment IDs, and future CI cre
 ## 8. Secret lifecycle
 
 - Never share a secret value across LOCAL, STG, and Production or between the two marker purposes.
-- Use Vercel `Secret` visibility for service-role and marker secrets. Use readable `Config` only for non-sensitive values.
+- Store `SUPABASE_SERVICE_ROLE_KEY`, `ACCOUNT_LIFECYCLE_MARKER_SECRET`, and `PASSWORD_RECOVERY_MARKER_SECRET` as Vercel **Sensitive Environment Variables** in STG and Production. Use regular Environment Variables / readable Config only for non-sensitive configuration.
+- Keep all three server secrets out of Git, Notion, chat, screenshots, and logs. Scope Production values to the Production environment only; never assign them to Preview.
 - Limit provider/project membership to people who require it; require MFA on GitHub, Vercel, Supabase, and email-provider accounts.
 - Record secret name, environment, system, owner, created/rotated date, and next review date without recording the value.
 - Rotate immediately after suspected exposure, accidental logging/commit, privileged-member removal, or provider instruction. Rotate initial setup/test credentials before public launch.
@@ -171,11 +175,12 @@ Vercel/Supabase system variables, project IDs, deployment IDs, and future CI cre
 | Short Recovery/Account marker | 900 seconds | 900 seconds | 900 seconds |
 | Email delivery | CLI Mailpit | Approved sandbox/test SMTP | Approved Production SMTP |
 | Templates | Local test copy | Version recorded and tested | Same Human-approved version, with Production URLs |
-| Rate limit / CAPTCHA | Local defaults; no security claim | Record exact provider values and test failure UX | Human-approved values; CAPTCHA decision required before public signup |
+| Rate limits | Local defaults; no security claim | Provider rate limits are mandatory; hosted setup records exact values and tests failure UX | Provider rate limits are mandatory; hosted setup records exact values before launch |
+| CAPTCHA | Not required | Optional unless STG Security validation adopts it | Launch Security decision; not an Order 260 completion blocker |
 
 Email templates must use the intended redirect value and must not hardcode another environment's origin. STG must validate confirmation, recovery, expiry, resend, and error handling before the same template version is configured in Production.
 
-Order 270 owns STG Supabase/Auth settings; Order 290 owns STG runtime secrets; Order 300 validates the STG flows. Orders 310, 330, and 340 own the corresponding Production setup and validation. Order 243 may not complete environment-dependent Email Change QA until these hosted Auth settings exist.
+Order 270 owns STG Supabase/Auth settings; Order 290 owns STG runtime secrets; Order 300 validates the STG flows. Orders 310, 330, and 340 own the corresponding Production setup and validation. Order 243 may not complete environment-dependent Email Change QA until these hosted Auth settings exist. A CAPTCHA implementation belongs to hosted Auth setup or a separate Security task only if the launch decision adopts it.
 
 ## 10. Storage boundary
 
@@ -185,22 +190,31 @@ Order 270 owns STG Supabase/Auth settings; Order 290 owns STG runtime secrets; O
 - STG uses synthetic files only. Production objects are never copied into STG/LOCAL.
 - Bucket definitions/policies must be migration-managed where supported, with an explicit object migration/cleanup runbook. A database restore alone does not guarantee object restoration consistency.
 
-## 11. Backup and log retention proposal
+## 11. Approved backup and log baseline
 
-Order 250 requires exact environment schedules. The following is the **recommended launch baseline pending Human Review and plan selection**; Orders 270/310/280/320 must record the actual provider settings before their environment is accepted.
+Order 260 Human Review adopted Production Backup Option B. Orders 270/310/280/320 must record the actual provider settings and confirm they match this baseline before their environment is accepted.
 
-| Category | LOCAL | STG proposed baseline | Production proposed baseline |
+| Category | LOCAL | STG launch baseline | Production launch baseline |
 | --- | --- | --- | --- |
-| Database backup | No automatic guarantee; local volume is disposable | Supabase Pro daily backup, 7-day availability; not relied upon for Product recovery | Supabase Pro daily backup, 7-day availability until PITR decision |
-| PITR | Off | Off | **Recommended: enable 7-day PITR before public User Data.** When enabled, it replaces daily backups. Human approval required for cost/RPO. |
+| Database backup | No automatic guarantee; local volume is disposable | Provider backup may exist, but STG is reproducible and is not a Product recovery source | **Supabase Pro daily backup with 7-day retention** |
+| PITR | Off | Off | **Off / Deferred for MVP launch** |
 | Supabase Auth/DB/Storage logs | Process/local tooling lifetime | Pro accessible history: 7 days | Pro accessible history: 7 days |
 | Vercel runtime/application logs | Terminal process lifetime | Pro: 1 day | Pro: 1 day |
 | Durable application log sink | None | None | None until separately approved observability work |
-| Platform audit logs | Local Git/shell evidence only | Supabase Team/Enterprise feature; not assumed on Pro | Supabase Team/Enterprise feature; Human Review decides whether required |
+| Platform audit logs | Local Git/shell evidence only | Provider logs are sufficient for initial MVP; no Team-plan requirement from Order 260 | Provider logs are sufficient for initial MVP; Order 460 reassesses audit logs / log drain |
 
-If a different plan is selected, this table must be updated with the provider's current documented retention before provisioning is declared complete. Provider defaults are not a substitute for a recorded decision. Log payloads must exclude passwords, tokens, marker values, secrets, and unnecessary personal data regardless of retention length.
+The approved daily-backup baseline accepts that an incident may lose up to approximately 24 hours of Production updates. PITR is not required to close Order 260 or launch the initial MVP. Order 310 must verify the current Supabase plan and latest daily-backup availability before Production acceptance. Log payloads must exclude passwords, tokens, marker values, secrets, and unnecessary personal data regardless of retention length.
 
-The daily-backup-only Production alternative has up to approximately 24 hours of data-loss exposure. The recommendation is therefore 7-day PITR before public User Data; Human Review must either approve that cost or explicitly accept and record the daily-backup risk.
+Re-evaluate PITR when any of the following becomes true:
+
+- losing 24 hours of Account/User Data is no longer acceptable;
+- daily Account registrations or Saved/Seen/Favorite/ArtWall updates materially increase;
+- paid functionality or other important user-generated state is added;
+- business impact, recovery labor, or trust damage exceeds the PITR cost;
+- the required RPO becomes shorter than 24 hours; or
+- an Incident or Security review requires a shorter recovery point.
+
+Adopting PITR later requires Human Review of cost, target RPO, restore runbook, and deleted-Account reconciliation.
 
 ## 12. Access, monitoring, and operational ownership
 
@@ -208,10 +222,12 @@ The daily-backup-only Production alternative has up to approximately 24 hours of
 - **Vercel:** only designated release operators may edit Production variables, domain assignment, or promote/rollback. STG access is limited to the project/QA team.
 - **Supabase:** Production owner/service-role/database credentials have the smallest operator set. Application users never receive elevated credentials.
 - **Email/SMTP:** credentials and sender/domain verification are environment-specific. STG must not deliver to arbitrary real users.
-- **Monitoring:** use provider health/build/runtime/Auth/database logs for the provider-retention window; define alert destinations and an incident owner during Orders 280/320. No durable external log drain is approved yet.
+- **Monitoring:** use provider health/build/runtime/Auth/database logs for the provider-retention window. Order 460 assigns named operators, alert destinations, and incident ownership and reassesses whether audit logs or an external log drain are required. No durable external log drain is approved yet.
 - **Change evidence:** each remote setup Order records provider project name/ID, region, plan, domain, relevant non-secret settings, credential owners, and validation time in the authorized operations record. Secret values are excluded.
 
-Before public release, resolve the current combined User Front/Admin exposure. The environment strategy permits protected STG validation but does not authorize exposing unauthenticated `/admin` in Production.
+**Production launch gate:** do not make the public Production domain Current while anonymous `/admin` is reachable. Order 480 must either (A) implement Production-grade Admin authorization or (B) block/isolate the route in Production. Vercel Project Protection is defense in depth and never substitutes for application authorization.
+
+No separate MVP task for live `session_id → auth.sessions` validation is required by Order 260. Current sensitive Account deletion, reauthentication, and Password Recovery boundaries use fresh `getUser()` calls to the Auth server. Re-evaluate explicit live-session validation if a future high-risk mutation relies only on `getClaims()`/local JWT verification, a revoked-session JWT window becomes material, MFA or financial/high-value operations are added, or Security review requires immediate revocation semantics.
 
 ## 13. Downstream Order map
 
@@ -222,10 +238,15 @@ Before public release, resolve the current combined User Front/Admin exposure. T
 | 280 STG Vercel | Create the dedicated project, connect `main`, enable automatic STG domain assignment/protection, and record deployment evidence. |
 | 290 STG environment/secrets | Provision only STG values, verify Secret/Config classification, and run the inventory checklist. |
 | 300 STG migration/seed/smoke | Apply committed migrations, create synthetic/reproducible seed data, and validate Auth/application/Storage boundaries without Production data. |
-| 310 Production Supabase | Create the dedicated project; approve region/plan/PITR/retention and apply the Production Auth/Storage/access contract. |
-| 320 Production Vercel | Create the dedicated project, track `main`, disable automatic production-domain assignment, configure protection/domain, and test staged promotion/rollback. |
-| 330 Production environment/secrets | Provision unique Production values, rotate setup credentials before launch, and verify no STG reuse. |
+| 310 Production Supabase | Create the dedicated project; apply the approved Pro daily-backup / PITR-off baseline and Production Auth/Storage/access contract. |
+| 320 Production Vercel | Create the dedicated project, track only `main` for normal Git builds, skip non-`main` previews, disable automatic production-domain assignment, configure protection/origin, and test staged promotion/rollback. |
+| 330 Production environment/secrets | Provision unique Production Sensitive Environment Variables only to Production scope, rotate setup credentials before launch, and verify no STG/Preview reuse. |
 | 340 Production migration/seed | Apply the exact approved migration set, import only approved canonical data, verify backup/rollback gates, and perform non-destructive smoke tests. |
+| 350 / 360 Domain | Acquire the canonical domain, then configure DNS, SSL, and the Production domain connection. |
+| 390 / 400 Provider contract/billing | Finalize concrete provider plans, contracts, and billing. |
+| 410 Email provider | Select/contract SMTP, sender domain, and template-delivery operations; environment setup Orders apply actual configuration. |
+| 460 Monitoring / operations | Assign named release/secret/incident/restore-test operators and reassess audit logs, log drains, and alerting. |
+| 480 Admin authorization | Implement Production Admin authorization or block/isolate `/admin` before the public Production domain becomes Current. |
 
 ## 14. Provisioning and release checklists
 
@@ -236,7 +257,7 @@ Before public release, resolve the current combined User Front/Admin exposure. T
 - [ ] Supabase and Vercel project IDs/names recorded without secret values.
 - [ ] Database/Auth/Storage endpoints point only to the same environment.
 - [ ] Exact Site URL and callback allowlist recorded.
-- [ ] Auth confirmation, expiry, SMTP/template, rate-limit, and CAPTCHA settings recorded.
+- [ ] Auth confirmation, expiry, SMTP/template, and mandatory provider rate-limit settings recorded; launch CAPTCHA decision recorded.
 - [ ] Backup/PITR and log retention match the approved table.
 - [ ] Vercel protection and branch/domain assignment match Section 3.
 - [ ] Secret inventory complete and values unique.
@@ -247,26 +268,17 @@ Before public release, resolve the current combined User Front/Admin exposure. T
 - [ ] One reviewed `main` SHA recorded for STG and Production builds.
 - [ ] STG migration list and smoke checks pass.
 - [ ] Production staged build exists and is not Current.
-- [ ] Production backup/PITR status and migration plan verified.
+- [ ] Latest Production daily backup availability and migration plan verified; PITR remains off unless a later approved review changes the baseline.
 - [ ] Production migration list matches the release.
 - [ ] Protected staged-Production smoke passes.
 - [ ] Human promotion approval recorded.
 - [ ] Current deployment, domain, public smoke, and rollback target recorded.
 
-## 15. Human Review decisions
+## 15. Approved policy and provisioning ownership
 
-Order 260 remains `Doing` until these are decided:
+Order 260's policy decisions are Human-approved: environment/project separation, canonical `main`, STG automatic deployment, same-SHA staged Production promotion, Production Preview isolation, secret classification, data/seed/migration/rollback rules, Auth contract, daily-backup baseline, `/admin` launch gate, and downstream ownership.
 
-1. Approve Option A: two Vercel projects, `main` for both, STG auto-domain assignment, Production staged manual promotion.
-2. Approve the separate Supabase/Vercel project names, regions, plans (including STG All Deployments protection), and owner/operator membership.
-3. Approve STG and Production stable domains and exact callback origins.
-4. Approve provider plans and the retention baseline, especially 7-day Production PITR versus accepting daily-backup RPO/cost.
-5. Approve STG sandbox SMTP and Production SMTP providers/sender domains; approve where template source/version evidence lives.
-6. Approve Production Auth rate limits and whether CAPTCHA is mandatory at first public signup.
-7. Decide whether Supabase Platform Audit Logs/Team plan or an external log drain is required at launch.
-8. Assign the release approver, secret owner, incident owner, and backup/restore test owner.
-9. Decide the Production `/admin` isolation/authentication plan before any public Production deployment.
-10. Confirm whether live Auth `session_id` validation needs a separate Security implementation task beyond current fresh `getUser()` checks.
+Order 260 remains `Doing` only until this Human Review Fix is integrated into `main`; it is not blocked by concrete provisioning choices. Project names, regions, concrete provider plans, domains, SMTP, exact rate-limit values, CAPTCHA adoption, monitoring purchases, and named operators are acceptance gates of the downstream Orders listed in Section 13.
 
 ## 16. Official platform evidence
 
@@ -281,10 +293,13 @@ Checked against current official documentation on 2026-09-29:
 - [Supabase: Logs in Studio](https://supabase.com/docs/guides/observability/logs)
 - [Supabase: Auth log availability by plan](https://supabase.com/docs/guides/troubleshooting/check-usage-for-monthly-active-users-mau-MwZaBs)
 - [Supabase: Platform Audit Logs](https://supabase.com/docs/guides/security/platform-audit-logs)
+- [Vercel: Protect production deployments for free on every plan](https://vercel.com/changelog/protect-production-deployments-for-free-on-every-plan)
+- [Vercel: Project settings — Ignored Build Step](https://vercel.com/docs/project-configuration/project-settings#ignored-build-step)
+- [Vercel: Git deployments and Preview branches](https://vercel.com/docs/git/vercel-for-github)
 - [Vercel: Environments](https://vercel.com/docs/deployments/environments)
 - [Vercel: Promoting Deployments](https://vercel.com/docs/deployments/promoting-a-deployment)
 - [Vercel: Instant Rollback](https://vercel.com/docs/instant-rollback)
 - [Vercel: Environment Variables](https://vercel.com/docs/environment-variables)
-- [Vercel: Secret Environment Variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables)
+- [Vercel: Sensitive Environment Variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables)
 - [Vercel: Deployment Protection](https://vercel.com/docs/deployment-protection)
 - [Vercel: Runtime Logs](https://vercel.com/docs/logs/runtime)

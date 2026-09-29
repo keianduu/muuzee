@@ -75,7 +75,7 @@ Do not create multiple parallel `work`, `squash`, `final`, or `sync` branches fo
 
 `main` is also the canonical release input for both STG and Production. Muuzee does not keep a long-lived `develop` or `staging` branch. STG/Production isolation and release promotion belong to separate provider projects and environment configuration, not duplicate Git history.
 
-The Draft operating contract is `docs/environment-strategy.md`: STG may update automatically from `main`, while a same-SHA Production build remains staged until explicit promotion. This does not change the task-branch and fast-forward integration rules in this document.
+The approved operating contract is `docs/environment-strategy.md`: STG may update automatically from `main`, while a same-SHA Production build remains staged until explicit promotion. The Production Vercel project accepts normal Git builds only from `main`; task-branch builds are skipped there through project-specific configuration. This does not change the task-branch and fast-forward integration rules in this document.
 
 ## Before integrating a completed task
 

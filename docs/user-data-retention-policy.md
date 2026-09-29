@@ -150,7 +150,7 @@ Supabase currently documents two material boundaries:
 - a user owning Storage objects may not be deletable until those objects are removed;
 - deleting the Auth user invalidates refresh/session continuation, but an already-issued access JWT can remain cryptographically valid until its expiry.
 
-The database ownership tree prevents a deleted Auth UUID from recreating Account rows because the owner foreign keys require an existing `auth.users` row and RLS requires the authenticated owner. Existing access JWTs may remain cryptographically valid until expiry; Order 251 uses fresh `getUser()` for sensitive lifecycle operations. Live `session_id` validation against Auth sessions remains an Order 260 responsibility.
+The database ownership tree prevents a deleted Auth UUID from recreating Account rows because the owner foreign keys require an existing `auth.users` row and RLS requires the authenticated owner. Existing access JWTs may remain cryptographically valid until expiry; Order 251 uses fresh `getUser()` for sensitive lifecycle operations. No separate MVP live-`session_id` task is required while sensitive lifecycle flows retain fresh Auth-server identity checks. Re-evaluate if a high-risk mutation relies only on local JWT claims, revoked-session latency becomes material, MFA or financial/high-value operations are added, or Security review requires immediate revocation semantics.
 
 ## 8. Legal Consent
 
@@ -223,7 +223,7 @@ Ordinary disclosure/export should be free for MVP. If exceptional physical deliv
 
 Active Product DB/Auth/Storage deletion is immediate after confirmed execution. Backup and PITR copies expire according to documented provider/environment schedules and must not be restored into ordinary processing as though the deletion never occurred. They are not used to restore an individual deleted Account at the user's or Support's request.
 
-Order 260's `docs/environment-strategy.md` records the provider-backed retention baseline and the Production PITR/plan decision that must receive Human Review before provisioning. Until that review is approved, the values remain proposed rather than an active provider guarantee.
+Order 260's `docs/environment-strategy.md` records the approved MVP baseline: Supabase Pro daily Production backups retained for seven days, PITR off/deferred, and an accepted recovery-point exposure of up to approximately 24 hours. Order 310 must verify actual provider configuration and backup availability before Production acceptance; the policy is not itself a provider guarantee.
 
 A Production restore runbook must account for deletions that occurred after the recovered snapshot and prevent deleted Account data from returning to normal use. This policy does not create a tombstone table. Any durable deletion ledger or operational request audit requires a separately justified purpose, minimum fields, restricted access, and fixed Human / Legal-approved term; email, user UUID, or request content must not be retained indefinitely by default.
 
@@ -310,7 +310,7 @@ Human Review approved all five decisions on 2026-09-28. Order 251 implements the
 
 ## 18. Implementation follow-up
 
-Order 251 **[Backend] Legal Consent / Account deletion / Data export lifecycleを実装** implements this policy and remains `Doing` until Human Review.
+Order 251 **[Backend] Legal Consent / Account deletion / Data export lifecycleを実装** implemented this policy and is `Done` on `main`.
 
 Implemented Order 251 scope:
 
@@ -321,4 +321,4 @@ Implemented Order 251 scope:
 - an explicit no-op external-processor boundary because none is implemented;
 - a typed, non-identifying deletion aggregate hook with no durable sink pending Order 470.
 
-The current deletion flow deliberately blocks before Auth deletion when `avatar_object_path` is non-null because no User avatar bucket/cleanup adapter exists. Existing access JWTs may remain cryptographically valid until expiry; sensitive lifecycle routes perform fresh `getUser()` checks, while live `session_id` validation remains Order 260 scope. Account Settings UI, Registration consent capture, avatar Storage infrastructure, and public legal wording remain downstream.
+The current deletion flow deliberately blocks before Auth deletion when `avatar_object_path` is non-null because no User avatar bucket/cleanup adapter exists. Existing access JWTs may remain cryptographically valid until expiry; sensitive lifecycle routes perform fresh `getUser()` checks. A separate live-`session_id` validation task is deferred unless the risk triggers in Section 7 arise. Account Settings UI, Registration consent capture, avatar Storage infrastructure, and public legal wording remain downstream.

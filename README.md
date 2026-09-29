@@ -15,6 +15,6 @@ Muuzee currently contains an exploratory static prototype and the first producti
 
 See `docs/master-data-architecture.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/admin-v0.md`, and `docs/integrations/art-commons.md`.
 
-LOCAL / STG / Production isolation, deployment promotion, secrets, migrations, and rollback are defined in the Draft [environment strategy](docs/environment-strategy.md). Do not copy Production data or credentials into LOCAL/STG.
+LOCAL / STG / Production isolation, deployment promotion, secrets, migrations, backup, and rollback are defined in the approved [environment strategy](docs/environment-strategy.md). Do not copy Production data or credentials into LOCAL/STG.
 
-> Admin has no authentication in v0. It is local/protected-staging only. Add Supabase Auth and Admin authorization before any production internet exposure.
+> Admin has no authentication in v0. It is local/protected-staging only. Production must not launch with anonymous `/admin`; Order 480 must add Admin authorization or block/isolate the route first.
