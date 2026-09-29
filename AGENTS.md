@@ -707,3 +707,21 @@ Muuzeeの実装では、要件を満たす範囲で**最もシンプルで保守
 
 各工程で不要な複雑化が入っていないか確認し、完成前に不要な処理・重複ロジック・一時的な回避策を整理する。
 <!-- muuzee-simple-implementation:end -->
+
+
+---
+
+## ChatGPT / Codex Orchestration
+
+For Muuzee work that uses ChatGPT to orchestrate/review and Codex to implement, read and follow:
+
+`docs/codex-orchestration-workflow.md`
+
+Key rules:
+
+- Notion Tasks are the default execution queue.
+- ChatGPT should inspect current Git/files and relevant provider state before producing a Codex instruction.
+- The user hands that instruction to Codex and returns Codex's completion report to ChatGPT.
+- ChatGPT reviews the actual current state, creates/refines separate Tasks when needed, closes the current Task only after Acceptance Criteria/Human gates are satisfied, then prepares the next eligible Task.
+- In a new chat, recover state from durable project sources; do not require the user to restate prior chat history.
+- Every Codex instruction shown to the user must be one contiguous, self-contained block that can be copied in full with one action. Do not split required instructions across surrounding prose or multiple blocks.
