@@ -199,11 +199,11 @@ Order 260 Human Review adopted Production Backup Option B. Orders 270/310/280/32
 | Database backup | No automatic guarantee; local volume is disposable | Provider backup may exist, but STG is reproducible and is not a Product recovery source | **Supabase Pro daily backup with 7-day retention** |
 | PITR | Off | Off | **Off / Deferred for MVP launch** |
 | Supabase Auth/DB/Storage logs | Process/local tooling lifetime | Pro accessible history: 7 days | Pro accessible history: 7 days |
-| Vercel runtime/application logs | Terminal process lifetime | Pro: 1 day | Pro: 1 day |
+| Vercel runtime/application logs | Terminal process lifetime | **Hobby: 1 hour accepted for current small STG development** | Pro: 1 day |
 | Durable application log sink | None | None | None until separately approved observability work |
 | Platform audit logs | Local Git/shell evidence only | Provider logs are sufficient for initial MVP; no Team-plan requirement from Order 260 | Provider logs are sufficient for initial MVP; Order 460 reassesses audit logs / log drain |
 
-The approved daily-backup baseline accepts that an incident may lose up to approximately 24 hours of Production updates. PITR is not required to close Order 260 or launch the initial MVP. Order 310 must verify the current Supabase plan and latest daily-backup availability before Production acceptance. Log payloads must exclude passwords, tokens, marker values, secrets, and unnecessary personal data regardless of retention length.
+The approved daily-backup baseline accepts that an incident may lose up to approximately 24 hours of Production updates. PITR is not required to close Order 260 or launch the initial MVP. Order 310 must verify the current Supabase plan and latest daily-backup availability before Production acceptance. For STG Vercel, the owner explicitly accepted the current Hobby plan and its shorter runtime-log history while Muuzee remains in a small development/validation phase. Re-evaluate the Vercel plan before public/commercial operation or whenever the available log window is no longer sufficient for debugging, security review, or incident response. This STG exception does not change the Production baseline. Log payloads must exclude passwords, tokens, marker values, secrets, and unnecessary personal data regardless of retention length.
 
 Re-evaluate PITR when any of the following becomes true:
 
@@ -235,7 +235,7 @@ No separate MVP task for live `session_id → auth.sessions` validation is requi
 | --- | --- |
 | 243 Account Email Change | Validate hosted double-confirm behavior, exact callback allowlists, expiry, templates, and failure UX after STG/Production Auth settings exist. |
 | 270 STG Supabase | Create the dedicated project; choose region/plan; record Auth, log, backup, Storage, and access settings. |
-| 280 STG Vercel | Create the dedicated project, connect `main`, enable automatic STG domain assignment/protection, and record deployment evidence. |
+| 280 STG Vercel | Create the dedicated project on the owner-approved **Hobby** plan for the current small STG phase, connect `main`, enable automatic STG domain assignment/protection, and record deployment evidence plus the accepted 1-hour runtime-log limitation. |
 | 290 STG environment/secrets | Provision only STG values, verify Secret/Config classification, and run the inventory checklist. |
 | 300 STG migration/seed/smoke | Apply committed migrations, create synthetic/reproducible seed data, and validate Auth/application/Storage boundaries without Production data. |
 | 310 Production Supabase | Create the dedicated project; apply the approved Pro daily-backup / PITR-off baseline and Production Auth/Storage/access contract. |
@@ -276,7 +276,7 @@ No separate MVP task for live `session_id → auth.sessions` validation is requi
 
 ## 15. Approved policy and provisioning ownership
 
-Order 260's policy decisions are Human-approved: environment/project separation, canonical `main`, STG automatic deployment, same-SHA staged Production promotion, Production Preview isolation, secret classification, data/seed/migration/rollback rules, Auth contract, daily-backup baseline, `/admin` launch gate, and downstream ownership.
+Order 260's policy decisions are Human-approved: environment/project separation, canonical `main`, STG automatic deployment, same-SHA staged Production promotion, Production Preview isolation, secret classification, data/seed/migration/rollback rules, Auth contract, daily-backup baseline, `/admin` launch gate, and downstream ownership. On 2026-09-29 the owner also approved a downstream STG Vercel exception: remain on **Hobby** during the current small development phase and accept the 1-hour runtime-log window, with plan re-evaluation before public/commercial operation or earlier if operational needs require it.
 
 Order 260 remains `Doing` only until this Human Review Fix is integrated into `main`; it is not blocked by concrete provisioning choices. Project names, regions, concrete provider plans, domains, SMTP, exact rate-limit values, CAPTCHA adoption, monitoring purchases, and named operators are acceptance gates of the downstream Orders listed in Section 13.
 
