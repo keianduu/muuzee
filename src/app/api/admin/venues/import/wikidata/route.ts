@@ -2,8 +2,9 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { importWikidataVenues } from "@/lib/wikidata/venue-importer";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { HOSTED_WIKIDATA_FULL_SYNC_ERROR, shouldRejectHostedWikidataFullSync } from "@/lib/wikidata/runtime-policy";
 
-export const maxDuration = 3600;
+export const maxDuration = 300;
 
 export async function GET() {
   try {
@@ -19,6 +20,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (shouldRejectHostedWikidataFullSync(body.mode)) {
+      return NextResponse.json(HOSTED_WIKIDATA_FULL_SYNC_ERROR, { status: 409 });
+    }
     const mode = body.mode === "full" ? "full" : "count";
     const count = Number(body.count) || 20;
     const offset = Number.isFinite(Number(body.offset)) ? Number(body.offset) : undefined;
