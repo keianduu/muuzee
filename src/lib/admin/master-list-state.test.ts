@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery } from "./master-list-state";
+import { detailPanelQuery, mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery } from "./master-list-state";
 
 describe("master list URL and append state", () => {
   it("appends pages without duplicate records", () => {
@@ -21,7 +21,15 @@ describe("master list URL and append state", () => {
     expect(selectedQuery(opened, null)).toBe("q=tokyo&status=draft&tier=A-C");
   });
 
+  it("adds and removes the child panel without losing the selected master", () => {
+    const opened = detailPanelQuery("q=tokyo&selected=venue-1", "image", "candidate-1");
+    expect(opened).toBe("q=tokyo&selected=venue-1&panel=image&candidate=candidate-1");
+    expect(detailPanelQuery("q=tokyo&selected=venue-1", "image")).toBe("q=tokyo&selected=venue-1&panel=image");
+    expect(detailPanelQuery(opened, null)).toBe("q=tokyo&selected=venue-1");
+    expect(selectedQuery(opened, null)).toBe("q=tokyo");
+  });
+
   it("keeps server pagination internal to the API request", () => {
-    expect(pageQuery("q=tokyo&tier=A-C&selected=venue-1", 2)).toBe("q=tokyo&tier=A-C&page=2&pageSize=50");
+    expect(pageQuery("q=tokyo&tier=A-C&selected=venue-1&panel=image&candidate=candidate-1", 2)).toBe("q=tokyo&tier=A-C&page=2&pageSize=50");
   });
 });

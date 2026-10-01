@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { MediaAssetRow, SourceImageCandidateRow, VenueMatchCandidateRow, VenueRow } from "@/lib/admin/types";
 import { displayStatus } from "@/lib/admin/master-labels";
-import { MasterImageCandidateCard } from "./master-image-candidate";
+import { MasterImageCandidateCard, MasterImageCandidateSummary } from "./master-image-candidate";
 
 
 function Trace({ title, rows }: { title: string; rows: Array<Record<string, unknown>> }) {
@@ -14,7 +14,7 @@ function Trace({ title, rows }: { title: string; rows: Array<Record<string, unkn
   </tr>)}</tbody></table></div> : <p className="muted">探索履歴はまだありません。</p>}</div>;
 }
 
-export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" }: { venue: VenueRow; prompt: string; showBasicForm?: boolean; view?: "all" | "status" | "edit" | "data" }) {
+export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all", onOpenImageCandidate }: { venue: VenueRow; prompt: string; showBasicForm?: boolean; view?: "all" | "status" | "edit" | "data"; onOpenImageCandidate?: (candidateId: string | null) => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -93,7 +93,7 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
       <p><span className={`status ${venue.coordinate_status}`}>{displayStatus(venue.coordinate_status)}</span></p>
       <dl><div><dt>Current（現行）</dt><dd>{venue.latitude != null && venue.longitude != null ? `${venue.latitude}, ${venue.longitude}` : "未設定"}</dd></div><div><dt>Candidate（候補）</dt><dd>{venue.coordinate_candidate_latitude != null && venue.coordinate_candidate_longitude != null ? `${venue.coordinate_candidate_latitude}, ${venue.coordinate_candidate_longitude}` : "候補なし"}</dd></div><div><dt>Match Confidence（照合信頼度）</dt><dd>{venue.coordinate_candidate_confidence ?? venue.wikidata_match_confidence ?? "未設定"}</dd></div></dl>
       {googleMapsUrl && <a className="button secondary" href={googleMapsUrl} target="_blank" rel="noreferrer">Google Mapsで確認 ↗</a>}
-      <h2>Image Status（画像状態）</h2><p>Approved / Uploaded: {(venue.media_assets || []).length}件 · Candidate: {activeImageCandidates.length}件</p>
+      <h2>Image Status（画像状態）</h2><p>Approved / Uploaded: {(venue.media_assets || []).length}件 · Candidate: {activeImageCandidates.length}件</p>{onOpenImageCandidate && <button type="button" className="button secondary" onClick={() => onOpenImageCandidate(null)}>画像候補を確認</button>}
       <h2>API Match Status（API照合状態）</h2><p><span className={`status ${venue.wikidata_match_status}`}>{displayStatus(venue.wikidata_match_status)}</span> · {venue.best_wikidata_candidate_qid || "QID未設定"}</p>
       <h2>Official Website Status（Source B）</h2><p>{latestOfficialCrawl ? <><span className="status">{latestOfficialCrawl.crawl_status}</span> · Latest {new Date(latestOfficialCrawl.crawled_at).toLocaleString("ja-JP")}</> : "未Crawl"}</p><p className="muted">Source B不足Field: {sourceBMissing.join(" / ") || "なし"}</p>
     </section>}
@@ -117,7 +117,7 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all" 
     {(view === "all" || view === "data") && wikipediaAddressSource && <section className="card"><h2>Wikipedia Address Source</h2><div className="license-summary"><span>Address Source</span><strong>Wikipedia</strong><span>Wikipedia</span><strong>{wikipediaPayload?.title || "記事タイトル未取得"}</strong><span>QID / Page ID</span><strong>{wikipediaPayload?.qid || matchedWikidataId || "-"} / {wikipediaPayload?.pageId ?? "-"}</strong><span>Applied</span><strong>{new Date(wikipediaAddressSource.created_at).toLocaleString("ja-JP")}</strong></div>{wikipediaAddressSource.source_url && <a className="button secondary" href={wikipediaAddressSource.source_url} target="_blank" rel="noreferrer">Source URL ↗</a>}</section>}
 
     {(view === "all" || view === "edit") && <section><h2>Image Candidate（画像候補）</h2><p className="muted">Entity採用前でもP18を参考候補として保持します。候補保持、ライセンス判断、Primary採用は別操作で、自動公開はしません。</p>
-      <div className="media-grid">{imageCandidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={venue.name} busy={busy} onSetPrimary={() => setPrimaryImage(candidate)} onAccept={() => review(candidate, { review_status: "accepted" })} onReject={() => review(candidate, { review_status: "rejected" })}/>)}</div>{!imageCandidates.length && <p className="muted">画像候補はありません。</p>}
+      {onOpenImageCandidate ? <div className="image-candidate-list">{imageCandidates.map((candidate) => <MasterImageCandidateSummary key={candidate.id} candidate={candidate} subjectLabel={venue.name} onOpen={() => onOpenImageCandidate(candidate.id)}/>)}</div> : <div className="media-grid">{imageCandidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={venue.name} busy={busy} onSetPrimary={() => setPrimaryImage(candidate)} onAccept={() => review(candidate, { review_status: "accepted" })} onReject={() => review(candidate, { review_status: "rejected" })}/>)}</div>}{!imageCandidates.length && <p className="muted">画像候補はありません。</p>}
     </section>}
 
     {(view === "all" || view === "data") && <section><h2>Search Diagnostics（検索診断）</h2><div className="media-grid"><Trace title="Coordinate Search（座標探索）" rows={venue.coordinate_search_trace || []}/><Trace title={`Image Search（画像探索） / ${venue.image_search_status}`} rows={venue.image_search_trace || []}/></div></section>}

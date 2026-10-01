@@ -15,6 +15,29 @@ export function LicenseSummary({ candidate }: { candidate: SourceImageCandidateR
   </div>;
 }
 
+export function MasterImageCandidateSummary({ candidate, subjectLabel, onOpen }: {
+  candidate: SourceImageCandidateRow;
+  subjectLabel: string;
+  onOpen: () => void;
+}) {
+  return <article className="image-candidate-summary">
+    {candidate.thumbnail_url || candidate.image_url ? <img src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="thumb"/>}
+    <div><p><strong>{imageDiscoverySourceLabel(candidate.discovery_source)}</strong></p><p><span className="status">{candidate.review_status}</span> <span className={`status ${candidate.rights_status}`}>{candidate.rights_status}</span></p><p className="muted">{candidate.license_short_name || "ライセンス記載なし"}</p></div>
+    <button type="button" className="button secondary" onClick={onOpen}>候補を確認</button>
+  </article>;
+}
+
+export function MasterImageCandidatePanel({ candidate, subjectLabel }: { candidate: SourceImageCandidateRow; subjectLabel: string }) {
+  return <div className="image-candidate-panel">
+    {candidate.thumbnail_url || candidate.image_url ? <img className="image-candidate-preview" src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="image-candidate-preview is-empty">画像なし</div>}
+    <div className="image-candidate-panel-status"><span className="status">取得経路: {imageDiscoverySourceLabel(candidate.discovery_source)}</span><span className="status">{candidate.review_status}</span><span className={`status ${candidate.rights_status}`}>{candidate.rights_status}</span></div>
+    <LicenseSummary candidate={candidate}/>
+    <dl className="image-candidate-metadata"><div><dt>Author</dt><dd>{candidate.author || "記載なし"}</dd></div><div><dt>Credit</dt><dd>{candidate.credit || "記載なし"}</dd></div><div><dt>Usage terms</dt><dd>{candidate.usage_terms || "記載なし"}</dd></div></dl>
+    <div className="actions">{candidate.source_url && <a className="button secondary" href={candidate.source_url} target="_blank" rel="noreferrer">Source URL ↗</a>}{candidate.license_url && <a className="button secondary" href={candidate.license_url} target="_blank" rel="noreferrer">License URL ↗</a>}</div>
+    <p className="muted">候補の採否・Primary設定は、Venue Drawerの編集タブで行います。</p>
+  </div>;
+}
+
 export function MasterImageCandidateCard({ candidate, subjectLabel, busy, primaryExists, onSetPrimary, onAccept, onReject }: {
   candidate: SourceImageCandidateRow;
   subjectLabel: string;
