@@ -70,8 +70,8 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
   if (!selectedId) return null;
   const title = record ? entity === "works" ? workDisplayTitleJa(record) || config.label : String(record[config.titleKey] || config.label) : config.label;
   return <div className="master-drawer-layer">
-    <button type="button" className="master-drawer-scrim" aria-label="詳細を閉じる" onClick={close}/>
-    <aside className="master-drawer" role="dialog" aria-modal="true" aria-labelledby="master-drawer-title">
+    <button type="button" className="master-drawer-scrim" aria-label="一覧へ戻る" tabIndex={-1} onClick={close}/>
+    <aside className="master-drawer master-drawer--primary" role="dialog" aria-modal="true" aria-labelledby="master-drawer-title">
       <header className="master-drawer-header"><div><p className="eyebrow">{config.label} Master</p><h1 id="master-drawer-title">{title}</h1>{record && <span className={`status ${record.publication_status}`}>{displayStatus(record.publication_status)}</span>}</div><button ref={closeButton} className="drawer-close" type="button" aria-label="詳細を閉じる" onClick={close}>×</button></header>
       <div className="master-drawer-body">{loading && <p className="drawer-loading">Loading...（読み込み中）</p>}{error && <div className="error">{error}</div>}{record && !loading && <MasterDetailContent entity={entity} record={record}/>}</div>
     </aside>
