@@ -2,9 +2,13 @@
 
 Status: Draft. LOCAL / STG Adminの探索中UX / Information Architectureを記録する。Order 325 Phase Aの実画面をHuman Reviewした結果により更新してよい。
 
+## Source of Truth responsibility
+
+このDocumentはAdminのInformation Architecture、Navigation behavior、Drawer階層、URL state、focus / Escape / Browser Back、各Workflowを所有する。色、Typography、Spacing、Radius、Shadow、Icon、Control / Tab / Status / Drawerのvisual languageはNotion `09 Admin Style Guide`と、そのimplementation-facing referenceである`docs/admin-style-guide.md`をCanonical Source of Truthとする。Phase Aに記録されたvisual値がCanonical Guideと競合する場合は、Phase B以降はAdmin Style Guideを優先する。
+
 ## Admin Shell / Navigation (Order 325 Phase A)
 
-Desktopは224pxの左固定Sidebarと白いMain Content Surfaceを共通Shellにする。Sidebarはlight gray、現在地はblack background / white text、未選択はquiet textとし、装飾的なCardやShadowをNavigationへ加えない。主要Labelは`Dashboard / Exhibitions / Venue / Artist / Works / Users / データ取り込み`を基準にし、Entity名は単数形の`Venue / Artist / Works`で統一する。UsersはOrder 329まで`準備中`の非操作表示とする。
+Desktopは約288pxの左固定SidebarとquietなMain Content Surfaceを共通Shellにする。Sidebarはlight neutral、現在地はblack fillではなくsurface差・font weight・structural markerで示し、未選択はquiet textとする。装飾的なCardや強いShadowをNavigationへ加えない。主要Labelは`Dashboard / Exhibitions / Venue / Artist / Works / Users / データ取り込み`を基準にし、Entity名は単数形の`Venue / Artist / Works`で統一する。UsersはOrder 329まで`準備中`の非操作表示とする。
 
 `Imports`と`Sources`の既存Routeは維持し、Sidebarでは`データ取り込み`Groupの`取り込み実行`と`外部Source設定`として見せる。内容統合と全面的なAction label変更はOrder 327の責務であり、Order 325では既存Route・API・操作を変更しない。Action labelは名詞だけでなく、何が起こるか分かる動詞表現を優先する。
 

@@ -18,10 +18,11 @@ Use `muuzee-ui-implementation` for a new public page or the structural implement
 ## Required reading
 
 1. Read `AGENTS.md` and `docs/project-context.md`.
-2. Read `prototype/design-guide.html`, `prototype/assets/css/muuzee-global.css`, and `prototype/assets/js/muuzee-global.js` for the current design language.
-3. Inspect the relevant production Admin page, shared components, and `src/app/globals.css`.
-4. Read [references/admin-ui-principles.md](references/admin-ui-principles.md) and [references/control-state-policy.md](references/control-state-policy.md).
-5. Consult `docs/research/admin-ui-visual-audit.md` when it still reflects the current implementation.
+2. Read `docs/admin-style-guide.md` as the canonical implementation-facing Admin visual contract.
+3. Read `prototype/design-guide.html`, `prototype/assets/css/muuzee-global.css`, and `prototype/assets/js/muuzee-global.js` for the public Muuzee design language and shared brand context.
+4. Inspect the relevant production Admin page, shared components, and `src/app/globals.css`.
+5. Read [references/admin-ui-principles.md](references/admin-ui-principles.md) and [references/control-state-policy.md](references/control-state-policy.md).
+6. Consult `docs/research/admin-ui-visual-audit.md` when it still reflects the current implementation.
 
 ## Workflow
 
