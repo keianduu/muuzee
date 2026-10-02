@@ -54,15 +54,17 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Spacing scale: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64px.
 - Desktop content gutter: approximately 44px.
 - Control radius: 8px; grouped/tab surface: 12px; card: 16px; pill: 999px.
-- `shadow-1`: subtle card, selected tab, or light elevation only.
-- `shadow-2`: drawer, popover, or comparable floating layer only.
+- `shadow-1`: `0 1px 1px rgba(29,29,24,.04), 0 5px 14px rgba(29,29,24,.05)`; subtle card, selected tab, or light elevation only.
+- `shadow-2`: `0 8px 28px rgba(29,29,24,.08)`; drawer, popover, or comparable floating layer only.
 
 ## Shell and navigation
 
 - Desktop sidebar is approximately 288px and uses the sidebar surface.
+- Desktop sidebar internal padding is compact: approximately 14px inline/top and 16px bottom. Brand uses 8px inline padding with 10–16px spacing before navigation.
+- Navigation groups use approximately 16–20px separation, with 3–4px between rows. Group labels remain 12px quiet text without forced uppercase or strong tracking.
 - Navigation rows are 34–36px high with 16px inline SVG icons and 10–12px horizontal padding.
 - Inactive navigation uses `ink-600`; hover uses `surface-hover`.
-- Active navigation uses `surface-strong`, stronger text weight, and a structural marker. It must not use a solid black fill.
+- Active navigation uses a quiet `surface-hover` selection and stronger `ink-950` text weight. It uses neither elevation nor a required structural marker and must not use a solid black fill.
 - `aria-current="page"` and visible keyboard focus remain required.
 - At 760px and below, the existing horizontally scrollable navigation fallback is retained. Horizontal overflow must stay inside the navigation, not the document.
 
@@ -80,14 +82,15 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 ### Search, filters, tabs, and pills
 
 - Search is a 40px pill-shaped input where an existing keyword field is present.
-- Form filters remain standard fields; this phase does not replace existing filter behavior.
+- Form filters remain 36px standard fields with an 8px radius. Select controls use a consistent local chevron and reserve sufficient right padding.
+- Toolbar/filter actions remain content-sized and align to the control baseline rather than stretching to an input column width.
 - Context/view tabs use a contained neutral surface with a bordered/elevated active item.
 - Detail tabs use the same contained selection language.
 - Status chips are passive 24px pill labels and must not resemble action buttons.
 
 ### Cards and tables
 
-- Cards use a white surface, subtle line, 16px radius, 16–18px padding, and only `shadow-1`.
+- Cards use the quiet `surface`, subtle line, 16px radius, 16–18px padding, and only `shadow-1`.
 - Tables retain deliberate contained horizontal scrolling when their columns require it.
 - Table headers use quiet surface separation and metadata-scale type.
 

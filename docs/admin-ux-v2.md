@@ -8,7 +8,7 @@ Status: Draft. LOCAL / STG Adminの探索中UX / Information Architectureを記�
 
 ## Admin Shell / Navigation (Order 325 Phase A)
 
-Desktopは約288pxの左固定SidebarとquietなMain Content Surfaceを共通Shellにする。Sidebarはlight neutral、現在地はblack fillではなくsurface差・font weight・structural markerで示し、未選択はquiet textとする。装飾的なCardや強いShadowをNavigationへ加えない。主要Labelは`Dashboard / Exhibitions / Venue / Artist / Works / Users / データ取り込み`を基準にし、Entity名は単数形の`Venue / Artist / Works`で統一する。UsersはOrder 329まで`準備中`の非操作表示とする。
+Desktopは約288pxの左固定SidebarとquietなMain Content Surfaceを共通Shellにする。Sidebarはlight neutral、現在地はquietなsurface差と強めのtext weightで示し、未選択はquiet textとする。Navigationへstrong marker、装飾的なCard、強いShadowを加えない。主要Labelは`Dashboard / Exhibitions / Venue / Artist / Works / Users / データ取り込み`を基準にし、Entity名は単数形の`Venue / Artist / Works`で統一する。UsersはOrder 329まで`準備中`の非操作表示とする。
 
 `Imports`と`Sources`の既存Routeは維持し、Sidebarでは`データ取り込み`Groupの`取り込み実行`と`外部Source設定`として見せる。内容統合と全面的なAction label変更はOrder 327の責務であり、Order 325では既存Route・API・操作を変更しない。Action labelは名詞だけでなく、何が起こるか分かる動詞表現を優先する。
 
