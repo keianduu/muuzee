@@ -34,6 +34,6 @@ export function evaluatePublication(input: PublicationInput) {
   };
 }
 
-export function statusAfterUnpublish(input: PublicationInput) {
-  return evaluatePublication(input).canPublish ? "ready" : "draft";
+export function statusAfterUnpublish() {
+  return "draft";
 }

@@ -16,7 +16,7 @@ Desktopは約288pxの左固定SidebarとquietなMain Content Surfaceを共通She
 
 ## Japanese labels
 
-Admin固有・技術用語は英語を残し、日本語補足を併記する。例: `Publication Status（公開状態）`、`Coordinate Candidate（座標候補）`、`Completeness（情報充足率）`。共通Field / Status表現は`src/lib/admin/master-labels.ts`にまとめ、画面ごとの独自訳を増やさない。
+Detail Fieldは日本語名をPrimary、実際のDB columnまたはstable form keyをSecondaryの別行で表示する。`Publication Status（公開状態）`や`Name（名称）`のような併記形式は使わない。Action Button / Menuは日本語の動詞表現とし、技術Entity名・Source名・CSV / API等の略称は必要に応じて維持する。共通Field / Status表現は`src/lib/admin/master-labels.ts`にまとめ、画面ごとの独自訳や文字列splitを増やさない。
 
 ## List + Stacked Detail Drawer
 
@@ -45,6 +45,14 @@ Venue一覧は実効Tier Badgeを表示し、A→B→C→D→E→未分類で並
 - `データ`: Field Provenance、External Source、Wikidata Candidate、Match Confidence / Threshold / Reason、Search Diagnostics、Rawに近い補足情報。
 
 Drawer Open時にだけDetail APIを呼び、一覧取得時に全DetailやDiagnosticを取得しない。
+
+Exhibitionも`/admin/exhibitions?selected={id}`をCanonicalなDetail stateとし、`q / status / image / schedule`を保持したまま右Drawerを開く。一覧からのOpenはpush semantics、Closeは`selected`だけを除去し、Browser Back / Escape / focus trap / focus return / background scroll lock / deep-link reloadはMaster Drawerと同じ契約に従う。従来の`/admin/exhibitions/[id]`はbookmark互換のため残し、List + `selected`へRedirectする。
+
+PublicationはMaster / Exhibitionとも共有Toggleによる2-state UIとする。ONは`published`、OFFは`draft`であり、新しい`ready`を生成しない。legacy `ready`は非公開として表示する。ExhibitionのON操作は既存公開条件を満たす場合だけ許可し、不足理由をToggle付近へ表示する。
+
+Layer順は`Base < Sidebar < Popover / Tooltip < Drawer / Dialog`を共有tokenで固定する。Action menuはSidebarより前面、Drawerは通常Popoverより前面に表示し、狭幅ではPopoverをViewport内へ収める。
+
+Order 340 handoff: Production初回migration前にcanonical codeが`ready`を書かないことを再確認し、DB constraint/typeからの除去要否とLOCAL / STG legacy値のnormalize要否を決める。Production initial dataへ`ready`を持ち込まない。
 
 ## Coordinate map
 

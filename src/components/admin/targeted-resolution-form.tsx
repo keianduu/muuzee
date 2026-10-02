@@ -20,7 +20,7 @@ export function TargetedResolutionForm({ overview }: { overview: { counts: Recor
       <div className="metric"><strong>{overview.counts.artistPending || 0}</strong><span>Artist Pending</span></div>
       {(["ambiguous", "no_candidate", "failed", "resolved"] as const).map((key) => <div className="metric" key={key}><strong>{overview.counts[key] || 0}</strong><span>{key}</span></div>)}
     </div>
-    <div className="actions"><button className="button secondary" disabled={busy} onClick={() => run(true)}>Dry Run</button><button className="button" disabled={busy} onClick={() => run(false)}>{busy ? "Running…" : "Resolve Pending"}</button></div>
+    <div className="actions"><button className="button secondary" disabled={busy} onClick={() => run(true)}>事前確認</button><button className="button" disabled={busy} onClick={() => run(false)}>{busy ? "処理中…" : "未処理を解決する"}</button></div>
     {result && <pre className="result">{result}</pre>}
     <h3>Unresolved items</h3>
     <div className="table-wrap"><table><thead><tr><th>Entity</th><th>Source value</th><th>Exhibition</th><th>Status</th><th>Candidate / external ID</th><th>Method</th><th>Resolved master</th><th>Reason / diagnostics</th></tr></thead><tbody>

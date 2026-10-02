@@ -5,5 +5,5 @@ const complete = { title: "展覧会", venueId: "venue", startDate: "2026-09-01"
 describe("publication guard", () => {
   it("allows a complete, rights-approved draft", () => { expect(evaluatePublication(complete).canPublish).toBe(true); });
   it("blocks missing or unapproved primary images", () => { expect(evaluatePublication({ ...complete, primaryImage: null }).missing).toContain("Primary画像"); expect(evaluatePublication({ ...complete, primaryImage: { rightsStatus: "pending" } }).missing).toContain("Primary画像のRights承認"); });
-  it("returns to the appropriate state when unpublished", () => { expect(statusAfterUnpublish(complete)).toBe("ready"); expect(statusAfterUnpublish({ ...complete, title: "" })).toBe("draft"); });
+  it("always returns to draft when unpublished", () => { expect(statusAfterUnpublish()).toBe("draft"); });
 });

@@ -18,6 +18,12 @@ export function selectedQuery(current: string, selectedId: string | null) {
   return params.toString();
 }
 
+export function legacyDetailDestination(basePath: string, id: string, returnTo?: string) {
+  const destination = returnTo?.startsWith(basePath) ? new URL(returnTo, "http://admin.local") : new URL(basePath, "http://admin.local");
+  destination.searchParams.set("selected", id);
+  return `${destination.pathname}?${destination.searchParams}`;
+}
+
 export function detailPanelQuery(current: string, panel: "image" | null, candidateId: string | null = null) {
   const params = new URLSearchParams(current);
   if (panel) {

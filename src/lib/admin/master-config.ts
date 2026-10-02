@@ -29,7 +29,7 @@ export type MasterConfig = {
 
 const commonStatus: MasterField = {
   key: "publication_status", label: "Publication", type: "select",
-  options: ["draft", "ready", "published", "archived"], csv: true,
+  options: ["draft", "published", "archived"], csv: true,
 };
 
 export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {

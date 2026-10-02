@@ -100,6 +100,19 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Drawer surfaces use the warm neutral Admin palette, subtle lines, and `shadow-2` only at the floating boundary.
 - Drawer tabs, controls, cards, and statuses reuse the shared styles above.
 - URL state, Back behavior, top-most Escape close, focus trap, focus return, scroll lock, and narrow full-width fallback are behavioral contracts owned by `docs/admin-ux-v2.md`.
+- Exhibition detail uses the same right-side drawer shell and interaction language as Venue / Artist / Works detail.
+
+### Detail labels and actions
+
+- Detail fields show a Japanese primary label and the actual DB column or stable form key as a 12px secondary line. The key remains lowercase `snake_case`; `English（日本語）` combined labels are not used.
+- Human-facing action controls use Japanese verbs. Technical entity names and acronyms such as Venue, Artist, Works, CSV, API, ARTPR, Wikidata, and Supabase may remain in English.
+- Publication is a shared two-state switch: ON is `公開中` (`published`), OFF is `非公開` (`draft`). `ready` is legacy-compatible data only and is not generated or shown as a distinct Product UI state.
+- Record and media deletion use the shared quiet 36px trash icon button, with `削除` as both accessible name and title. Confirmation and server-side delete blockers remain mandatory.
+
+### Layer order
+
+- Shared layer tokens preserve `base < sidebar < popover / tooltip < drawer / dialog`.
+- Action menus must be able to overlap the Sidebar without clipping. Drawers always remain above normal menus and tooltips.
 
 ## Icon language
 

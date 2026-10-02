@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detailPanelQuery, mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery } from "./master-list-state";
+import { detailPanelQuery, legacyDetailDestination, mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery } from "./master-list-state";
 
 describe("master list URL and append state", () => {
   it("appends pages without duplicate records", () => {
@@ -19,6 +19,11 @@ describe("master list URL and append state", () => {
     expect(opened).toContain("tier=A-C");
     expect(opened).toContain("selected=venue-1");
     expect(selectedQuery(opened, null)).toBe("q=tokyo&status=draft&tier=A-C");
+  });
+
+  it("redirects a legacy exhibition detail URL into the filtered list drawer", () => {
+    expect(legacyDetailDestination("/admin/exhibitions", "exhibition-1", "/admin/exhibitions?q=tokyo&status=draft"))
+      .toBe("/admin/exhibitions?q=tokyo&status=draft&selected=exhibition-1");
   });
 
   it("adds and removes the child panel without losing the selected master", () => {

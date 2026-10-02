@@ -1,16 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
-import { notFound } from "next/navigation";
-import { ExhibitionEditor } from "@/components/admin/exhibition-editor";
-import { createImageResearchPrompt } from "@/lib/admin/image-research-prompt";
-import { evaluatePublication } from "@/lib/admin/publication";
-import { firstRelation, getExhibition } from "@/lib/admin/queries";
+import { redirect } from "next/navigation";
+import { legacyDetailDestination } from "@/lib/admin/master-list-state";
 
-export default async function ExhibitionDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; const result = await getExhibition(id);
-  if (result.configured && !result.data && !result.error) notFound();
-  if (!result.data) return <><h1>Exhibition</h1><div className={result.error ? "error" : "notice"}>{result.error || "Supabase環境変数が未設定です。"}</div></>;
-  const exhibition = result.data; const occurrence = exhibition.exhibition_occurrences?.[0] || null; const venue = firstRelation(occurrence?.venues); const primary = exhibition.media_assets?.find((asset) => asset.is_primary) || null;
-  const publication = evaluatePublication({ title: exhibition.title, venueId: occurrence?.venue_id, startDate: occurrence?.start_date, endDate: occurrence?.end_date, primaryImage: primary ? { id: primary.id, rightsStatus: primary.rights_status } : null });
-  const prompt = createImageResearchPrompt({ title: exhibition.title, venue: venue?.name || null, startDate: occurrence?.start_date || null, endDate: occurrence?.end_date || null, officialUrl: exhibition.official_url });
-  return <><div className="page-head"><div><p className="eyebrow">{exhibition.publication_status}</p><h1>{exhibition.title}</h1></div></div><ExhibitionEditor exhibition={exhibition} occurrence={occurrence} venue={venue} prompt={prompt} requirements={publication.requirements} canPublish={publication.canPublish}/><section><h2>API image candidates</h2><p className="muted">APIが返した参照候補です。表示されてもRights承認済み・Primary画像とは扱われません。出典と利用条件を人が確認してください。</p><div className="media-grid">{(exhibition.source_records || []).flatMap((source) => (source.source_image_candidates || []).filter((candidate) => candidate.is_active).map((candidate) => <article className="card media-card" key={candidate.id}><img src={candidate.thumbnail_url || candidate.image_url} alt="API source candidate"/><p><span className="status">API candidate</span> <span className="status">{candidate.contents_rights_type || "rights unknown"}</span></p><p className="muted">Provider: {candidate.provider || "unknown"}<br/>Access: {candidate.contents_access || "unknown"}</p><a className="button secondary" href={candidate.image_url} target="_blank" rel="noreferrer">元画像を確認</a></article>))}</div>{!(exhibition.source_records || []).some((source) => source.source_image_candidates?.some((candidate) => candidate.is_active)) && <p className="muted">このAPI Recordには画像候補がありません。</p>}</section><section><h2>Source records</h2>{(exhibition.source_records || []).map((source) => <details className="card" key={source.id}><summary>{firstRelation(source.data_sources)?.name || "Source"} / {source.external_id}</summary><p><a href={source.source_url || "#"} target="_blank" rel="noreferrer">Source URL</a> · fetched {source.fetched_at}</p><pre>{JSON.stringify(source.raw_payload, null, 2)}</pre></details>)}</section></>;
+export default async function ExhibitionDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> }) {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  redirect(legacyDetailDestination("/admin/exhibitions", id, query.returnTo));
 }

@@ -66,7 +66,7 @@ export function VenueCanonicalReview() {
   }
 
   return <section className="canonical-review">
-    <div className="actions"><button className="button secondary" disabled={loading} onClick={open ? () => setOpen(false) : load}>{loading ? "Loading..." : open ? "Canonical候補を閉じる" : "Canonical候補を確認"}</button></div>
+    <div className="actions"><button className="button secondary" disabled={loading} onClick={open ? () => setOpen(false) : load}>{loading ? "読み込み中..." : open ? "Canonical候補を閉じる" : "Canonical候補を確認"}</button></div>
     {message && <div className="notice">{message}</div>}
     {open && <div className="canonical-review-list">
       <div className="detail-status"><div><h2>Exhibition Venue Canonical Review</h2><p className="muted">名称だけでは統合しません。Source、住所、座標、画像、Relationを比較して判断してください。</p></div><span className="status">{rows.length} candidates</span></div>

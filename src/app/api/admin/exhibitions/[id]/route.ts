@@ -5,6 +5,25 @@ import { assertHttpUrl, nullableText, validUuid } from "@/lib/admin/http";
 import { slugify } from "@/lib/admin/slug";
 import { normalizeVenueIdentity } from "@/lib/art-commons/mapper";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createImageResearchPrompt } from "@/lib/admin/image-research-prompt";
+import { evaluatePublication } from "@/lib/admin/publication";
+import { firstRelation, getExhibition } from "@/lib/admin/queries";
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params; if (!validUuid(id)) throw new Error("Invalid exhibition ID");
+    const result = await getExhibition(id);
+    if (result.error) throw new Error(result.error);
+    if (!result.data) return NextResponse.json({ error: result.configured ? "展覧会が見つかりません。" : "Supabase環境変数が未設定です。" }, { status: result.configured ? 404 : 503 });
+    const exhibition = result.data;
+    const occurrence = exhibition.exhibition_occurrences?.[0] || null;
+    const venue = firstRelation(occurrence?.venues);
+    const primary = exhibition.media_assets?.find((asset) => asset.is_primary) || null;
+    const publication = evaluatePublication({ title: exhibition.title, venueId: occurrence?.venue_id, startDate: occurrence?.start_date, endDate: occurrence?.end_date, primaryImage: primary ? { id: primary.id, rightsStatus: primary.rights_status } : null });
+    const prompt = createImageResearchPrompt({ title: exhibition.title, venue: venue?.name || null, startDate: occurrence?.start_date || null, endDate: occurrence?.end_date || null, officialUrl: exhibition.official_url });
+    return NextResponse.json({ exhibition, occurrence, venue, prompt, requirements: publication.requirements, canPublish: publication.canPublish });
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Detail fetch failed" }, { status: 400 }); }
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -17,9 +36,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { data: occurrence, error: occurrenceError } = await db.from("exhibition_occurrences").select("id, venue_id").eq("exhibition_id", id).limit(1).single(); if (occurrenceError) throw occurrenceError;
     const venueName = nullableText(body.venue_name); if (!venueName) throw new Error("Venueは必須です。"); const venueAddress = nullableText(body.venue_address);
     const normalizedName = normalizeVenueIdentity(venueName); const normalizedAddress = normalizeVenueIdentity(venueAddress) || null;
-    const { data: currentVenue, error: currentVenueError } = await db.from("venues").select("normalized_name,normalized_address").eq("id", occurrence.venue_id).single(); if (currentVenueError) throw currentVenueError;
+    const { data: currentVenue, error: currentVenueError } = await db.from("venues").select("name,address,normalized_name,normalized_address").eq("id", occurrence.venue_id).single(); if (currentVenueError) throw currentVenueError;
+    const currentNormalizedName = currentVenue.normalized_name || normalizeVenueIdentity(currentVenue.name);
+    const currentNormalizedAddress = currentVenue.normalized_address || normalizeVenueIdentity(currentVenue.address) || null;
     let venueId = occurrence.venue_id;
-    if (currentVenue.normalized_name !== normalizedName || currentVenue.normalized_address !== normalizedAddress) {
+    if (currentNormalizedName !== normalizedName || currentNormalizedAddress !== normalizedAddress) {
       let matchQuery = db.from("venues").select("id").eq("normalized_name", normalizedName); matchQuery = normalizedAddress ? matchQuery.eq("normalized_address", normalizedAddress) : matchQuery.is("normalized_address", null);
       const { data: matched, error: matchError } = await matchQuery.limit(2); if (matchError) throw matchError;
       if (matched?.length === 1) venueId = matched[0].id;

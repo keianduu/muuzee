@@ -19,7 +19,7 @@ export async function MasterDetailPage({ entity, id, returnTo: rawReturnTo }: { 
   const returnTo = rawReturnTo?.startsWith(`/admin/${entity}`) ? rawReturnTo : `/admin/${entity}`;
   return <>
     <nav className="breadcrumbs"><Link href="/admin">Admin</Link><span>/</span><Link href={returnTo}>{config.label}s</Link><span>/</span><strong>{String(row[config.titleKey])}</strong></nav>
-    <div className="detail-navigation"><Link className="button secondary" href={returnTo}>← Back to list</Link><div className="actions">{adjacent.previous ? <Link className="button secondary" href={`/admin/${entity}/${adjacent.previous.id}?returnTo=${encodeURIComponent(returnTo)}`}>← Previous</Link> : <span/>}{adjacent.next ? <Link className="button secondary" href={`/admin/${entity}/${adjacent.next.id}?returnTo=${encodeURIComponent(returnTo)}`}>Next →</Link> : <span/>}</div></div>
+    <div className="detail-navigation"><Link className="button secondary" href={returnTo}>← 一覧へ戻る</Link><div className="actions">{adjacent.previous ? <Link className="button secondary" href={`/admin/${entity}/${adjacent.previous.id}?returnTo=${encodeURIComponent(returnTo)}`}>← 前へ</Link> : <span/>}{adjacent.next ? <Link className="button secondary" href={`/admin/${entity}/${adjacent.next.id}?returnTo=${encodeURIComponent(returnTo)}`}>次へ →</Link> : <span/>}</div></div>
     <div className="page-head"><div><p className="eyebrow">{config.label} Master</p><h1>{String(row[config.titleKey])}</h1><p className="muted">ID: {row.id}</p></div></div>
     <MasterEditor entity={entity} record={row}/>
     <MasterTags entity={entity} masterId={row.id} rows={(row[`${config.singular}_tags`] || []) as Array<Record<string, unknown>>}/>
