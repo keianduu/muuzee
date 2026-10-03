@@ -39,3 +39,30 @@ export function displayStatus(value: unknown) {
   const key = String(value || "missing");
   return STATUS_LABELS[key] || key;
 }
+
+const API_MATCH_LABELS: Record<string, string> = {
+  matched: "照合済み",
+  candidate: "候補あり",
+  unmatched: "候補なし",
+};
+
+const CRAWL_STATUS_LABELS: Record<string, string> = {
+  success: "取得成功",
+  partial: "一部取得",
+  no_official_url: "公式URLなし",
+  robots_blocked: "取得不可",
+  fetch_failed: "取得失敗",
+  parse_failed: "解析失敗",
+  no_relevant_page: "対象ページなし",
+  timeout: "タイムアウト",
+};
+
+export function displayApiMatchStatus(value: unknown) {
+  const key = String(value || "");
+  return API_MATCH_LABELS[key] || "未照合";
+}
+
+export function displayCrawlStatus(value: unknown) {
+  const key = String(value || "");
+  return CRAWL_STATUS_LABELS[key] || "未取得";
+}

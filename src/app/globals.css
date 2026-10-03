@@ -140,6 +140,8 @@ th { background: var(--surface); color: var(--ink-600); font-size: 12px; font-we
 .requirements { display: flex; flex-wrap: wrap; gap: 7px; padding: 0; list-style: none; }
 .requirements li { padding: 6px 9px; border-radius: 6px; background: #f0dddd; color: #782d2d; font-size: 12px; }
 .requirements li.met { background: #dce9e1; color: #27503e; }
+.requirements li.required-missing { background: #f0dddd; color: #782d2d; }
+.requirements li.optional-missing { background: var(--surface-hover); color: var(--ink-600); }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; }
 .media-card img { width: 100%; height: 240px; object-fit: contain; border-radius: 8px; background: #eee; }
 .license-summary { display: grid; grid-template-columns: minmax(120px,.8fr) minmax(140px,1.2fr); gap: 0; margin: 14px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; }
@@ -191,7 +193,7 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .preview-counts, .relation-options { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .detail-status { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
 .detail-status p { margin: 6px 0 0; }
-.publication-status-card { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 14px 20px; }
+.publication-status-card { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 14px 20px; margin-bottom: 16px; }
 .publication-status-help { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
 .publication-status-actions, .publication-toggle-wrap { display: flex; align-items: center; gap: 10px; }
 .publication-toggle { position: relative; width: 50px; height: 30px; padding: 2px; border: 1px solid var(--ink-300); border-radius: 999px; background: var(--surface-hover); }
@@ -261,6 +263,15 @@ body.is-master-drawer-open { overflow: hidden; }
 .admin-state-summary dl > div { display: grid; grid-template-columns: minmax(130px,.7fr) minmax(0,1.3fr); gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .admin-state-summary dt { color: var(--muted); }
 .admin-state-summary dd { margin: 0; overflow-wrap: anywhere; font-weight: 650; }
+.availability-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.availability-chip { display: inline-flex; min-height: 24px; align-items: center; padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink-500); font-size: 12px; font-weight: 650; line-height: 1.2; }
+.availability-chip.is-current { border-color: var(--ink-800); background: var(--surface-hover); color: var(--ink-950); }
+.admin-diagnostic-summary { margin-bottom: 12px; }
+.admin-diagnostic-summary dl { display: grid; gap: 0; margin: 0; }
+.admin-diagnostic-summary dl > div { display: grid; grid-template-columns: minmax(130px,.7fr) minmax(0,1.3fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.admin-diagnostic-summary dl > div:last-child { border-bottom: 0; }
+.admin-diagnostic-summary dt { color: var(--muted); }
+.admin-diagnostic-summary dd { margin: 0; overflow-wrap: anywhere; }
 .canonical-review { margin: 18px 0 28px; }
 .canonical-review-list { margin-top: 18px; }
 .canonical-review-card { margin: 14px 0; }

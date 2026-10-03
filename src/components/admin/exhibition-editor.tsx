@@ -56,7 +56,7 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
       <div className="publication-status-actions"><PublicationToggle checked={published} busy={busy} disabled={!published && !canPublish} describedBy={!canPublish ? requirementMessageId : undefined} onChange={publication}/></div>
       {!canPublish && !published && <div className="publication-requirements" id={requirementMessageId}><strong>公開に必要な情報が不足しています</strong><span>{missing.map((item) => item.label).join("、")}</span></div>}
     </section>
-    <section className="card"><h2>公開条件</h2><ul className="requirements">{requirements.map((item) => <li key={item.key} className={item.met ? "met" : ""}>{item.met ? "✓" : "×"} {item.label}</li>)}</ul></section>
+    <section className="card"><h2>公開条件</h2><ul className="requirements">{requirements.map((item) => <li key={item.key} className={item.met ? "met" : "required-missing"}>{item.met ? "✓ " : ""}{item.label}</li>)}</ul></section>
     <form className="card" onSubmit={save}>
       <h2>基本情報</h2><div className="form-grid">
         <div className="field full"><AdminFieldLabel htmlFor="exhibition-title" label="タイトル" fieldKey="title"/><input id="exhibition-title" name="title" required defaultValue={exhibition.title}/></div>

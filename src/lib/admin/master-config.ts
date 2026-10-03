@@ -25,6 +25,7 @@ export type MasterConfig = {
   ownerKey: "venue_id" | "artist_id" | "work_id";
   fields: readonly MasterField[];
   completeness: readonly { key: string; label: string; test?: (row: Record<string, unknown>) => boolean }[];
+  publicationRequirements: readonly string[];
 };
 
 const commonStatus: MasterField = {
@@ -68,6 +69,7 @@ export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {
       { key: "image", label: "Image", test: (row) => Boolean((row.media_assets as Array<{ is_primary?: boolean }> | undefined)?.some((item) => item.is_primary)) },
       { key: "opening_hours_text", label: "Opening Hours" },
     ],
+    publicationRequirements: ["name"],
   },
   artists: {
     entity: "artists", singular: "artist", label: "Artist", titleKey: "name",
@@ -96,6 +98,7 @@ export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {
       { key: "nationality", label: "Nationality", test: (row) => Boolean(row.nationality_country_code) },
       { key: "image", label: "Primary Image", test: (row) => Boolean((row.media_assets as Array<{ is_primary?: boolean }> | undefined)?.some((item) => item.is_primary)) },
     ],
+    publicationRequirements: ["name"],
   },
   works: {
     entity: "works", singular: "work", label: "Work", titleKey: "title",
@@ -119,6 +122,7 @@ export const MASTER_CONFIGS: Record<MasterEntity, MasterConfig> = {
       { key: "artist", label: "Artist", test: (row) => Boolean((row.work_artists as unknown[] | undefined)?.length) },
       { key: "holding", label: "Holding Venue", test: (row) => Boolean((row.collection_holdings as unknown[] | undefined)?.length) },
     ],
+    publicationRequirements: ["title", "artist", "holding"],
   },
 };
 

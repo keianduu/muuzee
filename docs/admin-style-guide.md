@@ -87,6 +87,8 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Context/view tabs use a contained neutral surface with a bordered/elevated active item.
 - Detail tabs use the same contained selection language.
 - Status chips are passive 24px pill labels and must not resemble action buttons.
+- Detailの画像状態は`未取得 / 画像なし / 候補あり / 利用不可 / 利用可能`の5つを常にpassive chipとして並べ、currentだけをborder、surface、weight、`✓`で強調する。Primary有無、candidate件数、raw `image_search_status`はこのHuman-facing stateへ混ぜない。
+- Requirement chipは充足済みをgreen + `✓`、公開必須の未充足をred、任意の未充足をneutral grayで示す。未充足chipへ`○`等の疑似状態iconを付けない。
 
 ### Cards and tables
 
@@ -107,6 +109,7 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Detail fields show a Japanese primary label and the actual DB column or stable form key as a 12px secondary line. The key remains lowercase `snake_case`; `English（日本語）` combined labels are not used.
 - Human-facing action controls use Japanese verbs. Technical entity names and acronyms such as Venue, Artist, Works, CSV, API, ARTPR, Wikidata, and Supabase may remain in English.
 - Publication is a shared two-state switch: ON is `公開中` (`published`), OFF is `非公開` (`draft`). `ready` is legacy-compatible data only and is not generated or shown as a distinct Product UI state.
+- Publication cardと次のcardの間は16px空け、隣接して一体のcardに見せない。
 - Record and media deletion use the shared quiet 36px trash icon button, with `削除` as both accessible name and title. Confirmation and server-side delete blockers remain mandatory.
 
 ### Layer order

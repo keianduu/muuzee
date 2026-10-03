@@ -45,8 +45,8 @@ describe("venue priority operations", () => {
       "hours missing", "closed missing", "access missing", "description missing", "address missing", "complete operations",
     ]);
   });
-  it("keeps image selection and rights status separate", () => {
-    expect(venueImageStatus(row("one", "A", { media_assets: [{ is_primary: true, rights_status: "needs_review" }] }))).toBe("Primaryあり / Rights未確認");
-    expect(venueImageStatus(row("approved", "A", { media_assets: [{ is_primary: true, rights_status: "approved" }] }))).toBe("Primaryあり / Rights確認済み");
+  it("uses canonical image availability instead of exposing Primary and Rights diagnostics", () => {
+    expect(venueImageStatus(row("one", "A", { media_assets: [{ is_primary: true, rights_status: "needs_review" }] }))).toBe("候補あり");
+    expect(venueImageStatus(row("approved", "A", { media_assets: [{ is_primary: false, rights_status: "approved" }] }))).toBe("利用可能");
   });
 });

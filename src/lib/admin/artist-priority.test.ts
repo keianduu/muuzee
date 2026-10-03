@@ -41,10 +41,10 @@ describe("artist priority and four-field core quality", () => {
   });
 
   it("uses the same image-status labels as Venue", () => {
-    expect(artistImageStatus(artist("none", "A"))).toBe("画像なし");
-    expect(artistImageStatus(artist("rejected", "A", { source_records: [{ source_image_candidates: [{ is_active: true, rights_status: "rejected" }] }] }))).toBe("画像なし");
-    expect(artistImageStatus(artist("candidate", "A", { source_records: [{ source_image_candidates: [{ is_active: true }, { is_active: true }] }] }))).toBe("複数Candidate / 選択必要");
-    expect(artistImageStatus(artist("pending", "A", { media_assets: [{ is_primary: true, rights_status: "needs_review" }] }))).toBe("Primaryあり / Rights未確認");
-    expect(artistImageStatus(artist("approved", "A", { media_assets: [{ is_primary: true, rights_status: "approved" }] }))).toBe("Primaryあり / Rights確認済み");
+    expect(artistImageStatus(artist("none", "A"))).toBe("未取得");
+    expect(artistImageStatus(artist("rejected", "A", { source_records: [{ source_image_candidates: [{ is_active: true, rights_status: "rejected" }] }] }))).toBe("利用不可");
+    expect(artistImageStatus(artist("candidate", "A", { source_records: [{ source_image_candidates: [{ is_active: true }] }] }))).toBe("候補あり");
+    expect(artistImageStatus(artist("pending", "A", { media_assets: [{ is_primary: true, rights_status: "needs_review" }] }))).toBe("候補あり");
+    expect(artistImageStatus(artist("approved", "A", { media_assets: [{ is_primary: false, rights_status: "approved" }] }))).toBe("利用可能");
   });
 });

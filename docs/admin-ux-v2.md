@@ -40,9 +40,15 @@ Venue一覧は実効Tier Badgeを表示し、A→B→C→D→E→未分類で並
 
 ## Status / Edit / Data IA
 
-- `状態`: Publication、Completeness、画像、Rights、Source、不足Field。VenueはCoordinate / API Matchも表示する。
+- `状態`: 取得過程ではなく、現在利用できる情報を示す。Master共通はPublication、画像の可用性、外部データ有無、Requirementsを表示し、Venueだけ位置情報を追加する。Completeness percentage、独立したRights、不足Field text、API照合、crawl診断は表示しない。
 - `編集`: Masterの実データ、Tag、Relation、画像Upload / Candidate判断、座標Candidate採否。
-- `データ`: Field Provenance、External Source、Wikidata Candidate、Match Confidence / Threshold / Reason、Search Diagnostics、Rawに近い補足情報。
+- `データ`: Field Provenance、External Source、Wikidata/API照合、Match Confidence / Threshold / Reason、座標候補、`image_search_status`、検索trace、公式サイトcrawl、AI enrichment、Rawに近い補足情報。
+
+Human-facing画像状態は`未取得 / 画像なし / 候補あり / 利用不可 / 利用可能`の5状態とする。approved Media AssetがあればPrimary指定にかかわらず`利用可能`、active non-rejected Candidateまたは`needs_review` Assetは`候補あり`、rejected-only evidenceは`利用不可`、完了した探索のno-result evidenceがあれば`画像なし`、判断可能な探索証拠がなければ`未取得`とする。raw `image_search_status`はDataだけに置く。
+
+`外部データ`は`source_records`が1件以上なら`あり`、0件なら`なし`とし、providerや件数はDataへ置く。Venueの`位置情報`はcurrent latitude/longitudeがあればSource種別を問わず`確認済み`、currentなしでusable candidateがあれば`候補あり`、それ以外は`取得不可`とする。ExhibitionはVenue relationを参照するため位置情報Statusを持たない。
+
+Publication-requiredはVenue=`name`、Artist=`name`、Works=`Title + Artist Relation + Holding Venue Relation`、Exhibition=`Title + Venue + Start or End date + Primary image + approved rights`であり、Completeness item全体を公開必須として扱わない。ArtistのTierは運用情報として残せるが、別のQuality cardでCompleteness、画像、Requirementsを重複表示しない。
 
 Drawer Open時にだけDetail APIを呼び、一覧取得時に全DetailやDiagnosticを取得しない。
 

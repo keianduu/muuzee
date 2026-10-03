@@ -1,4 +1,5 @@
 import { interpretCommonsLicense } from "@/lib/wikimedia-commons/license-profile";
+import { masterImageState } from "./master-availability";
 
 export function masterImageQuality(row: Record<string, unknown>) {
   const assets = (row.media_assets || []) as Array<Record<string, unknown>>;
@@ -11,10 +12,7 @@ export function masterImageQuality(row: Record<string, unknown>) {
 }
 
 export function masterImageStatus(row: Record<string, unknown>) {
-  const quality = masterImageQuality(row);
-  if (quality.primary) return quality.approvedPrimary ? "Primaryあり / Rights確認済み" : "Primaryあり / Rights未確認";
-  if (quality.candidates.length > 1) return "複数Candidate / 選択必要";
-  return "画像なし";
+  return masterImageState(row);
 }
 
 export function imageDiscoverySourceLabel(source: unknown) {
