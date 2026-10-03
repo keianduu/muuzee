@@ -1,13 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { MediaAssetRow, SourceImageCandidateRow, VenueMatchCandidateRow, VenueRow } from "@/lib/admin/types";
-import { displayApiMatchStatus, displayCrawlStatus, displayStatus } from "@/lib/admin/master-labels";
-import { MasterImageCandidateCard, MasterImageCandidateSummary } from "./master-image-candidate";
-import { AdminFieldLabel } from "./admin-field-label";
-import { AdminDeleteButton } from "./admin-icon-button";
+import { displayApiMatchStatus, displayCrawlStatus } from "@/lib/admin/master-labels";
+import { VenueBasicEditor } from "./venue-basic-editor";
+import { VenueImageEditor } from "./venue-image-editor";
+import { VenueRelations } from "./venue-relations";
+import { MasterTags } from "./master-tags";
 
 
 function Trace({ title, rows }: { title: string; rows: Array<Record<string, unknown>> }) {
@@ -16,10 +16,11 @@ function Trace({ title, rows }: { title: string; rows: Array<Record<string, unkn
   </tr>)}</tbody></table></div> : <p className="muted">探索履歴はまだありません。</p>}</div>;
 }
 
-export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all", onOpenImageCandidate }: { venue: VenueRow; prompt: string; showBasicForm?: boolean; view?: "all" | "status" | "edit" | "data"; onOpenImageCandidate?: (candidateId: string | null) => void }) {
+export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all", tagRows = [], onOpenImageCandidate }: { venue: VenueRow; prompt: string; showBasicForm?: boolean; view?: "all" | "status" | "edit" | "data"; tagRows?: Array<Record<string, unknown>>; onOpenImageCandidate?: (candidateId: string | null) => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [editTab, setEditTab] = useState<"basic" | "image">("basic");
   async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean } = {}) {
     setBusy(true); setMessage("");
     try {
@@ -37,9 +38,8 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all",
       }));
     } catch (error) { setMessage(error instanceof Error ? error.message : "Request failed"); } finally { setBusy(false); }
   }
-  async function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget);
-    await request(`/api/admin/venues/${venue.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) });
+  async function save(values: Record<string, string>) {
+    await request(`/api/admin/venues/${venue.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
   }
   async function enrich() { await request(`/api/admin/venues/${venue.id}/enrich`, { method: "POST" }); }
   async function selectSourceCandidate(candidate: VenueMatchCandidateRow) {
@@ -51,7 +51,7 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all",
   async function setPrimaryImage(candidate: SourceImageCandidateRow) {
     await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" }, { preserveListOrder: true });
   }
-  async function upload(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: new FormData(event.currentTarget) }); }
+  async function upload(form: FormData) { await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: form }); }
   async function remove(asset: MediaAssetRow) {
     if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return;
     await request(`/api/admin/venues/${venue.id}/media/${asset.id}`, { method: "DELETE" });
@@ -77,17 +77,10 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all",
   const wikipediaPayload = wikipediaSourceRecord?.raw_payload as { title?: string; pageId?: number; language?: string; qid?: string } | null | undefined;
   return <>
     {(view === "all" || view === "data") && <div className="actions"><button className="button secondary" disabled={busy} onClick={enrich}>外部データで補完</button></div>}
-    {showBasicForm && (view === "all" || view === "edit") && <form className="card" onSubmit={save}>
-      <h2>基本情報</h2><div className="form-grid">
-        <div className="field"><label>Name</label><input name="name" required defaultValue={venue.name}/></div><div className="field"><label>English name</label><input name="name_en" defaultValue={venue.name_en || ""}/></div>
-        <div className="field"><label>Venue type</label><select name="venue_type" defaultValue={venue.venue_type}><option value="museum">museum</option><option value="gallery">gallery</option><option value="art_space">art_space</option><option value="commercial_space">commercial_space</option><option value="other">other</option></select></div>
-        <div className="field"><label>Postal code</label><input name="postal_code" defaultValue={venue.postal_code || ""}/></div><div className="field"><label>Prefecture</label><input name="prefecture" defaultValue={venue.prefecture || ""}/></div><div className="field"><label>City</label><input name="city" defaultValue={venue.city || ""}/></div>
-        <div className="field full"><label>Address</label><input name="address" defaultValue={venue.address || ""}/></div><div className="field full"><label>Official URL</label><input type="url" name="official_url" defaultValue={venue.official_url || ""}/></div>
-      </div>
-      <h2>Current coordinates</h2><p><span className={`status ${["approved", "manual"].includes(venue.coordinate_status) ? "approved" : ""}`}>{venue.coordinate_status}</span></p>
-      <div className="form-grid"><div className="field"><label>Latitude</label><input type="number" step="any" name="latitude" defaultValue={venue.latitude ?? ""}/></div><div className="field"><label>Longitude</label><input type="number" step="any" name="longitude" defaultValue={venue.longitude ?? ""}/></div><div className="field"><label>Coordinate source</label><input readOnly value={venue.coordinate_source || "Missing"}/></div><div className="field"><label>Precision</label><input readOnly value={venue.coordinate_precision || "-"}/></div></div>
-      <div className="actions"><button className="button" disabled={busy}>保存</button></div>
-    </form>}
+    {(view === "all" || view === "edit") && <div className="venue-edit-surface">
+      <div className="venue-edit-tabs" role="tablist" aria-label="Venue編集セクション"><button type="button" role="tab" aria-selected={editTab === "basic"} className={editTab === "basic" ? "is-active" : ""} onClick={() => setEditTab("basic")}>基本情報</button><button type="button" role="tab" aria-selected={editTab === "image"} className={editTab === "image" ? "is-active" : ""} onClick={() => setEditTab("image")}>画像登録</button></div>
+      <div role="tabpanel">{editTab === "basic" ? <><VenueBasicEditor venue={venue} busy={busy} onSave={save}/><VenueRelations venue={venue}/><MasterTags entity="venues" masterId={venue.id} rows={tagRows} title="タグ" compactType/></> : <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage} onReview={review}/>}</div>
+    </div>}
 
     {(view === "all" || view === "data") && <section><h2>位置情報診断</h2>
       {venue.coordinate_candidate_latitude != null && venue.coordinate_candidate_longitude != null ? <article className="card">
@@ -107,10 +100,6 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all",
 
     {(view === "all" || view === "data") && wikipediaAddressSource && <section className="card"><h2>Wikipedia Address Source</h2><div className="license-summary"><span>Address Source</span><strong>Wikipedia</strong><span>Wikipedia</span><strong>{wikipediaPayload?.title || "記事タイトル未取得"}</strong><span>QID / Page ID</span><strong>{wikipediaPayload?.qid || matchedWikidataId || "-"} / {wikipediaPayload?.pageId ?? "-"}</strong><span>Applied</span><strong>{new Date(wikipediaAddressSource.created_at).toLocaleString("ja-JP")}</strong></div>{wikipediaAddressSource.source_url && <a className="button secondary" href={wikipediaAddressSource.source_url} target="_blank" rel="noreferrer">データ元を開く ↗</a>}</section>}
 
-    {(view === "all" || view === "edit") && <section><h2>Image Candidate（画像候補）</h2><p className="muted">Entity採用前でもP18を参考候補として保持します。候補保持、ライセンス判断、Primary採用は別操作で、自動公開はしません。</p>
-      {onOpenImageCandidate ? <div className="image-candidate-list">{imageCandidates.map((candidate) => <MasterImageCandidateSummary key={candidate.id} candidate={candidate} subjectLabel={venue.name} onOpen={() => onOpenImageCandidate(candidate.id)}/>)}</div> : <div className="media-grid">{imageCandidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={venue.name} busy={busy} onSetPrimary={() => setPrimaryImage(candidate)} onAccept={() => review(candidate, { review_status: "accepted" })} onReject={() => review(candidate, { review_status: "rejected" })}/>)}</div>}{!imageCandidates.length && <p className="muted">画像候補はありません。</p>}
-    </section>}
-
     {(view === "all" || view === "data") && <section><h2>画像探索状態</h2><div className="card admin-diagnostic-summary"><dl><div><dt>Technical key</dt><dd><code>image_search_status = {venue.image_search_status}</code></dd></div></dl></div><div className="media-grid"><Trace title="Coordinate Search（座標探索）" rows={venue.coordinate_search_trace || []}/><Trace title="Image Search（画像探索）" rows={venue.image_search_trace || []}/></div></section>}
 
     {(view === "all" || view === "data") && <section><h2>公式サイト取得状態</h2><div className="card admin-diagnostic-summary"><dl><div><dt>状態</dt><dd>{displayCrawlStatus(latestOfficialCrawl?.crawl_status)}</dd></div><div><dt>Technical key</dt><dd><code>crawl_status = {latestOfficialCrawl?.crawl_status || "未取得"}</code></dd></div></dl></div>{latestOfficialCrawl ? <div className="card"><p><strong>Latest crawl:</strong> {new Date(latestOfficialCrawl.crawled_at).toLocaleString("ja-JP")} · <span className="status">{displayCrawlStatus(latestOfficialCrawl.crawl_status)}</span></p><p>{latestOfficialCrawl.crawl_source_url ? <a href={latestOfficialCrawl.crawl_source_url} target="_blank" rel="noreferrer">データ元を開く ↗</a> : "Source URLなし"}</p><div className="table-wrap"><table><thead><tr><th>Field</th><th>Extracted value</th><th>Source</th></tr></thead><tbody>{Object.entries(latestOfficialCrawl.extracted_values || {}).map(([field, value]) => <tr key={field}><td>{field}</td><td>{String(value || "—")}</td><td>{latestOfficialCrawl.field_source_urls?.[field] ? <a href={latestOfficialCrawl.field_source_urls[field]} target="_blank" rel="noreferrer">データ元を開く ↗</a> : "—"}</td></tr>)}</tbody></table></div>{latestOfficialCrawl.description_source_text && <details><summary>Description source text</summary><p>{latestOfficialCrawl.description_source_text}</p></details>}{latestOfficialCrawl.notes && <p className="muted">{latestOfficialCrawl.notes}</p>}<details><summary>Recent crawl history（{officialCrawls.length}件）</summary><ul>{officialCrawls.slice(0, 10).map((crawl) => <li key={crawl.id}>{new Date(crawl.crawled_at).toLocaleString("ja-JP")} · {displayCrawlStatus(crawl.crawl_status)}</li>)}</ul></details></div> : <p className="muted">公式サイトCrawl履歴はありません。一覧の「公式サイト情報取得」から実行できます。</p>}
@@ -119,14 +108,6 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all",
 
     {showResearchPrompt && (view === "all" || view === "data") && <section className="card"><h2>施設画像調査</h2><p className="muted">自動候補がない、または全候補が却下された場合にのみ使用します。</p><textarea readOnly value={prompt} style={{ minHeight: 300 }}/><div className="actions"><button className="button secondary" onClick={() => navigator.clipboard.writeText(prompt).then(() => setMessage("プロンプトをコピーしました"))}>施設画像調査プロンプトをコピー</button></div></section>}
 
-    {(view === "all" || view === "edit") && <form className="card" onSubmit={upload}><h2>画像・権利情報</h2><div className="form-grid">
-      <div className="field full"><AdminFieldLabel label="画像" fieldKey="file"/><input name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required/></div>
-      <div className="field"><AdminFieldLabel label="出典種別" fieldKey="source_type"/><select name="source_type" required defaultValue="wikimedia"><option value="official_press">Official press</option><option value="open_collection">Open collection</option><option value="wikimedia">Wikimedia</option><option value="direct">Direct permission</option><option value="other">Other</option></select></div>
-      <div className="field"><AdminFieldLabel label="利用可否" fieldKey="rights_status"/><select name="rights_status" required defaultValue="needs_review"><option value="rejected">明確に不可</option><option value="needs_review">記載なし・不明</option><option value="approved">明確に利用可能</option></select></div>
-      <div className="field full"><AdminFieldLabel label="データ元URL（任意）" fieldKey="source_url"/><input name="source_url" type="url"/></div><div className="field"><AdminFieldLabel label="クレジット（任意）" fieldKey="credit"/><input name="credit"/></div><div className="field"><AdminFieldLabel label="利用期限" fieldKey="valid_until"/><input name="valid_until" type="date"/></div><div className="field full"><AdminFieldLabel label="利用条件メモ（任意）" fieldKey="usage_note"/><textarea name="usage_note"/></div><label><input name="is_primary" type="checkbox" value="true" style={{ width: "auto" }}/> メイン画像</label>
-    </div><div className="actions"><button className="button" disabled={busy}>画像を登録</button></div></form>}
-
-    {(view === "all" || view === "edit") && <section><h2>登録画像</h2><div className="media-grid">{(venue.media_assets || []).map((asset) => <article className="card media-card" key={asset.id}>{asset.signedUrl ? <Image src={asset.signedUrl} alt="" width={640} height={400} unoptimized/> : <div className="thumb"/>}<p><strong>{asset.original_filename}</strong><br/><span className={`status ${asset.rights_status}`}>{displayStatus(asset.rights_status)}</span>{asset.is_primary && <> <span className="status">メイン画像</span></>}</p><AdminDeleteButton disabled={busy} onClick={() => remove(asset)}/></article>)}</div></section>}
     {message && <div className={message.toLowerCase().includes("fail") || message.includes("必須") ? "error" : "notice"}>{message}</div>}
   </>;
 }

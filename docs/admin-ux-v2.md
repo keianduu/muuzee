@@ -64,6 +64,14 @@ Order 340 handoff: Production初回migration前にcanonical codeが`ready`を書
 
 Venueの現行座標または座標CandidateからGoogle Maps URLを生成して新しいTabで開く。座標Candidateを優先して確認対象にする。Inline Mapは現時点で未実装。既存Production appにMap Libraryがなく、地図確認だけのためにDependencyと外部Tile利用条件を増やさないためである。
 
+## Venue edit workflow (Order 325 Phase C)
+
+Venueの`編集`は`基本情報 / 画像登録`のsub-tabを持つ。基本情報は`名称 → 英語名 → 施設種別 → 国 → 住所 → 郵便番号 → 都道府県 → 市区町村 → 座標 → URL → 開館年 → 説明 → アクセス → 開館時間 → 休館日 → 開館補足`の1-column flowとし、その下に所蔵作品、関連展覧会、タグを置く。日本住所はGeoloniaのPreviewで分解・座標候補を確認できるが、PreviewだけではDBを書き換えない。座標を直接変更した場合はmanual、Previewを未変更で採用した場合はgeoloniaをsourceとする。
+
+所蔵作品は既存`collection_holdings`のvisibility semanticsを共有する。関連展覧会は`exhibition_occurrences`に独立したvisibilityを持たせ、relation freshnessを示す`relation_status`とは混同しない。非表示occurrenceはPublic projectionから除外し、公開中Exhibitionが唯一の公開occurrenceを失う削除はserverで拒否する。このPhysical migrationはOrder 340のProduction初回migration計画へ引き渡す。
+
+画像登録は登録済み画像を先頭に置き、local fileまたはHTTPS URLをPreviewした後、明示的な登録操作でprivate Storageへ保存する。URL取得はserver-sideでHTTPS、redirect先、private/local address、MIME、20MB上限、timeoutを検証する。Previewやmetadata入力だけでは永続化せず、候補画像判断は既存の第二Drawerへ委譲する。
+
 ## Existing feature preservation
 
 Manual Add、CSV Export / Import、API Import、Wikidata Full Sync、Publication、Bulk Publish、Delete Safety、Completeness、Provenance、Venue Enrichment、Coordinate / Image Candidate、Rights、Work Relationは既存APIと操作を維持する。

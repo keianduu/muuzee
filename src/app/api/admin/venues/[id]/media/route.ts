@@ -2,11 +2,57 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { assertHttpUrl, nullableText, validUuid } from "@/lib/admin/http";
+import { assertCandidateImageUrl, downloadCandidateImage } from "@/lib/admin/candidate-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]); const MAX_BYTES = 20 * 1024 * 1024;
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let uploadedPath: string | null = null;
-  try { const { id } = await params; if (!validUuid(id)) throw new Error("Invalid venue ID"); const form = await request.formData(); const file = form.get("file"); if (!(file instanceof File) || !file.size) throw new Error("Image fileは必須です。"); if (!ALLOWED_TYPES.has(file.type) || file.size > MAX_BYTES) throw new Error("JPEG / PNG / WebP / GIF（20MB以下）のみ対応です。"); const sourceType = nullableText(form.get("source_type")); if (!sourceType) throw new Error("Source typeは必須です。"); const rightsStatus = nullableText(form.get("rights_status")); if (!rightsStatus || !["approved", "rejected", "needs_review"].includes(rightsStatus)) throw new Error("Rights classificationは必須です。"); const sourceUrl = nullableText(form.get("source_url")); assertHttpUrl(sourceUrl, "Source URL"); const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin"; uploadedPath = `venues/${id}/${randomUUID()}.${extension}`; const db = createSupabaseAdminClient(); const { error: uploadError } = await db.storage.from("exhibition-images").upload(uploadedPath, file, { contentType: file.type, upsert: false }); if (uploadError) throw uploadError; const primary = form.get("is_primary") === "true"; if (primary) { const { error } = await db.from("media_assets").update({ is_primary: false }).eq("venue_id", id).eq("is_primary", true); if (error) throw error; } const { error: insertError } = await db.from("media_assets").insert({ venue_id: id, exhibition_id: null, storage_path: uploadedPath, original_filename: file.name, source_type: sourceType, source_url: sourceUrl, credit: nullableText(form.get("credit")), usage_note: nullableText(form.get("usage_note")), rights_status: rightsStatus, rights_checked_at: new Date().toISOString(), valid_until: nullableText(form.get("valid_until")), is_primary: primary }); if (insertError) throw insertError; if (rightsStatus === "approved") { const { error: venueError } = await db.from("venues").update({ image_search_status: "approved_image_exists" }).eq("id", id); if (venueError) throw venueError; } revalidatePath("/admin/venues"); revalidatePath(`/admin/venues/${id}`); return NextResponse.json({ message: "Venue画像を保存しました。" }); }
+  try {
+    const { id } = await params;
+    if (!validUuid(id)) throw new Error("Invalid venue ID");
+    const form = await request.formData();
+    const fileValue = form.get("file");
+    const file = fileValue instanceof File && fileValue.size ? fileValue : null;
+    const imageUrlValue = nullableText(form.get("image_url"));
+    if (!file && !imageUrlValue) throw new Error("画像ファイルまたは画像URLを指定してください。");
+
+    let uploadBody: File | Buffer;
+    let contentType: string;
+    let extension: string;
+    let originalFilename: string;
+    if (file) {
+      if (!ALLOWED_TYPES.has(file.type) || file.size > MAX_BYTES) throw new Error("JPEG / PNG / WebP / GIF（20MB以下）のみ対応です。");
+      uploadBody = file;
+      contentType = file.type;
+      extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+      originalFilename = file.name;
+    } else {
+      const imageUrl = assertCandidateImageUrl(imageUrlValue!, null);
+      const downloaded = await downloadCandidateImage(imageUrl, 30_000);
+      uploadBody = downloaded.bytes;
+      contentType = downloaded.contentType;
+      extension = downloaded.extension;
+      originalFilename = decodeURIComponent(imageUrl.pathname.split("/").pop() || `remote-image.${extension}`).slice(0, 255);
+    }
+
+    const sourceType = nullableText(form.get("source_type"));
+    if (!sourceType) throw new Error("Source typeは必須です。");
+    const rightsStatus = nullableText(form.get("rights_status"));
+    if (!rightsStatus || !["approved", "rejected", "needs_review"].includes(rightsStatus)) throw new Error("Rights classificationは必須です。");
+    const sourceUrl = nullableText(form.get("source_url")) || (!file ? imageUrlValue : null);
+    assertHttpUrl(sourceUrl, "Source URL");
+    uploadedPath = `venues/${id}/${randomUUID()}.${extension}`;
+    const db = createSupabaseAdminClient();
+    const { error: uploadError } = await db.storage.from("exhibition-images").upload(uploadedPath, uploadBody, { contentType, upsert: false });
+    if (uploadError) throw uploadError;
+    const primary = form.get("is_primary") === "true";
+    if (primary) { const { error } = await db.from("media_assets").update({ is_primary: false }).eq("venue_id", id).eq("is_primary", true); if (error) throw error; }
+    const { error: insertError } = await db.from("media_assets").insert({ venue_id: id, exhibition_id: null, storage_path: uploadedPath, original_filename: originalFilename, source_type: sourceType, source_url: sourceUrl, credit: nullableText(form.get("credit")), usage_note: nullableText(form.get("usage_note")), rights_status: rightsStatus, rights_checked_at: new Date().toISOString(), valid_until: nullableText(form.get("valid_until")), is_primary: primary });
+    if (insertError) throw insertError;
+    if (rightsStatus === "approved") { const { error: venueError } = await db.from("venues").update({ image_search_status: "approved_image_exists" }).eq("id", id); if (venueError) throw venueError; }
+    revalidatePath("/admin/venues"); revalidatePath(`/admin/venues/${id}`);
+    return NextResponse.json({ message: "Venue画像を保存しました。" });
+  }
   catch (error) { if (uploadedPath) { try { await createSupabaseAdminClient().storage.from("exhibition-images").remove([uploadedPath]); } catch {} } return NextResponse.json({ error: error instanceof Error ? error.message : "Upload failed" }, { status: 400 }); }
 }

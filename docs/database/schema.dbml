@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source of Truth: supabase/migrations/*.sql
-// Applied migrations: 202609040001_admin_v0.sql .. 202609290001_service_role_table_access.sql
+// Applied migrations: 202609040001_admin_v0.sql .. 202610040001_exhibition_occurrence_visibility.sql
 // Regenerate: npm run db:docs
 
 Table artist_external_match_candidates {
@@ -198,6 +198,10 @@ Table exhibition_occurrences {
   match_confidence numeric
   relation_status text [not null, default: `'active'`]
   last_seen_at timestamptz
+  visibility_status text [not null, default: `'public'`]
+  visibility_overridden boolean [not null, default: false]
+  hidden_reason text
+  visibility_updated_at timestamptz [not null, default: `now()`]
 }
 
 Table exhibition_tags {

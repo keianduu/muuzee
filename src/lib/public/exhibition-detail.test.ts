@@ -42,6 +42,21 @@ const base: RawPublicExhibition = {
         publication_status: "published", is_active: true,
       },
     },
+    {
+      id: "occurrence-hidden",
+      start_date: "2026-11-01",
+      end_date: "2026-11-30",
+      opening_hours_text: null,
+      closed_days_text: null,
+      ticket_url: null,
+      relation_status: "active",
+      visibility_status: "hidden",
+      venues: {
+        id: "venue-3", slug: "venue-3", name: "Hidden Venue", name_en: null, venue_type: "museum",
+        address: null, prefecture: null, city: null, country_code: "JP", latitude: null, longitude: null,
+        publication_status: "published", is_active: true,
+      },
+    },
   ],
   exhibition_artists: [
     {
@@ -64,7 +79,7 @@ const base: RawPublicExhibition = {
 };
 
 describe("composeExhibitionDetail", () => {
-  it("keeps only active relations backed by published masters", async () => {
+  it("keeps only active public relations backed by published masters", async () => {
     const detail = await composeExhibitionDetail(base, async (path) => `https://cdn.test/${path}`, "2026-09-13");
     expect(detail.occurrences.map((item) => item.id)).toEqual(["occurrence-active"]);
     expect(detail.artists.map((item) => item.id)).toEqual(["artist-1"]);

@@ -53,6 +53,19 @@ export type VenueRow = {
   enriched_at: string | null;
   updated_at: string;
   exhibition_occurrences?: Array<OccurrenceRow & { exhibitions?: ExhibitionRow | ExhibitionRow[] | null }>;
+  collection_holdings?: Array<{
+    id: string;
+    work_id: string;
+    holding_type: string | null;
+    source: string | null;
+    source_url: string | null;
+    visibility_status: "public" | "hidden";
+    visibility_overridden: boolean;
+    hidden_reason: string | null;
+    visibility_updated_at: string;
+    works?: Record<string, unknown> | Array<Record<string, unknown>> | null;
+  }>;
+  venue_tags?: Array<Record<string, unknown>>;
   media_assets?: MediaAssetRow[];
   source_records?: SourceRecordRow[];
   venue_external_match_candidates?: VenueMatchCandidateRow[];
@@ -99,6 +112,11 @@ export type OccurrenceRow = {
   opening_hours_text: string | null;
   closed_days_text: string | null;
   ticket_url: string | null;
+  relation_status?: "active" | "stale";
+  visibility_status?: "public" | "hidden";
+  visibility_overridden?: boolean;
+  hidden_reason?: string | null;
+  visibility_updated_at?: string;
   venues?: VenueRow | VenueRow[] | null;
 };
 

@@ -112,6 +112,13 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Publication cardと次のcardの間は16px空け、隣接して一体のcardに見せない。
 - Record and media deletion use the shared quiet 36px trash icon button, with `削除` as both accessible name and title. Confirmation and server-side delete blockers remain mandatory.
 
+### Venue edit composition
+
+- Venueの`編集`は`基本情報 / 画像登録`の二つのsub-tabに分ける。基本情報は1-column formを基準にし、field-levelの`未設定`表示、`name_native`、`aliases`、`is_active`をこのsurfaceへ置かない。
+- Venue Typeは日本語Labelのradio group、Country / 都道府県 / Regionはcurated geo masterを参照する。初期対応国は日本のみで、未知値は既存値を失わないfallback optionとして表示する。
+- 所蔵作品と関連展覧会はBasicの下にquietなrelation listとして置き、追加Search、公開/非表示、削除を同じvisual hierarchyで扱う。Technical statusは必要な補助情報に留める。
+- 画像登録は登録済み画像、永続化前Preview、metadata、候補画像の順に並べる。画像がない場合は正方形の`No Image` placeholderを使い、URL入力やfile選択だけでは永続化しない。
+
 ### Layer order
 
 - Shared layer tokens preserve `base < sidebar < popover / tooltip < drawer / dialog`.

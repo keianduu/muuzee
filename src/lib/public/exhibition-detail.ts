@@ -97,6 +97,7 @@ type RawOccurrence = {
   closed_days_text: string | null;
   ticket_url: string | null;
   relation_status: string | null;
+  visibility_status?: string | null;
   venues?: RawVenue | RawVenue[] | null;
 };
 
@@ -178,7 +179,7 @@ export async function composeExhibitionDetail(
   today = new Date().toISOString().slice(0, 10),
 ): Promise<ExhibitionDetailDTO> {
   const occurrences = (row.exhibition_occurrences ?? [])
-    .filter((item) => item.relation_status !== "stale")
+    .filter((item) => item.relation_status !== "stale" && item.visibility_status !== "hidden")
     .map((item) => ({ item, venue: first(item.venues) }))
     .filter((entry): entry is { item: RawOccurrence; venue: RawVenue } => Boolean(
       entry.venue && entry.venue.publication_status === "published" && entry.venue.is_active,
@@ -269,6 +270,7 @@ async function readExhibitionDetail(slug: string): Promise<ExhibitionDetailDTO |
         closed_days_text,
         ticket_url,
         relation_status,
+        visibility_status,
         venues(
           id,
           slug,

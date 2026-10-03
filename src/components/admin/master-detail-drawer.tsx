@@ -103,15 +103,16 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
   }, [secondaryRequested]);
 
   if (!selectedId) return null;
-  const title = record ? entity === "works" ? workDisplayTitleJa(record) || config.label : String(record[config.titleKey] || config.label) : config.label;
-  const sourceRecords = record ? (record.source_records || []) as Array<{ source_image_candidates?: SourceImageCandidateRow[] }> : [];
+  const currentRecord = record?.id === selectedId ? record : null;
+  const title = currentRecord ? entity === "works" ? workDisplayTitleJa(currentRecord) || config.label : String(currentRecord[config.titleKey] || config.label) : config.label;
+  const sourceRecords = currentRecord ? (currentRecord.source_records || []) as Array<{ source_image_candidates?: SourceImageCandidateRow[] }> : [];
   const imageCandidates = sourceRecords.flatMap((source) => source.source_image_candidates || []);
   const selectedCandidate = imageCandidates.find((candidate) => candidate.id === searchParams.get("candidate"));
   return <div className={`master-drawer-layer${secondaryRequested ? " has-secondary" : ""}`}>
     <button type="button" className="master-drawer-scrim" aria-label="一覧へ戻る" tabIndex={-1} onClick={close}/>
     <aside className="master-drawer master-drawer--primary" role="dialog" aria-modal={secondaryRequested ? undefined : "true"} aria-hidden={secondaryRequested || undefined} aria-labelledby="master-drawer-title">
-      <header className="master-drawer-header"><div><p className="eyebrow">{config.label} Master</p><h1 id="master-drawer-title">{title}</h1>{record && <span className={`status ${record.publication_status}`}>{displayStatus(record.publication_status)}</span>}</div><button ref={closeButton} className="drawer-close" type="button" aria-label="詳細を閉じる" onClick={close}>×</button></header>
-      <div className="master-drawer-body">{loading && <p className="drawer-loading">Loading...（読み込み中）</p>}{error && <div className="error">{error}</div>}{record && !loading && <MasterDetailContent entity={entity} record={record} onOpenImageCandidate={entity === "venues" ? openImageCandidate : undefined}/>}</div>
+      <header className="master-drawer-header"><div><p className="eyebrow">{config.label} Master</p><h1 id="master-drawer-title">{title}</h1>{currentRecord && <span className={`status ${currentRecord.publication_status}`}>{displayStatus(currentRecord.publication_status)}</span>}</div><button ref={closeButton} className="drawer-close" type="button" aria-label="詳細を閉じる" onClick={close}>×</button></header>
+      <div className="master-drawer-body">{loading && !currentRecord && <p className="drawer-loading">Loading...（読み込み中）</p>}{error && <div className="error">{error}</div>}{currentRecord && <MasterDetailContent entity={entity} record={currentRecord} onOpenImageCandidate={entity === "venues" ? openImageCandidate : undefined}/>}</div>
     </aside>
     {secondaryRequested && <aside className="master-drawer master-drawer--secondary" role="dialog" aria-modal="true" aria-labelledby="image-candidate-drawer-title">
       <header className="master-drawer-header"><div><p className="eyebrow">Image Candidate</p><h1 id="image-candidate-drawer-title">画像候補を確認</h1><p className="muted">{title}</p></div><button ref={secondaryCloseButton} className="drawer-close" type="button" aria-label="画像候補を閉じる" onClick={closeSecondary}>×</button></header>
