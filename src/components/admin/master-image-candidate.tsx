@@ -42,7 +42,7 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, onSetP
     {(candidate.candidate_match_confidence != null || candidate.candidate_match_threshold != null) && <p className="muted"><strong>照合:</strong> {match.match}<br/><strong>探索深度:</strong> {match.depth}</p>}
     <LicenseSummary candidate={candidate}/>
     <p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}{candidate.source_url && <><br/><a className="candidate-source-link" href={candidate.source_url} target="_blank" rel="noreferrer">データ元 ↗</a></>}</p>
-    <div className="actions"><button type="button" className="button" disabled={disabled} onClick={onSetPrimary}>この画像を設定</button></div>
+    <div className="actions"><button type="button" className="button warning" disabled={disabled} onClick={onSetPrimary}>この画像を設定</button></div>
     {candidate.rights_status === "rejected" && <p className="muted">明確に利用不可と記録された候補は設定できません。</p>}
   </article>;
 }

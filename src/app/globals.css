@@ -86,6 +86,7 @@ p { line-height: 1.55; }
 .admin-shell .notice, .admin-shell .error { border-left-width: 3px; border-left-color: var(--warning); border-radius: var(--admin-radius-control); }
 .admin-feedback { display: flex; align-items: flex-start; gap: var(--admin-space-field); margin: var(--admin-space-group) 0; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: var(--admin-radius-control); background: var(--surface); color: var(--ink-800); font-size: 13px; line-height: 1.5; }
 .admin-feedback-icon { flex: 0 0 auto; width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surface-hover); color: var(--ink-800); font-size: var(--admin-font-meta); font-weight: 750; }
+.admin-feedback--success { border-color: color-mix(in srgb, var(--success) 28%, var(--line-soft)); background: color-mix(in srgb, var(--success) 7%, var(--surface)); color: color-mix(in srgb, var(--success) 78%, var(--ink-950)); }
 .admin-feedback--success .admin-feedback-icon { background: color-mix(in srgb, var(--success) 16%, var(--surface)); color: var(--success); }
 .admin-feedback--warning .admin-feedback-icon { background: color-mix(in srgb, var(--warning) 16%, var(--surface)); color: var(--warning); }
 .admin-feedback--error { border-color: color-mix(in srgb, var(--danger) 28%, var(--line-soft)); background: color-mix(in srgb, var(--danger) 7%, var(--surface)); color: var(--danger); }
@@ -120,7 +121,11 @@ textarea { min-height: 108px; resize: vertical; }
 .button.secondary:hover:not(:disabled) { background: #f0eee8; border-color: var(--ink); }
 .button.tertiary { background: transparent; color: var(--ink); border-color: transparent; }
 .button.tertiary:hover:not(:disabled) { background: #eae7df; border-color: #eae7df; }
-.button.danger { background: #8b3030; border-color: #8b3030; }
+.button.success { background: var(--success); border-color: var(--success); }
+.button.success:hover:not(:disabled) { background: color-mix(in srgb, var(--success) 86%, var(--ink-950)); border-color: color-mix(in srgb, var(--success) 86%, var(--ink-950)); }
+.button.warning { background: color-mix(in srgb, var(--warning) 20%, var(--white)); border-color: var(--warning); color: var(--ink-950); }
+.button.warning:hover:not(:disabled) { background: color-mix(in srgb, var(--warning) 30%, var(--white)); border-color: color-mix(in srgb, var(--warning) 82%, var(--ink-950)); }
+.button.danger { background: var(--danger); border-color: var(--danger); }
 .button:disabled { opacity: 1; cursor: not-allowed; background: var(--admin-disabled-bg); border-color: var(--admin-disabled-border); color: var(--admin-disabled-text); box-shadow: none; transform: none; }
 .admin-shell .button { border-color: var(--ink-950); border-radius: var(--admin-radius-control); background: var(--ink-950); color: var(--white); padding: 0 14px; font-weight: 650; }
 .admin-shell .button:hover:not(:disabled) { background: var(--ink-800); border-color: var(--ink-800); }
@@ -128,6 +133,10 @@ textarea { min-height: 108px; resize: vertical; }
 .admin-shell .button.secondary:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--ink-400); color: var(--ink-950); }
 .admin-shell .button.tertiary { background: transparent; color: var(--ink); border-color: transparent; }
 .admin-shell .button.tertiary:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--surface-hover); }
+.admin-shell .button.success { background: var(--success); border-color: var(--success); color: var(--white); }
+.admin-shell .button.success:hover:not(:disabled) { background: color-mix(in srgb, var(--success) 86%, var(--ink-950)); border-color: color-mix(in srgb, var(--success) 86%, var(--ink-950)); }
+.admin-shell .button.warning { background: color-mix(in srgb, var(--warning) 20%, var(--surface-strong)); border-color: var(--warning); color: var(--ink-950); }
+.admin-shell .button.warning:hover:not(:disabled) { background: color-mix(in srgb, var(--warning) 30%, var(--surface-strong)); border-color: color-mix(in srgb, var(--warning) 82%, var(--ink-950)); color: var(--ink-950); }
 .admin-shell .button.danger { background: var(--danger); border-color: var(--danger); }
 .admin-shell .button:disabled { background: var(--admin-disabled-bg); border-color: var(--admin-disabled-border); color: var(--admin-disabled-text); }
 .admin-icon-button { width: 36px; height: 36px; flex: 0 0 auto; display: inline-grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: var(--admin-radius-control); background: var(--surface-strong); color: var(--ink-600); }
@@ -277,6 +286,8 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .relation-search-panel { display: grid; gap: var(--admin-space-field); margin-top: var(--admin-space-section); padding-top: var(--admin-space-section); border-top: 1px solid var(--line); }
 .venue-image-editor > * + * { margin-top: 24px; }
 .candidate-section, .venue-relation-section { display: grid; gap: var(--admin-space-group); }
+.venue-relations { display: grid; gap: 24px; }
+.venue-relations > section > h2:first-child { margin-top: 0; }
 .venue-image-editor section > h2 { margin: 0 0 var(--admin-space-group); }
 .candidate-picker { display: grid; gap: var(--admin-space-group); }
 .candidate-picker-count { margin: 0; color: var(--ink-600); font-size: var(--admin-font-meta); }

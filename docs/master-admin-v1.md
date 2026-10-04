@@ -153,7 +153,7 @@ Artist and Work can upload Storage-backed images with the same three-way rights 
 - `rejected`: 明確に不可
 - `needs_review`: 記載なし・不明
 
-Venue / Artist共通Policyは既存Primaryを維持し、Primaryなし+usable P18なら複数CandidateでもP18を自動Primary化する。P18なし+usable Candidate 1件も自動Primary化し、P18なし+複数Candidateは人が選択する。自動設定後もRightsは元の状態を保持し、Approvedにはしない。Detail previews use `object-fit: contain` so the complete image is visible.
+Venue / Artist / Works / Exhibition共通Policyは既存Primaryを維持し、Primaryなし+usable Candidateがちょうど1件の場合だけ自動Primary化する。2件以上はP18を含んでいても人が選択する。自動設定後もRightsは元の状態を保持し、Approvedにはしない。Detail previews use `object-fit: contain` so the complete image is visible.
 
 Artistも同じComponentとRuleを利用する。Artist一覧はA/B/C Tier、共通Image Status、4項目Core Quality、Publicationを表示し、A→B→C→未分類、同Tier内はCore Quality不足順で安定Sortする。Drawer DataタブはWikidata / Wikipedia / Provenance / Image discovery diagnosticsを表示し、Getty ULAN / APJ DAJはResearch-onlyと明示する。
 

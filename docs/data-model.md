@@ -7,7 +7,7 @@ Status: Draft for the Master Data Architecture; the existing Admin v0 publicatio
 - `venues.inception_year`: 明示されたopening / inception year。field provenance必須。
 - QIDは`source_records.external_id`で一意管理し、Muuzee内部PKはUUIDを維持する。
 - Raw claims / classは`source_records.raw_payload`、曖昧な同一Venue候補は`venue_external_match_candidates`、field単位の採用・競合は`venue_field_sources`へ保持する。
-- Venue / Artist画像は確定Wikidata QIDからP18、Wikipedia Article、Commons Category等を探索し、`source_image_candidates`でRights情報と取得経路を保持する。既存Primaryは維持し、PrimaryなしでusableなP18があればCandidate総数に関係なくPreferred Representative Imageとして自動Primary化する。P18がなくusable Candidateが1件だけの場合も自動Primary化し、複数件なら人が選択する。
+- Venue / Artist画像は確定Wikidata QIDからP18、Wikipedia Article、Commons Category等を探索し、`source_image_candidates`でRights情報と取得経路を保持する。Venue / Artist / Works / Exhibition共通で既存Primaryは維持し、Primaryなしでusable Candidateがちょうど1件なら取得経路を問わず自動Primary化する。2件以上はP18を含んでいても人が選択する。
 
 ## Canonical entities
 
@@ -75,7 +75,7 @@ Art Commons re-import uses the source record’s `exhibition_id` plus checksum. 
 
 Publication state is `draft → ready → published → archived`. Existing Exhibition Admin server-side checks still require a title, occurrence/venue, dates, and an approved Primary asset before publish.
 
-Images live in the private `exhibition-images` Supabase Storage bucket, never in Git. Source URL, credit, and usage notes remain optional. Reported license metadata is retained separately from Muuzee’s `approved`, `rejected`, or `needs_review` classification. Primary selection never approves rights. An Admin action is always required to approve rights; only the shared P18-first / single-fallback policy may promote a usable candidate to a Storage-backed Primary automatically.
+Images live in the private `exhibition-images` Supabase Storage bucket, never in Git. Source URL, credit, and usage notes remain optional. Reported license metadata is retained separately from Muuzee’s `approved`, `rejected`, or `needs_review` classification. Primary selection never approves rights. An Admin action is always required to approve rights; only the shared exactly-one usable candidate policy may promote a candidate to a Storage-backed Primary automatically.
 
 ## Venue enrichment
 

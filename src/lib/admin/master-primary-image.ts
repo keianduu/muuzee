@@ -5,8 +5,21 @@ import { MASTER_CONFIGS, type MasterEntity } from "./master-config";
 import { chooseAutoPrimaryCandidate, isPrimaryCandidateUsable, mediaAssetMetadataFromCandidate } from "./primary-image-policy";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function setMasterPrimaryFromCandidate(entity: MasterEntity, masterId: string, candidateId: string, options: { replaceExisting?: boolean } = {}, db: SupabaseClient = createSupabaseAdminClient()) {
-  const config = MASTER_CONFIGS[entity]; const owner = config.ownerKey;
+export const IMAGE_OWNER_CONFIGS = {
+  venues: { ownerKey: "venue_id" },
+  artists: { ownerKey: "artist_id" },
+  works: { ownerKey: "work_id" },
+  exhibitions: { ownerKey: "exhibition_id" },
+} as const;
+
+export type ImageOwnerEntity = keyof typeof IMAGE_OWNER_CONFIGS;
+
+export function isImageOwnerEntity(value: string): value is ImageOwnerEntity {
+  return Object.prototype.hasOwnProperty.call(IMAGE_OWNER_CONFIGS, value);
+}
+
+export async function setMasterPrimaryFromCandidate(entity: ImageOwnerEntity, masterId: string, candidateId: string, options: { replaceExisting?: boolean } = {}, db: SupabaseClient = createSupabaseAdminClient()) {
+  const owner = IMAGE_OWNER_CONFIGS[entity].ownerKey;
   const { data: current, error: currentError } = await db.from("media_assets").select("id").eq(owner, masterId).eq("is_primary", true).maybeSingle();
   if (currentError) throw currentError; if (current && !options.replaceExisting) return { changed: false, reason: "primary_exists" as const };
   const { data: sources, error: sourceError } = await db.from("source_records").select("id").eq(owner, masterId); if (sourceError) throw sourceError;
@@ -37,8 +50,8 @@ export async function setMasterPrimaryFromCandidate(entity: MasterEntity, master
   return { changed: true, reason: "primary_set" as const, assetId };
 }
 
-export async function autoSetPreferredMasterCandidatePrimary(entity: MasterEntity, masterId: string, db: SupabaseClient = createSupabaseAdminClient()) {
-  const owner = MASTER_CONFIGS[entity].ownerKey;
+export async function autoSetPreferredMasterCandidatePrimary(entity: ImageOwnerEntity, masterId: string, db: SupabaseClient = createSupabaseAdminClient()) {
+  const owner = IMAGE_OWNER_CONFIGS[entity].ownerKey;
   const [{ data: primary }, { data: sources }] = await Promise.all([db.from("media_assets").select("id").eq(owner, masterId).eq("is_primary", true).limit(1), db.from("source_records").select("id").eq(owner, masterId)]);
   if (primary?.length) return { changed: false, reason: "primary_exists" as const };
   const ids = (sources || []).map((row) => row.id); if (!ids.length) return { changed: false, reason: "no_candidates" as const };

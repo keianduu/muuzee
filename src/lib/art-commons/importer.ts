@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { autoSetPreferredMasterCandidatePrimary } from "@/lib/admin/master-primary-image";
 import { getArtCommonsItem, getJapanSearchRequestDelayMs, scrollArtCommons } from "./client";
 import { mapArtCommonsItem, mapSourceImages, normalizeVenueIdentity, parseExplicitDate } from "./mapper";
 import type { ArtCommonsItem } from "./types";
@@ -226,7 +227,7 @@ async function saveNormalizedItem(
     .update({ exhibition_id: exhibitionId, source_url: item.sourceUrl })
     .eq("id", sourceRecord.id);
   if (linkError) throw linkError;
-  return { created };
+  return { created, exhibitionId };
 }
 
 export async function importArtCommons(
@@ -326,6 +327,7 @@ export async function importArtCommons(
         await syncSourceImageCandidates(db, stored.id as string, raw);
 
         if (shouldSkipExistingRecord(existing, checksum)) {
+          if (existing?.exhibition_id) await autoSetPreferredMasterCandidatePrimary("exhibitions", existing.exhibition_id, db);
           result.skippedCount += 1;
           continue;
         }
@@ -335,6 +337,7 @@ export async function importArtCommons(
           checksum,
         };
         const saved = await saveNormalizedItem(db, linkedRecord, raw);
+        await autoSetPreferredMasterCandidatePrimary("exhibitions", saved.exhibitionId, db);
         if (saved.created) result.createdCount += 1;
         else result.updatedCount += 1;
       } catch (error) {

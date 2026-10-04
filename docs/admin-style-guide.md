@@ -77,7 +77,9 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Primary is `ink-950` with white text.
 - Secondary is a strong neutral surface with a line border.
 - Tertiary is transparent until hover.
-- Danger is reserved for destructive actions.
+- Success uses `--success` only for completed or safely confirmed outcomes.
+- Warning uses a muted `--warning` treatment for Human Gate and candidate-selection actions, including coordinate, image, and external-identity candidate decisions.
+- Danger uses `--danger` and is reserved for destructive, critical, or irreversible actions.
 - Disabled is an explicit neutral surface/border/text state, never opacity alone.
 
 ### Search, filters, tabs, and pills
@@ -119,7 +121,7 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Venue Typeは日本語Labelのradio group、Country / 都道府県 / Regionはcurated geo masterを参照する。初期catalogは`JP / FR / US / GB / ES / NL`とし、未知値は既存値を失わないfallback optionとして表示する。日本は郵便番号、住所、都道府県、市区町村を使い、海外は住所、国別Subdivision、Cityを使う。表示から外れる既存値は保存時にも保持する。
 - 所蔵作品、関連展覧会、タグは`関連情報`へまとめ、所蔵作品 → 関連展覧会 → タグの順にquietなrelation listとして置く。追加Search、公開/非表示、削除は同じvisual hierarchyで扱い、Technical statusは必要な補助情報に留める。
 - 画像登録は`登録画像 → 画像候補 → 画像登録`の順に並べる。登録画像がない場合は正方形の`No Image` placeholderを使い、新規Previewはfileまたは有効なURLが選択されるまで表示しない。URL取得失敗時は空の固定frameを残さずErrorを示し、入力やmetadata変更だけでは永続化しない。
-- 画像候補はusable候補が0件ならEmpty、1件かつPrimaryなしなら自動選択、2件以上なら既存の第二Drawerで単一選択する。複数候補からP18だけを自動優先しない。選択Actionは`この画像を設定`へ一本化し、選択候補をPrimary、旧Primaryを解除、他のactive候補を非採用/inactiveにする。Rights statusはこの操作で変更しない。
+- 画像候補はVenue / Artist / Works / Exhibition共通で、usable候補が0件ならEmpty、1件かつPrimaryなしなら自動選択、2件以上ならHumanが単一選択する。複数候補からP18だけを自動優先しない。選択Actionは`この画像を設定`へ一本化し、選択候補をPrimary、旧Primaryを解除、他のactive候補を非採用/inactiveにする。Rights statusはこの操作で変更しない。現時点で実候補取り込みがあるのはVenue / Artist / Exhibitionで、Worksは共通永続化境界に対応するが候補取り込み元は未実装である。
 
 ### Venue data review composition
 
@@ -129,7 +131,7 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Field reviewは現在値が空なら候補をdefault ON、同値はdisabled、Manualやより高優先度のSourceはOFFかつ保護理由を表示する。候補値をclientから信用せず、反映時にserverで取得・正規化・Source priorityを再検証する。
 - `項目の出典`はBasic form順にcurrent provenanceを一項目一行で示す。値がありprovenanceがなければ推測せず`不明`、値自体が空なら`—`とする。Manual保存は変更Fieldだけを`手動`へ更新し、未変更Fieldのcurrent sourceを維持する。Geolonia / 日本郵便Previewを未変更で保存したFieldは、そのprovider hintを維持する。`source_url`があるSourceは実際の根拠ページへLinkする。
 - Venue workflowの非同期Feedbackはshared compact feedbackを使い、巨大なlegacy noticeを追加しない。
-- 座標候補はSource、緯度・経度、必要な一致度・QID・精度、Google Maps linkと`採用 / 非採用`をcompactに示す。Wikidata Entity判断、座標判断、画像判断は独立させる。Data tabでは全候補をinline表示し、第二Drawerへの重複導線を置かない。Basic Editだけが既存第二Drawerを開ける。現行座標がなくeligible候補が1件なら自動選択し、複数ならHumanが1件を選ぶ。採用候補以外は監査用rowを残したまま非採用に収束させる。
+- 座標候補はSource、緯度・経度、必要な一致度・QID・精度、Google Maps linkと`採用 / 非採用`をcompactに示す。Wikidata Entity判断、座標判断、画像判断は独立させる。Data tabでは全候補をinline表示し、第二Drawerへの重複導線を置かない。Basic Editだけが既存第二Drawerを開ける。現行座標がなくeligible候補が1件なら自動選択し、複数ならHumanが1件を選ぶ。採用候補以外は監査用rowを残したまま非採用に収束させる。Basic formが開いたまま採用した場合は、そのVenue専用eventで緯度・経度と座標hintだけを即時同期し、未保存の他Fieldを上書きしない。
 - Image Candidate cardは取得経路、意味のある探索深度・一致度、rights、license、source linkを候補単位で示す。確定QID由来は偽のscoreとして見せず`確定QID`と表現し、full threshold traceを表示しない。
 
 ### Layer order

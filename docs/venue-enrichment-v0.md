@@ -39,7 +39,7 @@ Image Discoveryは確定済みWikidata QIDをidentityとして再利用し、過
 
 `source_image_candidates.discovery_source`は`wikidata_p18`、`commons_category`、`wikipedia_article`のいずれかを保持する。Adminはこれを「Wikidata P18」「Wikimedia Commons」「Wikipedia Article」として表示する。画像候補の取得またはPrimary化はRights承認を意味せず、Author、Credit、Reported License、License URL、Usage Terms、Commons Page URLを従来どおり保存する。
 
-Venue / Artist共通Ruleとして、既存Primaryは再探索で上書きしない。PrimaryなしでusableなP18があれば、複数CandidateでもP18をPreferred Representative Imageとして自動Primary化する。P18がなくusable Candidateが1件だけなら自動Primary化し、複数なら人が選択する。inactive / review rejected / rights rejectedは自動対象外とする。
+Venue / Artist / Works / Exhibition共通Ruleとして、既存Primaryは再探索で上書きしない。Primaryなしでusable Candidateがちょうど1件だけなら取得経路を問わず自動Primary化し、2件以上ならP18を含んでいても人が選択する。inactive / review rejected / rights rejectedは自動対象外とする。候補の選択や自動Primary化はrights statusを変更しない。現在の候補取り込みruntimeはVenue / Artist / Exhibitionにあり、Worksは共通永続化境界のみ対応し候補ingestionは未実装である。
 
 An applied Wikidata identity is the `matched` row in `venue_external_match_candidates`. A single eligible row is applied automatically even at low confidence; multiple rows remain `candidate` until one Source is selected. `venues.wikidata_id` was removed as a duplicate shortcut; the Admin and enrichment service read the retained match relation instead.
 

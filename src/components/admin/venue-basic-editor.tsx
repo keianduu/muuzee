@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { VenueRow } from "@/lib/admin/types";
+import { applyVenueCoordinateSelection, isVenueCoordinateSelection, VENUE_COORDINATE_SELECTED_EVENT } from "@/lib/admin/venue-coordinate-selection";
 import { COUNTRY_OPTIONS, JP_PREFECTURES, SUBDIVISIONS_BY_COUNTRY, countryOption, countryOptionLabel, subdivisionLabelForCountry, subdivisionModeForCountry } from "@/lib/admin/geo-master";
 import { formatJapanPostalCode } from "@/lib/postal/postal";
 import { AdminFieldLabel } from "./admin-field-label";
@@ -72,6 +73,19 @@ export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }
   const currentCountry = countryOption(values.country_code);
   const regionOptions = SUBDIVISIONS_BY_COUNTRY[values.country_code] || [];
   const mapUrl = values.latitude && values.longitude ? `https://www.google.com/maps?q=${encodeURIComponent(`${values.latitude},${values.longitude}`)}` : null;
+
+  useEffect(() => {
+    function handleCoordinateSelected(event: Event) {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (!isVenueCoordinateSelection(detail) || detail.venueId !== venue.id) return;
+      setValues((current) => applyVenueCoordinateSelection(current, detail));
+      setCoordinateSourceHint(detail.source);
+      setCoordinatePrecisionHint(detail.precision);
+      setFieldSourceHints((current) => ({ ...current, latitude: detail.source, longitude: detail.source }));
+    }
+    window.addEventListener(VENUE_COORDINATE_SELECTED_EVENT, handleCoordinateSelected);
+    return () => window.removeEventListener(VENUE_COORDINATE_SELECTED_EVENT, handleCoordinateSelected);
+  }, [venue.id]);
 
   function update(key: keyof FormValues, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -153,7 +167,7 @@ export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }
         <div className="field"><AdminFieldLabel htmlFor="venue-city" label="City" fieldKey="city"/><input id="venue-city" value={values.city} onChange={(event) => update("city", event.target.value)}/></div>
       </>}
       <div className="venue-coordinate-group"><div className="field"><AdminFieldLabel htmlFor="venue-latitude" label="緯度" fieldKey="latitude"/><input id="venue-latitude" type="number" step="any" value={values.latitude} onChange={(event) => updateCoordinate("latitude", event.target.value)}/></div><div className="field"><AdminFieldLabel htmlFor="venue-longitude" label="経度" fieldKey="longitude"/><input id="venue-longitude" type="number" step="any" value={values.longitude} onChange={(event) => updateCoordinate("longitude", event.target.value)}/></div></div>
-      {onOpenCoordinateReview && (venue.venue_coordinate_candidates?.length ? <button type="button" className="button secondary venue-coordinate-review-link" data-secondary-trigger="coordinates" onClick={onOpenCoordinateReview}>位置情報候補を確認</button> : <p className="muted">位置情報候補なし</p>)}
+      {onOpenCoordinateReview && (venue.venue_coordinate_candidates?.length ? <button type="button" className="button warning venue-coordinate-review-link" data-secondary-trigger="coordinates" onClick={onOpenCoordinateReview}>位置情報候補を確認</button> : <p className="muted">位置情報候補なし</p>)}
       {mapUrl && <a className="button secondary venue-map-link" href={mapUrl} target="_blank" rel="noreferrer">Google Mapsで確認 ↗</a>}
       <div className="field"><AdminFieldLabel htmlFor="venue-official-url" label="公式URL" fieldKey="official_url"/><input id="venue-official-url" type="url" value={values.official_url} onChange={(event) => update("official_url", event.target.value)}/></div>
       <div className="field"><AdminFieldLabel htmlFor="venue-inception-year" label="開館年" fieldKey="inception_year"/><input id="venue-inception-year" type="number" value={values.inception_year} onChange={(event) => update("inception_year", event.target.value)}/></div>

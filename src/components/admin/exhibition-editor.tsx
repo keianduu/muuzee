@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,6 +8,8 @@ import type { PublicationRequirement } from "@/lib/admin/publication";
 import { AdminFieldLabel } from "./admin-field-label";
 import { AdminDeleteButton } from "./admin-icon-button";
 import { PublicationToggle } from "./publication-toggle";
+import { MasterImageCandidateCard } from "./master-image-candidate";
+import { isPrimaryCandidateUsable } from "@/lib/admin/primary-image-policy";
 
 export type ExhibitionEditorProps = {
   exhibition: ExhibitionRow;
@@ -46,10 +46,11 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
   async function upload(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); await request(`/api/admin/exhibitions/${exhibition.id}/media`, { method: "POST", body: new FormData(event.currentTarget) }); }
   async function publication(next: boolean) { await request(`/api/admin/exhibitions/${exhibition.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: next ? "publish" : "unpublish" }) }); }
   async function remove(asset: MediaAssetRow) { if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return; await request(`/api/admin/exhibitions/${exhibition.id}/media/${asset.id}`, { method: "DELETE" }); }
+  async function setPrimaryCandidate(candidateId: string) { await request(`/api/admin/masters/exhibitions/${exhibition.id}/image-candidates/${candidateId}/set-primary`, { method: "POST" }); }
   const published = exhibition.publication_status === "published";
   const missing = requirements.filter((item) => !item.met);
   const requirementMessageId = `publication-requirements-${exhibition.id}`;
-  const imageCandidates = (exhibition.source_records || []).flatMap((source) => source.source_image_candidates || []).filter((candidate) => candidate.is_active);
+  const imageCandidates = (exhibition.source_records || []).flatMap((source) => source.source_image_candidates || []).filter(isPrimaryCandidateUsable);
   return <>
     <section className="card publication-status-card">
       <div><AdminFieldLabel label="公開状態" fieldKey="publication_status"/><p className="publication-status-help">公開条件を満たした展覧会だけを公開できます。</p></div>
@@ -85,7 +86,7 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
       <label><input name="is_primary" type="checkbox" value="true" style={{ width: "auto" }}/> メイン画像に設定</label>
     </div><div className="actions"><button className="button" disabled={busy}>画像を登録</button></div></form>
     <section><h2>登録画像</h2><div className="media-grid">{(exhibition.media_assets || []).map((asset) => <article className="card media-card" key={asset.id}>{asset.signedUrl ? <Image src={asset.signedUrl} alt="" width={640} height={400} unoptimized/> : <div className="thumb"/>}<p><strong>{asset.original_filename}</strong><br/><span className={`status ${asset.rights_status}`}>{asset.rights_status}</span>{asset.is_primary && <> <span className="status">メイン画像</span></>}</p><p className="muted">{asset.credit || "クレジットなし"}<br/>{asset.source_url || "データ元URLなし"}</p><AdminDeleteButton disabled={busy} onClick={() => remove(asset)}/></article>)}</div>{!exhibition.media_assets?.length && <p className="muted">画像は未登録です。</p>}</section>
-    <section><h2>画像候補</h2><p className="muted">APIが返した参照候補です。表示されても利用条件承認済み・メイン画像とは扱われません。</p><div className="media-grid">{imageCandidates.map((candidate) => <article className="card media-card" key={candidate.id}><img src={candidate.thumbnail_url || candidate.image_url} alt="API source candidate"/><p><span className="status">API candidate</span> <span className="status">{candidate.contents_rights_type || "rights unknown"}</span></p><p className="muted">Provider: {candidate.provider || "unknown"}<br/>Access: {candidate.contents_access || "unknown"}</p><a className="button secondary" href={candidate.image_url} target="_blank" rel="noreferrer">元画像を確認</a></article>)}</div>{!imageCandidates.length && <p className="muted">画像候補はありません。</p>}</section>
+    <section><h2>画像候補</h2><p className="muted">利用可否が不明または承認済みの候補です。選択してもRights状態は変更しません。</p><div className="media-grid">{imageCandidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={exhibition.title} busy={busy} onSetPrimary={() => setPrimaryCandidate(candidate.id)}/>)}</div>{!imageCandidates.length && <p className="muted">選択できる画像候補はありません。</p>}</section>
     <section><h2>データ元</h2>{(exhibition.source_records || []).map((source) => <details className="card" key={source.id}><summary>{sourceName(source.data_sources)} / {source.external_id}</summary><p>{source.source_url ? <a className="button secondary" href={source.source_url} target="_blank" rel="noreferrer">データ元を開く</a> : "URL未設定"} · fetched {source.fetched_at}</p><pre>{JSON.stringify(source.raw_payload, null, 2)}</pre></details>)}</section>
     {message && <div className={message.includes("失敗") || message.includes("不足") || message.includes("必要") ? "error" : "notice"}>{message}</div>}
   </>;

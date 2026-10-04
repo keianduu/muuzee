@@ -63,7 +63,14 @@ export async function reviewVenueCoordinateCandidate(db: SupabaseClient, venueId
   if (venueError) throw venueError;
   await saveCoordinateProvenance(db, candidate, "latitude", Number(candidate.latitude));
   await saveCoordinateProvenance(db, candidate, "longitude", Number(candidate.longitude));
-  return { action, candidateId, latitude: Number(candidate.latitude), longitude: Number(candidate.longitude) };
+  return {
+    action,
+    candidateId,
+    latitude: Number(candidate.latitude),
+    longitude: Number(candidate.longitude),
+    source: candidate.source,
+    precision: candidate.precision || "exact",
+  };
 }
 
 export async function autoSelectSingleVenueCoordinateCandidate(db: SupabaseClient, venueId: string) {

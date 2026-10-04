@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mediaAssetMetadataFromCandidate, chooseAutoPrimaryCandidate } from "./primary-image-policy";
-import { autoSetPreferredMasterCandidatePrimary, setMasterPrimaryFromCandidate } from "./master-primary-image";
+import { autoSetPreferredMasterCandidatePrimary, setMasterPrimaryFromCandidate, type ImageOwnerEntity } from "./master-primary-image";
 
-function imageSelectionDb() {
+function imageSelectionDb(ownerKey = "venue_id") {
   const state = {
-    sourceRecords: [{ id: "source-1", venue_id: "venue-1" }],
+    sourceRecords: [{ id: "source-1", [ownerKey]: "venue-1" }] as Array<Record<string, unknown>>,
     candidates: [
       { id: "candidate-a", source_record_id: "source-1", source_url: "https://source.example/a", image_url: "https://image.example/a.jpg", is_active: true, review_status: "unreviewed", rights_status: "approved" },
       { id: "candidate-b", source_record_id: "source-1", source_url: "https://source.example/b", image_url: "https://image.example/b.jpg", is_active: true, review_status: "unreviewed", rights_status: "needs_review" },
       { id: "candidate-c", source_record_id: "source-1", source_url: "https://source.example/c", image_url: "https://image.example/c.jpg", is_active: true, review_status: "unreviewed", rights_status: "approved" },
     ],
     media: [
-      { id: "asset-a", venue_id: "venue-1", source_url: "https://source.example/a", is_primary: true },
-      { id: "asset-b", venue_id: "venue-1", source_url: "https://source.example/b", is_primary: false },
-    ],
+      { id: "asset-a", [ownerKey]: "venue-1", source_url: "https://source.example/a", is_primary: true },
+      { id: "asset-b", [ownerKey]: "venue-1", source_url: "https://source.example/b", is_primary: false },
+    ] as Array<Record<string, unknown>>,
   };
   const db = { from(table: string) {
     let operation: "select" | "update" = "select";
@@ -87,5 +87,22 @@ describe("shared Venue / Artist primary image policy", () => {
     expect(result).toMatchObject({ changed: true, reason: "primary_set", assetId: "asset-b" });
     expect(state.media.filter((asset) => asset.is_primary)).toEqual([expect.objectContaining({ id: "asset-b" })]);
     expect(state.candidates[0]).toMatchObject({ id: "candidate-b", review_status: "accepted", is_active: true, rights_status: "needs_review" });
+  });
+
+  it.each([
+    ["venues", "venue_id"],
+    ["artists", "artist_id"],
+    ["works", "work_id"],
+    ["exhibitions", "exhibition_id"],
+  ] as const)("persists the exact-one policy through the %s owner boundary", async (entity, ownerKey) => {
+    const { db, state } = imageSelectionDb(ownerKey);
+    state.candidates.splice(0, state.candidates.length, state.candidates[1]);
+    state.media.forEach((asset) => { asset.is_primary = false; });
+
+    const result = await autoSetPreferredMasterCandidatePrimary(entity as ImageOwnerEntity, "venue-1", db);
+
+    expect(result).toMatchObject({ changed: true, reason: "primary_set", assetId: "asset-b" });
+    expect(state.media.filter((asset) => asset.is_primary)).toEqual([expect.objectContaining({ id: "asset-b", [ownerKey]: "venue-1" })]);
+    expect(state.candidates[0]).toMatchObject({ review_status: "accepted", is_active: true, rights_status: "needs_review" });
   });
 });

@@ -28,7 +28,7 @@ LOCALでは5→20→必要時50件までのSampleに留める。Productionでの
 
 A〜Cかつ有効Image CandidateなしだけをTargeted Image Search対象とする。Wikidata P18 / Wikimedia Commonsを先に試し、取得不能時は既存の施設画像調査Promptを使う。
 
-Venue / Artist共通Policyとして、既存Primaryを最優先で維持する。PrimaryなしでusableなWikidata P18があれば、Candidate総数が複数でもP18をPreferred Representative Imageとして自動Primary化する。P18がなくusable Candidateが1件だけならそのCandidateを自動Primary化し、複数件なら人が選択する。inactive、Candidate review rejected、Rights rejectedは除外する。画像選択とRights判断は分離し、Discovery Source / Commons File Title / Author / Credit / Reported License / License URL / Usage Terms / Source URL / Rights Statusを保持し、Rightsを自動Approvedにはしない。
+Venue / Artist / Works / Exhibition共通Policyとして、既存Primaryを最優先で維持する。Primaryなしでusable Candidateがちょうど1件だけなら取得経路を問わず自動Primary化し、2件以上ならP18を含んでいても人が選択する。inactive、Candidate review rejected、Rights rejectedは除外する。画像選択とRights判断は分離し、Discovery Source / Commons File Title / Author / Credit / Reported License / License URL / Usage Terms / Source URL / Rights Statusを保持し、Rightsを自動Approvedにはしない。
 
 ## Human work queue
 

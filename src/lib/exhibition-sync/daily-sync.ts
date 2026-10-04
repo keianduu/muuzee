@@ -9,6 +9,7 @@ import { extractKnownArtistsFromTitle, extractStructuredArtistMentions, matchArt
 import { dailySyncWindow, deriveEventStatus, mayApplySourceField, tokyoDate } from "./policy";
 import { resolveVenue, resolveVenues, venueResolutionKey, type VenueResolution } from "@/lib/venue-resolution/shared";
 import { normalizeVenueIdentity } from "@/lib/venue-canonicalization/matcher";
+import { autoSetPreferredMasterCandidatePrimary } from "@/lib/admin/master-primary-image";
 
 const DATA_SOURCE_KEY = "art_commons_jpsearch";
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -207,6 +208,7 @@ async function applyRecord(db: SupabaseClient, sourceId: string, scanned: Scanne
   if (scanned.classification === "new") await writeProvenance(db, exhibitionId, stored.id as string, sourceUrl, { title: scanned.normalized.title, title_en: scanned.normalized.titleEn, description: scanned.normalized.description, exhibition_type: scanned.normalized.exhibitionType, official_url: scanned.normalized.officialUrl });
   const { error: linkError } = await db.from("source_records").update({ exhibition_id: exhibitionId }).eq("id", stored.id);
   if (linkError) throw linkError;
+  await autoSetPreferredMasterCandidatePrimary("exhibitions", exhibitionId, db);
   await resolveRelations(db, exhibitionId, stored.id as string, scanned.normalized, scanned.raw, artists, result, false, preResolvedVenue);
 }
 
