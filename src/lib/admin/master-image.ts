@@ -19,6 +19,12 @@ export function imageDiscoverySourceLabel(source: unknown) {
   if (source === "wikidata_p18") return "Wikidata P18";
   if (source === "commons_category") return "Wikimedia Commons";
   if (source === "wikipedia_article") return "Wikipedia";
+  if (source === "artist_official") return "Artist official";
+  if (source === "gallery_official") return "Gallery official";
+  if (source === "foundation_estate") return "Foundation / estate";
+  if (source === "museum_official") return "Museum official";
+  if (source === "official_press") return "Official press";
+  if (source === "open_collection") return "Open collection";
   return "取得経路不明";
 }
 

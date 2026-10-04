@@ -114,10 +114,10 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 
 ### Venue edit composition
 
-- Venueの`編集`は`基本情報 / 画像登録`の二つのsub-tabに分ける。基本情報は1-column formを基準にし、field-levelの`未設定`表示、`name_native`、`aliases`、`is_active`をこのsurfaceへ置かない。
-- Venue Typeは日本語Labelのradio group、Country / 都道府県 / Regionはcurated geo masterを参照する。初期対応国は日本のみで、未知値は既存値を失わないfallback optionとして表示する。
-- 所蔵作品と関連展覧会はBasicの下にquietなrelation listとして置き、追加Search、公開/非表示、削除を同じvisual hierarchyで扱う。Technical statusは必要な補助情報に留める。
-- 画像登録は登録済み画像、永続化前Preview、metadata、候補画像の順に並べる。画像がない場合は正方形の`No Image` placeholderを使い、URL入力やfile選択だけでは永続化しない。
+- Venueの`編集`は`基本情報 / 画像登録 / 関連情報`の三つのsub-tabに分ける。基本情報は1-column formを基準にし、field-levelの`未設定`表示、`name_native`、`aliases`、`is_active`をこのsurfaceへ置かない。
+- Venue Typeは日本語Labelのradio group、Country / 都道府県 / Regionはcurated geo masterを参照する。初期catalogは`JP / FR / US / GB / ES / NL`とし、未知値は既存値を失わないfallback optionとして表示する。日本は郵便番号、住所、都道府県、市区町村を使い、海外は住所、国別Subdivision、Cityを使う。表示から外れる既存値は保存時にも保持する。
+- 所蔵作品、関連展覧会、タグは`関連情報`へまとめ、所蔵作品 → 関連展覧会 → タグの順にquietなrelation listとして置く。追加Search、公開/非表示、削除は同じvisual hierarchyで扱い、Technical statusは必要な補助情報に留める。
+- 画像登録は`登録画像 → 画像候補 → 画像登録`の順に並べる。登録画像がない場合は正方形の`No Image` placeholderを使い、新規Previewはfileまたは有効なURLが選択されるまで表示しない。URL取得失敗時は空の固定frameを残さずErrorを示し、入力やmetadata変更だけでは永続化しない。
 
 ### Layer order
 

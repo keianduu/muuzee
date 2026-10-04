@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title description">
+  <title id="title">Synthetic Muuzee venue image candidate</title>
+  <desc id="description">A synthetic geometric museum facade used only for local Admin QA.</desc>
+  <rect width="1200" height="800" fill="#ede9e1"/>
+  <rect x="92" y="120" width="1016" height="560" rx="18" fill="#faf9f6" stroke="#2d2b28" stroke-width="8"/>
+  <path d="M92 254h1016M310 254v426M600 254v426M890 254v426" fill="none" stroke="#b7aea0" stroke-width="6"/>
+  <rect x="492" y="390" width="216" height="290" fill="#252321"/>
+  <circle cx="600" cy="338" r="34" fill="#d0634c"/>
+  <text x="600" y="190" fill="#252321" font-family="Arial, sans-serif" font-size="44" font-weight="700" text-anchor="middle">MUUZEE LOCAL QA</text>
+  <text x="600" y="744" fill="#5b554d" font-family="Arial, sans-serif" font-size="26" text-anchor="middle">SYNTHETIC IMAGE CANDIDATE · NOT PRODUCTION DATA</text>
+</svg>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { MasterEditor } from "./master-editor";
 import { MasterTags } from "./master-tags";
@@ -18,7 +19,8 @@ export type DetailRecord = MasterRecord & Record<string, unknown> & {
 type DetailTab = "status" | "edit" | "data";
 
 export function MasterDetailContent({ entity, record, onOpenImageCandidate }: { entity: MasterEntity; record: DetailRecord; onOpenImageCandidate?: (candidateId: string | null) => void }) {
-  const [tab, setTab] = useState<DetailTab>("status");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<DetailTab>(() => entity === "venues" && searchParams.has("venueEdit") ? "edit" : "status");
   const config = MASTER_CONFIGS[entity];
   return <>
     <div className="detail-tabs" role="tablist" aria-label="Detail sections">

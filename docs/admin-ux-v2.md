@@ -66,11 +66,17 @@ Venueの現行座標または座標CandidateからGoogle Maps URLを生成して
 
 ## Venue edit workflow (Order 325 Phase C)
 
-Venueの`編集`は`基本情報 / 画像登録`のsub-tabを持つ。基本情報は`名称 → 英語名 → 施設種別 → 国 → 住所 → 郵便番号 → 都道府県 → 市区町村 → 座標 → URL → 開館年 → 説明 → アクセス → 開館時間 → 休館日 → 開館補足`の1-column flowとし、その下に所蔵作品、関連展覧会、タグを置く。日本住所はGeoloniaのPreviewで分解・座標候補を確認できるが、PreviewだけではDBを書き換えない。座標を直接変更した場合はmanual、Previewを未変更で採用した場合はgeoloniaをsourceとする。
+Venueの`編集`は`基本情報 / 画像登録 / 関連情報`のsub-tabを持ち、URL queryの`venueEdit`で現在位置を保持する。基本情報は`名称 → 英語名 → 施設種別 → 国 → 国別住所 → 座標 → URL → 開館年 → 説明 → アクセス → 開館時間 → 休館日 → 開館補足`の1-column flowとする。関連情報は`所蔵作品 → 関連展覧会 → タグ`の順で既存relation操作を維持する。
+
+Venueは国内・海外の両方を対象にする。curated country catalogはPrototypeで明示されている`JP / FR / US / GB / ES / NL`を初期範囲とし、DBにはISO-like codeを保存する。日本は`郵便番号 → 住所 → 都道府県 → 市区町村`、海外は`住所 → Region / State / Country / Autonomous Community / Province → City`を国別に表示する。未知codeとcatalog外の既存Subdivisionはfallback optionとして保持し、country切替で非表示になった既存DB値を暗黙に消去しない。
+
+日本の郵便番号検索は`POST /api/admin/venues/postal-preview`をserver boundaryとし、日本郵便の公式API credentialとURL templateがserver environmentにある場合だけ利用する。郵便番号は全角、7桁、hyphen付き入力をnormalizeし、都道府県・市区町村・町域prefixを返す。詳細住所が既に入力済みなら上書きしない。credential未設定時は明確なunavailable responseを返し、client、Git、Notion、logへsecretを出さない。住所から座標を得る既存Geolonia Previewとは別操作であり、海外住所のautomatic geocodingは未実装のdependencyとして残す。座標を直接変更した場合はmanual、Geolonia Previewを未変更で採用した場合はgeoloniaをsourceとする。
 
 所蔵作品は既存`collection_holdings`のvisibility semanticsを共有する。関連展覧会は`exhibition_occurrences`に独立したvisibilityを持たせ、relation freshnessを示す`relation_status`とは混同しない。非表示occurrenceはPublic projectionから除外し、公開中Exhibitionが唯一の公開occurrenceを失う削除はserverで拒否する。このPhysical migrationはOrder 340のProduction初回migration計画へ引き渡す。
 
-画像登録は登録済み画像を先頭に置き、local fileまたはHTTPS URLをPreviewした後、明示的な登録操作でprivate Storageへ保存する。URL取得はserver-sideでHTTPS、redirect先、private/local address、MIME、20MB上限、timeoutを検証する。Previewやmetadata入力だけでは永続化せず、候補画像判断は既存の第二Drawerへ委譲する。
+画像は`登録画像 → 画像候補 → 画像登録`の順に置く。登録画像が0件なら`No Image`を表示し、新規Previewはlocal fileまたは有効なHTTPS URLを選択するまで表示しない。URL Preview失敗時は空の固定frameを残さずErrorへ置き換える。明示的な登録操作だけがprivate Storageへ保存し、server-side URL取得はHTTPS、redirect先、private/local address、MIME、20MB上限、timeoutを検証する。候補には画像、provider、discovery source、rights、reported license、author / credit、data sourceと採否・Primary操作を示し、詳細は既存の第二Drawerでも確認できる。
+
+Image Candidate UIのLOCAL QAには`npm run db:seed:admin-image-candidate-local`で決定的なsynthetic fixtureを作成し、`npm run db:cleanup:admin-image-candidate-local`で明示的に削除できる。scriptはLOCAL Supabase URL以外を拒否し、STG / Production dataへ適用しない。
 
 ## Existing feature preservation
 

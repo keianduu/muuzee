@@ -34,6 +34,10 @@ describe("master list URL and append state", () => {
     expect(selectedQuery(opened, null)).toBe("q=tokyo");
   });
 
+  it("clears Venue edit sub-state when the Venue drawer closes", () => {
+    expect(selectedQuery("q=tokyo&selected=venue-1&venueEdit=relations", null)).toBe("q=tokyo");
+  });
+
   it("keeps server pagination internal to the API request", () => {
     expect(pageQuery("q=tokyo&tier=A-C&selected=venue-1&panel=image&candidate=candidate-1", 2)).toBe("q=tokyo&tier=A-C&page=2&pageSize=50");
   });

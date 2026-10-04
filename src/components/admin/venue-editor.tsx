@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import type { MediaAssetRow, SourceImageCandidateRow, VenueMatchCandidateRow, VenueRow } from "@/lib/admin/types";
 import { displayApiMatchStatus, displayCrawlStatus } from "@/lib/admin/master-labels";
@@ -8,6 +8,7 @@ import { VenueBasicEditor } from "./venue-basic-editor";
 import { VenueImageEditor } from "./venue-image-editor";
 import { VenueRelations } from "./venue-relations";
 import { MasterTags } from "./master-tags";
+import { VENUE_EDIT_TABS, type VenueEditTab, venueEditTab, venueEditTabQuery } from "@/lib/admin/venue-edit";
 
 
 function Trace({ title, rows }: { title: string; rows: Array<Record<string, unknown>> }) {
@@ -18,9 +19,15 @@ function Trace({ title, rows }: { title: string; rows: Array<Record<string, unkn
 
 export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all", tagRows = [], onOpenImageCandidate }: { venue: VenueRow; prompt: string; showBasicForm?: boolean; view?: "all" | "status" | "edit" | "data"; tagRows?: Array<Record<string, unknown>>; onOpenImageCandidate?: (candidateId: string | null) => void }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [editTab, setEditTab] = useState<"basic" | "image">("basic");
+  const editTab = venueEditTab(searchParams.get("venueEdit"));
+  function selectEditTab(tab: VenueEditTab) {
+    const query = venueEditTabQuery(searchParams.toString(), tab);
+    router.replace(`${pathname}?${query}`, { scroll: false });
+  }
   async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean } = {}) {
     setBusy(true); setMessage("");
     try {
@@ -78,8 +85,16 @@ export function VenueEditor({ venue, prompt, showBasicForm = true, view = "all",
   return <>
     {(view === "all" || view === "data") && <div className="actions"><button className="button secondary" disabled={busy} onClick={enrich}>外部データで補完</button></div>}
     {(view === "all" || view === "edit") && <div className="venue-edit-surface">
-      <div className="venue-edit-tabs" role="tablist" aria-label="Venue編集セクション"><button type="button" role="tab" aria-selected={editTab === "basic"} className={editTab === "basic" ? "is-active" : ""} onClick={() => setEditTab("basic")}>基本情報</button><button type="button" role="tab" aria-selected={editTab === "image"} className={editTab === "image" ? "is-active" : ""} onClick={() => setEditTab("image")}>画像登録</button></div>
-      <div role="tabpanel">{editTab === "basic" ? <><VenueBasicEditor venue={venue} busy={busy} onSave={save}/><VenueRelations venue={venue}/><MasterTags entity="venues" masterId={venue.id} rows={tagRows} title="タグ" compactType/></> : <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage} onReview={review}/>}</div>
+      <div className="venue-edit-tabs" role="tablist" aria-label="Venue編集セクション">{VENUE_EDIT_TABS.map((tab) => <button type="button" role="tab" aria-selected={editTab === tab.id} className={editTab === tab.id ? "is-active" : ""} key={tab.id} onClick={() => selectEditTab(tab.id)}>{tab.label}</button>)}</div>
+      <div role="tabpanel">
+        {editTab === "basic" && (
+          <VenueBasicEditor venue={venue} busy={busy} onSave={save}/>
+        )}
+        {editTab === "image" && (
+          <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage} onReview={review}/>
+        )}
+        {editTab === "relations" && <><VenueRelations venue={venue}/><MasterTags entity="venues" masterId={venue.id} rows={tagRows} title="タグ" compactType/></>}
+      </div>
     </div>}
 
     {(view === "all" || view === "data") && <section><h2>位置情報診断</h2>

@@ -14,6 +14,7 @@ export function selectedQuery(current: string, selectedId: string | null) {
     params.delete("selected");
     params.delete("panel");
     params.delete("candidate");
+    params.delete("venueEdit");
   }
   return params.toString();
 }
@@ -42,6 +43,7 @@ export function pageQuery(current: string, page: number, pageSize = 50) {
   params.delete("selected");
   params.delete("panel");
   params.delete("candidate");
+  params.delete("venueEdit");
   params.set("page", String(page));
   params.set("pageSize", String(pageSize));
   return params.toString();
