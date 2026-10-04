@@ -14,6 +14,7 @@ export function selectedQuery(current: string, selectedId: string | null) {
     params.delete("selected");
     params.delete("panel");
     params.delete("candidate");
+    params.delete("run");
     params.delete("venueEdit");
   }
   return params.toString();
@@ -25,15 +26,20 @@ export function legacyDetailDestination(basePath: string, id: string, returnTo?:
   return `${destination.pathname}?${destination.searchParams}`;
 }
 
-export function detailPanelQuery(current: string, panel: "image" | null, candidateId: string | null = null) {
+export type DetailPanel = "image" | "wikidata-fields" | "official-fields" | "coordinates";
+
+export function detailPanelQuery(current: string, panel: DetailPanel | null, options: { candidateId?: string | null; runId?: string | null } = {}) {
   const params = new URLSearchParams(current);
   if (panel) {
     params.set("panel", panel);
-    if (candidateId) params.set("candidate", candidateId);
+    if (options.candidateId) params.set("candidate", options.candidateId);
     else params.delete("candidate");
+    if (options.runId) params.set("run", options.runId);
+    else params.delete("run");
   } else {
     params.delete("panel");
     params.delete("candidate");
+    params.delete("run");
   }
   return params.toString();
 }
@@ -43,6 +49,7 @@ export function pageQuery(current: string, page: number, pageSize = 50) {
   params.delete("selected");
   params.delete("panel");
   params.delete("candidate");
+  params.delete("run");
   params.delete("venueEdit");
   params.set("page", String(page));
   params.set("pageSize", String(pageSize));

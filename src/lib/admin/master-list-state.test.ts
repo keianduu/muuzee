@@ -27,11 +27,18 @@ describe("master list URL and append state", () => {
   });
 
   it("adds and removes the child panel without losing the selected master", () => {
-    const opened = detailPanelQuery("q=tokyo&selected=venue-1", "image", "candidate-1");
+    const opened = detailPanelQuery("q=tokyo&selected=venue-1", "image", { candidateId: "candidate-1" });
     expect(opened).toBe("q=tokyo&selected=venue-1&panel=image&candidate=candidate-1");
     expect(detailPanelQuery("q=tokyo&selected=venue-1", "image")).toBe("q=tokyo&selected=venue-1&panel=image");
     expect(detailPanelQuery(opened, null)).toBe("q=tokyo&selected=venue-1");
     expect(selectedQuery(opened, null)).toBe("q=tokyo");
+  });
+
+  it("supports Venue review child panels and clears panel-specific state", () => {
+    const opened = detailPanelQuery("q=tokyo&selected=venue-1", "official-fields", { runId: "run-1" });
+    expect(opened).toBe("q=tokyo&selected=venue-1&panel=official-fields&run=run-1");
+    expect(detailPanelQuery(opened, "coordinates")).toBe("q=tokyo&selected=venue-1&panel=coordinates");
+    expect(detailPanelQuery(opened, null)).toBe("q=tokyo&selected=venue-1");
   });
 
   it("clears Venue edit sub-state when the Venue drawer closes", () => {

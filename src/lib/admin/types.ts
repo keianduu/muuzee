@@ -71,6 +71,26 @@ export type VenueRow = {
   venue_external_match_candidates?: VenueMatchCandidateRow[];
   official_venue_crawl_results?: OfficialVenueCrawlResultRow[];
   venue_field_sources?: VenueFieldSourceRow[];
+  venue_coordinate_candidates?: VenueCoordinateCandidateRow[];
+};
+
+export type VenueCoordinateCandidateRow = {
+  id: string;
+  venue_id: string;
+  source: "wikidata" | "geolonia";
+  candidate_key: string;
+  external_id: string | null;
+  latitude: number;
+  longitude: number;
+  confidence: number | null;
+  reason: string | null;
+  precision: string | null;
+  source_url: string | null;
+  source_record_id: string | null;
+  review_status: "candidate" | "accepted" | "rejected";
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type VenueFieldSourceRow = {
@@ -89,6 +109,7 @@ export type VenueFieldSourceRow = {
 
 export type OfficialVenueCrawlResultRow = {
   id: string;
+  import_run_id: string;
   crawl_status: string;
   crawled_at: string;
   crawl_source_url: string | null;
@@ -196,6 +217,7 @@ export type SourceImageCandidateRow = {
 
 export type VenueMatchCandidateRow = {
   id: string;
+  provider: string;
   external_id: string;
   label_ja: string | null;
   label_en: string | null;

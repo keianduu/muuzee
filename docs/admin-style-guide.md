@@ -119,6 +119,15 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - 所蔵作品、関連展覧会、タグは`関連情報`へまとめ、所蔵作品 → 関連展覧会 → タグの順にquietなrelation listとして置く。追加Search、公開/非表示、削除は同じvisual hierarchyで扱い、Technical statusは必要な補助情報に留める。
 - 画像登録は`登録画像 → 画像候補 → 画像登録`の順に並べる。登録画像がない場合は正方形の`No Image` placeholderを使い、新規Previewはfileまたは有効なURLが選択されるまで表示しない。URL取得失敗時は空の固定frameを残さずErrorを示し、入力やmetadata変更だけでは永続化しない。
 
+### Venue data review composition
+
+- Venueの`データ`は`Wikidata照合 → 外部データから情報を取得 → 項目の出典 → 位置情報候補`の順にする。通常画面ではraw source record、provenance history、crawl / coordinate / image search trace、threshold一覧を表示しない。
+- WikidataのEntity採用はQID identityだけを確定し、Master fieldを同時に変更しない。Field候補は第二Drawerで`現在値 / 取得値 / 現在のSource / 候補Source`を比較し、明示的に選択した項目だけ反映する。
+- Field reviewは現在値が空なら候補をdefault ON、同値はdisabled、Manualやより高優先度のSourceはOFFかつ保護理由を表示する。候補値をclientから信用せず、反映時にserverで取得・正規化・Source priorityを再検証する。
+- `項目の出典`はBasic form順にcurrent provenanceを一項目一行で示す。`Manual / Wikidata / Wikipedia / 公式サイト / Trusted API / CSV`をHuman labelにし、provenanceがなければ推測せず`未記録`とする。`source_url`があるSourceは実際の根拠ページへLinkする。
+- 座標候補はSource、緯度・経度、必要な一致度・QID・精度、Google Maps linkと`採用 / 非採用`をcompactに示す。Wikidata Entity判断、座標判断、画像判断は独立させる。同じReview UIをData内と第二Drawerで共有する。
+- Image Candidate cardは取得経路、意味のある探索深度・一致度、rights、license、source linkを候補単位で示す。確定QID由来は偽のscoreとして見せず`確定QID`と表現し、full threshold traceを表示しない。
+
 ### Layer order
 
 - Shared layer tokens preserve `base < sidebar < popover / tooltip < drawer / dialog`.

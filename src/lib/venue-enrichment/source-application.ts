@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildVenueFieldReviewRows, eligibleSelectedVenueFields, VENUE_REVIEW_FIELDS, VENUE_SOURCE_PRIORITY } from "@/lib/admin/venue-data-review";
+import { getWikidataEntities } from "@/lib/wikidata/client";
 import { mapWikidataVenue } from "@/lib/wikidata/venue-mapper";
 import type { WikidataVenue } from "@/lib/wikidata/venue-import-types";
-import { imageDiscoveryStatus, saveVenueImageDiscovery } from "./image-discovery";
 
 export type StoredWikidataCandidate = {
   id: string;
@@ -20,13 +21,7 @@ export type StoredWikidataCandidate = {
   raw_payload: unknown;
 };
 
-export const SOURCE_PRIORITY: Record<string, number> = {
-  wikidata: 1,
-  wikipedia: 2,
-  trusted_api: 3,
-  official_website: 4,
-  manual: 5,
-};
+export const SOURCE_PRIORITY = VENUE_SOURCE_PRIORITY;
 
 export function selectSingleSourceCandidate<T extends { status: string }>(candidates: T[]) {
   const eligible = candidates.filter((candidate) => candidate.status !== "rejected");
@@ -40,35 +35,10 @@ export function shouldApplySourceField(currentValue: unknown, currentSource: str
   return empty || !currentSource;
 }
 
-function candidateVenue(candidate: StoredWikidataCandidate): WikidataVenue {
-  const payload = candidate.raw_payload as { normalized?: WikidataVenue; raw?: unknown } | null;
-  if (payload?.normalized?.qid) return payload.normalized;
-  const raw = payload?.raw || candidate.raw_payload;
-  const country = (((raw as { claims?: Record<string, Array<{ mainsnak?: { datavalue?: { value?: { id?: string } } } }>> } | null)?.claims?.P17 || [])[0]?.mainsnak?.datavalue?.value?.id) || "Q17";
-  const mapped = mapWikidataVenue({
-    id: candidate.external_id,
-    labelJa: candidate.label_ja,
-    labelEn: candidate.label_en,
-    aliases: [],
-    description: candidate.description,
-    officialUrl: candidate.official_url,
-    latitude: candidate.latitude == null ? null : Number(candidate.latitude),
-    longitude: candidate.longitude == null ? null : Number(candidate.longitude),
-    imageFileTitle: candidate.image_file_title,
-    commonsCategory: typeof payload?.normalized?.commonsCategory === "string" ? payload.normalized.commonsCategory : null,
-    wikipediaArticleTitle: null,
-    countryId: country,
-    raw,
-  }, []);
-  if (!mapped) throw new Error(`Wikidata candidate ${candidate.external_id} is not a Japan Venue`);
-  return mapped;
-}
-
-function wikidataFields(venue: WikidataVenue) {
+export function wikidataFields(venue: WikidataVenue) {
   return {
     name: venue.name,
     name_en: venue.nameEn,
-    aliases: venue.aliases,
     venue_type: venue.venueType,
     country_code: venue.countryCode,
     region: venue.region,
@@ -108,75 +78,96 @@ async function saveProvenance(db: SupabaseClient, venueId: string, field: string
   if (error) throw error;
 }
 
-export async function applyStoredWikidataCandidate(db: SupabaseClient, venueId: string, candidate: StoredWikidataCandidate, reasonPrefix = "single source candidate auto-applied") {
-  const [{ data: venue, error: venueError }, { data: source, error: sourceError }] = await Promise.all([
-    db.from("venues").select("*").eq("id", venueId).single(),
-    db.from("data_sources").select("id").eq("key", "wikidata").single(),
-  ]);
-  if (venueError || !venue) throw venueError || new Error("Venue not found");
+async function saveIdentitySourceRecord(db: SupabaseClient, venueId: string, candidate: StoredWikidataCandidate, rawPayload: unknown = candidate.raw_payload) {
+  const { data: source, error: sourceError } = await db.from("data_sources").select("id").eq("key", "wikidata").single();
   if (sourceError || !source) throw sourceError || new Error("Wikidata source not found");
-  const normalized = candidateVenue(candidate);
-  const envelope = { qid: normalized.qid, discoveryRootIds: normalized.discoveryRootIds, rawTypeIds: normalized.rawTypeIds, normalized, raw: normalized.raw };
-  const { data: priorSourceRecord, error: priorSourceError } = await db.from("source_records").select("id,venue_id").eq("data_source_id", source.id).eq("external_id", normalized.qid).maybeSingle();
+  const { data: priorSourceRecord, error: priorSourceError } = await db.from("source_records").select("id,venue_id").eq("data_source_id", source.id).eq("external_id", candidate.external_id).maybeSingle();
   if (priorSourceError) throw priorSourceError;
-  if (priorSourceRecord?.venue_id && priorSourceRecord.venue_id !== venueId) throw new Error(`${normalized.qid} is linked to another Venue; use Canonical Merge`);
+  if (priorSourceRecord?.venue_id && priorSourceRecord.venue_id !== venueId) throw new Error(`${candidate.external_id} is linked to another Venue; use Canonical Merge`);
   const { data: sourceRecord, error: sourceRecordError } = await db.from("source_records").upsert({
-    data_source_id: source.id, external_id: normalized.qid, venue_id: venueId,
-    source_url: `https://www.wikidata.org/wiki/${normalized.qid}`, raw_payload: envelope, fetched_at: new Date().toISOString(),
+    data_source_id: source.id, external_id: candidate.external_id, venue_id: venueId,
+    source_url: `https://www.wikidata.org/wiki/${candidate.external_id}`, raw_payload: rawPayload, fetched_at: new Date().toISOString(),
   }, { onConflict: "data_source_id,external_id" }).select("id,venue_id").single();
   if (sourceRecordError || !sourceRecord) throw sourceRecordError || new Error("Wikidata source record could not be saved");
+  return sourceRecord;
+}
 
-  const { data: currentSources, error: provenanceError } = await db.from("venue_field_sources")
-    .select("field_name,source").eq("venue_id", venueId).eq("is_current", true);
-  if (provenanceError) throw provenanceError;
-  const provenance = new Map((currentSources || []).map((row) => [row.field_name, row.source]));
-  const updates: Record<string, unknown> = {};
-  const applied: string[] = [];
-  const protectedFields: string[] = [];
-  for (const [field, value] of Object.entries(wikidataFields(normalized))) {
-    if (value == null || (Array.isArray(value) && !value.length)) continue;
-    if (shouldApplySourceField(venue[field], provenance.get(field), "wikidata")) {
-      updates[field] = value; applied.push(field);
-      await saveProvenance(db, venueId, field, value, sourceRecord.id, normalized.qid, true);
-    } else {
-      protectedFields.push(field);
-      if (JSON.stringify(venue[field]) !== JSON.stringify(value)) await saveProvenance(db, venueId, field, value, sourceRecord.id, normalized.qid, false);
-    }
-  }
-  if (updates.latitude != null && updates.longitude != null) {
-    updates.coordinate_source = "wikidata";
-    updates.coordinate_precision = "exact";
-    updates.coordinate_status = "approved";
-    updates.coordinate_candidate_qid = normalized.qid;
-    updates.coordinate_candidate_latitude = updates.latitude;
-    updates.coordinate_candidate_longitude = updates.longitude;
-    updates.coordinate_candidate_source = "wikidata";
-    updates.coordinate_candidate_confidence = Number(candidate.confidence);
-  }
-  updates.wikidata_match_status = "matched";
-  updates.wikidata_match_confidence = Number(candidate.confidence);
-  updates.wikidata_match_reason = `${reasonPrefix}; ${(candidate.match_reasons || []).join("; ")}`;
-  updates.best_wikidata_candidate_qid = normalized.qid;
-  updates.enriched_at = new Date().toISOString();
+export async function confirmWikidataIdentity(db: SupabaseClient, venueId: string, candidate: StoredWikidataCandidate, reasonPrefix = "human confirmed Wikidata identity") {
+  await saveIdentitySourceRecord(db, venueId, candidate);
+  const updates = {
+    wikidata_match_status: "matched",
+    wikidata_match_confidence: Number(candidate.confidence),
+    wikidata_match_reason: `${reasonPrefix}; ${(candidate.match_reasons || []).join("; ")}`,
+    best_wikidata_candidate_qid: candidate.external_id,
+    enriched_at: new Date().toISOString(),
+  };
   const { error: updateError } = await db.from("venues").update(updates).eq("id", venueId);
   if (updateError) throw updateError;
   const { error: candidateError } = await db.from("venue_external_match_candidates").update({ status: "matched" }).eq("id", candidate.id);
   if (candidateError) throw candidateError;
   await db.from("venue_external_match_candidates").update({ status: "candidate" }).eq("venue_id", venueId).eq("provider", "wikidata").neq("id", candidate.id).neq("status", "rejected");
-  let imageDiscovery: Awaited<ReturnType<typeof saveVenueImageDiscovery>> = { qid: normalized.qid, files: [], trace: [], saved: [], added: 0 };
-  try {
-    imageDiscovery = await saveVenueImageDiscovery(db, { venueId, qid: normalized.qid, venueName: normalized.name, venueNameEn: normalized.nameEn });
-    const { data: primary } = await db.from("media_assets").select("id").eq("venue_id", venueId).eq("is_primary", true).limit(1);
-    await db.from("venues").update({
-      image_search_status: primary?.length ? "approved_image_exists" : imageDiscoveryStatus(imageDiscovery.files),
-      image_search_trace: imageDiscovery.trace,
-      image_candidate_found_qid: imageDiscovery.files.length ? normalized.qid : null,
-      image_candidate_found_reason: imageDiscovery.files.map((item) => `${item.discoverySource}: ${item.fileTitle}`).join("; ") || null,
-    }).eq("id", venueId);
-  } catch (error) {
-    await db.from("venues").update({ image_search_trace: [{ source: "image_discovery", error: error instanceof Error ? error.message : "Image discovery failed" }] }).eq("id", venueId);
+  return { venueId, qid: candidate.external_id };
+}
+
+export async function rejectWikidataIdentity(db: SupabaseClient, venueId: string, candidateId: string) {
+  const { error } = await db.from("venue_external_match_candidates").update({ status: "rejected" }).eq("id", candidateId).eq("venue_id", venueId).eq("provider", "wikidata");
+  if (error) throw error;
+}
+
+async function confirmedCandidate(db: SupabaseClient, venueId: string) {
+  const { data, error } = await db.from("venue_external_match_candidates").select("*").eq("venue_id", venueId).eq("provider", "wikidata").eq("status", "matched").order("last_seen_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Wikidata QIDを先に確定してください。");
+  return data as StoredWikidataCandidate;
+}
+
+async function freshWikidataVenue(candidate: StoredWikidataCandidate) {
+  const [fresh] = await getWikidataEntities([candidate.external_id]);
+  if (!fresh) throw new Error("Wikidataから確定QIDを取得できませんでした。");
+  const storedPayload = candidate.raw_payload as { normalized?: WikidataVenue } | null;
+  const normalized = mapWikidataVenue(fresh, storedPayload?.normalized?.discoveryRootIds || []);
+  if (!normalized) throw new Error(`Wikidata candidate ${candidate.external_id} is not a supported Venue`);
+  return normalized;
+}
+
+export async function previewWikidataVenueFields(db: SupabaseClient, venueId: string) {
+  const candidate = await confirmedCandidate(db, venueId);
+  const normalized = await freshWikidataVenue(candidate);
+  const [{ data: venue, error: venueError }, { data: sources, error: sourceError }] = await Promise.all([
+    db.from("venues").select("*").eq("id", venueId).single(),
+    db.from("venue_field_sources").select("field_name,source,source_url,is_current").eq("venue_id", venueId).eq("is_current", true),
+  ]);
+  if (venueError || !venue) throw venueError || new Error("Venue not found");
+  if (sourceError) throw sourceError;
+  const values = wikidataFields(normalized);
+  const sourceUrl = `https://www.wikidata.org/wiki/${candidate.external_id}`;
+  return {
+    qid: candidate.external_id,
+    rows: buildVenueFieldReviewRows(venue, sources || [], values, "wikidata", Object.fromEntries(VENUE_REVIEW_FIELDS.map(([key]) => [key, sourceUrl]))),
+    values,
+    normalized,
+    candidate,
+  };
+}
+
+export async function applyWikidataVenueFields(db: SupabaseClient, venueId: string, selectedFields: string[]) {
+  const preview = await previewWikidataVenueFields(db, venueId);
+  const allowed = new Set(VENUE_REVIEW_FIELDS.map(([key]) => key));
+  if (selectedFields.some((field) => !allowed.has(field as typeof VENUE_REVIEW_FIELDS[number][0]))) throw new Error("Unsupported Wikidata field");
+  const eligible = eligibleSelectedVenueFields(preview.rows, selectedFields);
+  if (!eligible.length) return { applied: [], protectedFields: preview.rows.filter((row) => row.protected).map((row) => row.key) };
+  const envelope = { qid: preview.normalized.qid, discoveryRootIds: preview.normalized.discoveryRootIds, rawTypeIds: preview.normalized.rawTypeIds, normalized: preview.normalized, raw: preview.normalized.raw };
+  const sourceRecord = await saveIdentitySourceRecord(db, venueId, preview.candidate, envelope);
+  const updates = Object.fromEntries(eligible.map((row) => [row.key, row.candidateValue])) as Record<string, unknown>;
+  if (eligible.some((row) => row.key === "latitude" || row.key === "longitude")) {
+    updates.coordinate_source = "wikidata";
+    updates.coordinate_precision = "exact";
+    updates.coordinate_status = "approved";
   }
-  return { venueId, qid: normalized.qid, applied, protectedFields, imageDiscovery };
+  const { error: updateError } = await db.from("venues").update(updates).eq("id", venueId);
+  if (updateError) throw updateError;
+  for (const row of eligible) await saveProvenance(db, venueId, row.key, row.candidateValue, sourceRecord.id, preview.qid, true);
+  return { applied: eligible.map((row) => row.key), protectedFields: preview.rows.filter((row) => row.protected).map((row) => row.key) };
 }
 
 export async function classifyExhibitionVenueCandidates(db: SupabaseClient) {

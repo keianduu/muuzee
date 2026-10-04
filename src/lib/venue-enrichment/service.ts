@@ -8,7 +8,7 @@ import type { ScoredWikidataCandidate } from "@/lib/wikidata/types";
 import { processVenueEnrichmentItems } from "./batch";
 import { CANDIDATE_MIN_THRESHOLD, distanceMeters, ENTITY_AUTO_MATCH_THRESHOLD, findCoordinateCandidate, findImageCandidates, thresholdForConfidence } from "./policy";
 import type { VenueEnrichmentBatchResult, VenueEnrichmentResult } from "./types";
-import { applyStoredWikidataCandidate, selectSingleSourceCandidate, type StoredWikidataCandidate } from "./source-application";
+import { confirmWikidataIdentity, selectSingleSourceCandidate, type StoredWikidataCandidate } from "./source-application";
 import { discoverVenueImageFiles, imageDiscoveryStatus, saveVenueImageDiscovery } from "./image-discovery";
 
 type Venue = {
@@ -116,6 +116,36 @@ async function buildCandidateDiagnostics(
   const geolonia = await getGeoloniaFallback(db, ids, venue);
   const imageSearch = findImageCandidates(candidates, statuses);
   const imageCandidateAdded = false;
+  const coordinateRows = [
+    ...(coordinate ? [{
+      venue_id: venue.id,
+      source: "wikidata",
+      candidate_key: coordinate.candidate.id,
+      external_id: coordinate.candidate.id,
+      latitude: coordinate.candidate.latitude,
+      longitude: coordinate.candidate.longitude,
+      confidence: coordinate.candidate.confidence,
+      reason: coordinate.candidate.reasons.join("; "),
+      precision: "exact",
+      source_url: `https://www.wikidata.org/wiki/${coordinate.candidate.id}`,
+    }] : []),
+    ...(geolonia ? [{
+      venue_id: venue.id,
+      source: "geolonia",
+      candidate_key: `${geolonia.latitude},${geolonia.longitude}`,
+      external_id: null,
+      latitude: geolonia.latitude,
+      longitude: geolonia.longitude,
+      confidence: null,
+      reason: `Geolonia locality match: ${geolonia.matchedLocality}`,
+      precision: geolonia.precision,
+      source_url: null,
+    }] : []),
+  ];
+  if (coordinateRows.length) {
+    const { error } = await db.from("venue_coordinate_candidates").upsert(coordinateRows, { onConflict: "venue_id,source,candidate_key" });
+    if (error) throw error;
+  }
   const updates: Record<string, unknown> = {
     best_wikidata_candidate_qid: top?.id || null,
     coordinate_search_trace: candidates
@@ -167,19 +197,16 @@ async function buildCandidateDiagnostics(
 async function applyMatchedEntity(db: SupabaseClient, ids: Record<string, string>, venue: Venue, candidate: ScoredWikidataCandidate, candidates: ScoredWikidataCandidate[], statuses: Map<string, string>, humanSelected = false): Promise<VenueEnrichmentResult> {
   const { data: stored, error: storedError } = await db.from("venue_external_match_candidates").select("*").eq("venue_id", venue.id).eq("provider", "wikidata").eq("external_id", candidate.id).single();
   if (storedError || !stored) throw storedError || new Error("Stored Wikidata candidate not found");
-  const application = await applyStoredWikidataCandidate(db, venue.id, stored as StoredWikidataCandidate, humanSelected ? "human selected source candidate" : "single source candidate auto-applied");
+  await confirmWikidataIdentity(db, venue.id, stored as StoredWikidataCandidate, humanSelected ? "human selected source candidate" : "single source candidate auto-confirmed");
   const { data: refreshed, error: refreshedError } = await db.from("venues").select("*").eq("id", venue.id).single();
   if (refreshedError || !refreshed) throw refreshedError || new Error("Venue could not be refreshed");
   const diagnostics = await buildCandidateDiagnostics(db, ids, refreshed as Venue, candidates, statuses);
-  diagnostics.updates.image_search_trace = application.imageDiscovery.trace;
-  diagnostics.updates.image_candidate_found_qid = application.imageDiscovery.files.length ? candidate.id : null;
-  diagnostics.updates.image_candidate_found_reason = application.imageDiscovery.files.map((item) => `${item.discoverySource}: ${item.fileTitle}`).join("; ") || null;
   const { error } = await db.from("venues").update(diagnostics.updates).eq("id", venue.id);
   if (error) throw error;
-  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: application.applied.includes("latitude") && application.applied.includes("longitude"), coordinateSource: application.applied.includes("latitude") ? "wikidata" : null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: application.imageDiscovery.added > 0, imageCandidateFound: application.imageDiscovery.saved.length > 0, imageFoundAtRelaxedThreshold: false, entityCandidateFound: true };
+  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: false, coordinateSource: null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: false, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: true };
 }
 
-export async function enrichVenue(venueId: string, options: { forceWikidataId?: string } = {}, db: SupabaseClient = createSupabaseAdminClient()): Promise<VenueEnrichmentResult> {
+export async function enrichVenue(venueId: string, options: { forceWikidataId?: string; autoConfirmSingle?: boolean } = {}, db: SupabaseClient = createSupabaseAdminClient()): Promise<VenueEnrichmentResult> {
   const { data, error } = await db.from("venues").select("*").eq("id", venueId).single();
   if (error || !data) throw error || new Error("Venue not found");
   const venue = data as Venue;
@@ -207,7 +234,11 @@ export async function enrichVenue(venueId: string, options: { forceWikidataId?: 
   const candidates = rankWikidataCandidates(venue, rawCandidates);
   const candidateStatuses = await saveMatchCandidates(db, venue.id, candidates);
   const top = candidates[0];
-  const automatic = requestedWikidataId ? top : selectSingleSourceCandidate(candidates.map((candidate) => ({ ...candidate, status: candidateStatuses.get(candidate.id) || "candidate" })));
+  const automatic = requestedWikidataId
+    ? top
+    : options.autoConfirmSingle === false
+      ? null
+      : selectSingleSourceCandidate(candidates.map((candidate) => ({ ...candidate, status: candidateStatuses.get(candidate.id) || "candidate" })));
   if (automatic) return applyMatchedEntity(db, ids, venue, automatic, candidates, candidateStatuses, Boolean(options.forceWikidataId));
   const matchStatus = top ? "candidate" : "unmatched";
   const updates: Record<string, unknown> = { wikidata_match_status: matchStatus, wikidata_match_confidence: top?.confidence ?? null, wikidata_match_reason: top?.reasons.join("; ") || null, enriched_at: new Date().toISOString() };

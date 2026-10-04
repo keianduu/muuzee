@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source of Truth: supabase/migrations/*.sql
-// Applied migrations: 202609040001_admin_v0.sql .. 202610040001_exhibition_occurrence_visibility.sql
+// Applied migrations: 202609040001_admin_v0.sql .. 202610040002_venue_coordinate_candidates.sql
 // Regenerate: npm run db:docs
 
 Table artist_external_match_candidates {
@@ -509,6 +509,29 @@ Table venue_canonical_merge_candidates {
 
   indexes {
     (source_venue_id, candidate_venue_id) [unique]
+  }
+}
+
+Table venue_coordinate_candidates {
+  id uuid [pk, default: `gen_random_uuid()`]
+  venue_id uuid [not null, ref: > venues.id]
+  source text [not null]
+  candidate_key text [not null]
+  external_id text
+  latitude numeric [not null]
+  longitude numeric [not null]
+  confidence numeric
+  reason text
+  precision text
+  source_url text
+  source_record_id uuid [ref: > source_records.id]
+  review_status text [not null, default: `'candidate'`]
+  decided_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (venue_id, source, candidate_key) [unique]
   }
 }
 

@@ -28,7 +28,7 @@ Phase Aの代表workflowは`Venue list → Venue Drawer → Image Candidate Draw
 
 ## URL deep link and compatibility
 
-選択状態は`/admin/{entity}?selected={id}`で保持する。第二階層は`panel=image`、個別候補は`candidate={id}`を追加する。例は`/admin/venues?selected={venue-id}&panel=image&candidate={candidate-id}`。再読み込みと直接共有で同じ階層を復元する。Close時は対象階層のQueryだけを削除し、Search / Filterは保持する。一覧からOpenした場合はBrowser Backで一覧へ、第二DrawerをOpenした場合はBrowser Backで第一Drawerへ一段ずつ戻る。従来の`/admin/{entity}/[id]`は削除せず、List + `selected`へRedirectする。Keyword、Publication、Image、Completeness、Source、Venue Type / Active / Coordinates / Wikidata MatchのFilterを維持する。ArtistはTier All / A / B / C / A+B、Publication All / Published / Unpublished、Image、Nationality missing、Core Quality、Sourceを併用できる。DataタブにはWikidata QID / raw classification、Wikipedia、画像探索経路・Reported licenseを表示し、Getty / APJはCoverage Testだけであることを明示する。
+選択状態は`/admin/{entity}?selected={id}`で保持する。Venueの第二階層は`panel=image / wikidata-fields / official-fields / coordinates`を使い、画像候補は`candidate={id}`、公式取得結果は`run={import-run-id}`を追加する。例は`/admin/venues?selected={venue-id}&panel=image&candidate={candidate-id}`。再読み込みと直接共有で同じ階層を復元する。Close時は対象階層のQueryだけを削除し、Search / Filterは保持する。一覧からOpenした場合はBrowser Backで一覧へ、第二DrawerをOpenした場合はBrowser Backで第一Drawerへ一段ずつ戻る。従来の`/admin/{entity}/[id]`は削除せず、List + `selected`へRedirectする。Keyword、Publication、Image、Completeness、Source、Venue Type / Active / Coordinates / Wikidata MatchのFilterを維持する。ArtistはTier All / A / B / C / A+B、Publication All / Published / Unpublished、Image、Nationality missing、Core Quality、Sourceを併用できる。
 
 ## Priority Tier and Data Quality
 
@@ -42,9 +42,9 @@ Venue一覧は実効Tier Badgeを表示し、A→B→C→D→E→未分類で並
 
 - `状態`: 取得過程ではなく、現在利用できる情報を示す。Master共通はPublication、画像の可用性、外部データ有無、Requirementsを表示し、Venueだけ位置情報を追加する。Completeness percentage、独立したRights、不足Field text、API照合、crawl診断は表示しない。
 - `編集`: Masterの実データ、Tag、Relation、画像Upload / Candidate判断、座標Candidate採否。
-- `データ`: Field Provenance、External Source、Wikidata/API照合、Match Confidence / Threshold / Reason、座標候補、`image_search_status`、検索trace、公式サイトcrawl、AI enrichment、Rawに近い補足情報。
+- `データ`: Humanが外部候補を判断するsurface。Venueは`Wikidata照合 / 外部データから情報を取得 / 項目の出典 / 位置情報候補`だけを主表示し、raw source record、provenance history、検索trace、crawl status dashboardはDB / auditへ残す。
 
-Human-facing画像状態は`未取得 / 画像なし / 候補あり / 利用不可 / 利用可能`の5状態とする。approved Media AssetがあればPrimary指定にかかわらず`利用可能`、active non-rejected Candidateまたは`needs_review` Assetは`候補あり`、rejected-only evidenceは`利用不可`、完了した探索のno-result evidenceがあれば`画像なし`、判断可能な探索証拠がなければ`未取得`とする。raw `image_search_status`はDataだけに置く。
+Human-facing画像状態は`未取得 / 画像なし / 候補あり / 利用不可 / 利用可能`の5状態とする。approved Media AssetがあればPrimary指定にかかわらず`利用可能`、active non-rejected Candidateまたは`needs_review` Assetは`候補あり`、rejected-only evidenceは`利用不可`、完了した探索のno-result evidenceがあれば`画像なし`、判断可能な探索証拠がなければ`未取得`とする。raw `image_search_status`はDB / auditへ残し、通常DetailのDataには表示しない。
 
 `外部データ`は`source_records`が1件以上なら`あり`、0件なら`なし`とし、providerや件数はDataへ置く。Venueの`位置情報`はcurrent latitude/longitudeがあればSource種別を問わず`確認済み`、currentなしでusable candidateがあれば`候補あり`、それ以外は`取得不可`とする。ExhibitionはVenue relationを参照するため位置情報Statusを持たない。
 
@@ -77,6 +77,18 @@ Venueは国内・海外の両方を対象にする。curated country catalogはP
 画像は`登録画像 → 画像候補 → 画像登録`の順に置く。登録画像が0件なら`No Image`を表示し、新規Previewはlocal fileまたは有効なHTTPS URLを選択するまで表示しない。URL Preview失敗時は空の固定frameを残さずErrorへ置き換える。明示的な登録操作だけがprivate Storageへ保存し、server-side URL取得はHTTPS、redirect先、private/local address、MIME、20MB上限、timeoutを検証する。候補には画像、provider、discovery source、rights、reported license、author / credit、data sourceと採否・Primary操作を示し、詳細は既存の第二Drawerでも確認できる。
 
 Image Candidate UIのLOCAL QAには`npm run db:seed:admin-image-candidate-local`で決定的なsynthetic fixtureを作成し、`npm run db:cleanup:admin-image-candidate-local`で明示的に削除できる。scriptはLOCAL Supabase URL以外を拒否し、STG / Production dataへ適用しない。
+
+## Venue data review workflow (Order 325 Phase D)
+
+Venue DataのWikidata flowは`Entity候補取得 → QID採用 / 非採用 → Field preview → Human選択 → Apply → current provenance更新`である。候補取得とQID採用はMaster fieldを変更しない。Wikidata field applyは確定QIDをserverで再取得し、許可fieldとSource priorityを再検証する。`name_native`と`aliases`はHuman review対象に含めない。
+
+Field reviewは現在値、取得値、current Source、candidate Sourceと根拠URLを第二Drawerで比較する。空のcurrentに値がある候補だけdefault ON、同値は変更なし、Manual / 高優先度Sourceは保護する。Data本体の`項目の出典`はBasic form順のcurrent source summaryだけを表示し、history件数が増えてもField rowを重複させない。provenanceなしのlegacy値は`Manual`と推測せず`未記録`とする。
+
+座標候補は`venue_coordinate_candidates`にSourceごとのjudgmentを保存し、Wikidata identityと独立して採用 / 非採用する。採用時だけcurrent latitude / longitude、coordinate metadata、緯度・経度のprovenanceを更新する。非採用は対象候補だけを更新し、current座標、他候補、Wikidata identityを変更しない。Data内と`panel=coordinates`は同じcomponentを使い、Basicの座標領域からも第二Drawerへ移動できる。
+
+個別Venueの公式サイト取得は既存LOCAL-only crawlerを`selected` modeで再利用する。crawl結果はMasterを変更せず`panel=official-fields&run={id}`へ渡し、Humanが選択したFieldだけ`official_website` provenanceとfield-level source URL付きで反映する。partial結果は取得済みFieldとwarningを同時に表示する。Batchの`Crawl → CSV → Preview → Confirm`は別workflowとして維持し、STG / Production向けcrawlerへ拡張しない。
+
+Image Candidateは画像登録sub-tabと`panel=image`で取得経路、探索深度 / 確定QID、一致度、rights、license、source linkを候補単位で示す。Venue Dataから画像・座標search traceやfull threshold tableは除外する。
 
 ## Existing feature preservation
 

@@ -57,7 +57,7 @@ function initialValues(venue: VenueRow): FormValues {
     opening_note: venue.opening_note || "",
   };
 }
-export function VenueBasicEditor({ venue, busy, onSave }: { venue: VenueRow; busy: boolean; onSave: (values: Record<string, string>) => Promise<void> }) {
+export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }: { venue: VenueRow; busy: boolean; onSave: (values: Record<string, string>) => Promise<void>; onOpenCoordinateReview?: () => void }) {
   const [values, setValues] = useState(() => initialValues(venue));
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoMessage, setGeoMessage] = useState("");
@@ -149,6 +149,7 @@ export function VenueBasicEditor({ venue, busy, onSave }: { venue: VenueRow; bus
         <div className="field"><AdminFieldLabel htmlFor="venue-city" label="City" fieldKey="city"/><input id="venue-city" value={values.city} onChange={(event) => update("city", event.target.value)}/></div>
       </>}
       <div className="venue-coordinate-group"><div className="field"><AdminFieldLabel htmlFor="venue-latitude" label="緯度" fieldKey="latitude"/><input id="venue-latitude" type="number" step="any" value={values.latitude} onChange={(event) => updateCoordinate("latitude", event.target.value)}/></div><div className="field"><AdminFieldLabel htmlFor="venue-longitude" label="経度" fieldKey="longitude"/><input id="venue-longitude" type="number" step="any" value={values.longitude} onChange={(event) => updateCoordinate("longitude", event.target.value)}/></div></div>
+      {onOpenCoordinateReview && (venue.venue_coordinate_candidates?.length ? <button type="button" className="button secondary venue-coordinate-review-link" onClick={onOpenCoordinateReview}>位置情報候補を確認</button> : <p className="muted">位置情報候補なし</p>)}
       {mapUrl && <a className="button secondary venue-map-link" href={mapUrl} target="_blank" rel="noreferrer">Google Mapsで確認 ↗</a>}
       <div className="field"><AdminFieldLabel htmlFor="venue-official-url" label="公式URL" fieldKey="official_url"/><input id="venue-official-url" type="url" value={values.official_url} onChange={(event) => update("official_url", event.target.value)}/></div>
       <div className="field"><AdminFieldLabel htmlFor="venue-inception-year" label="開館年" fieldKey="inception_year"/><input id="venue-inception-year" type="number" value={values.inception_year} onChange={(event) => update("inception_year", event.target.value)}/></div>

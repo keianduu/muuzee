@@ -5,6 +5,14 @@
 import type { SourceImageCandidateRow } from "@/lib/admin/types";
 import { candidateLicenseProfile, imageDiscoverySourceLabel } from "@/lib/admin/master-image";
 
+function candidateMatchSummary(candidate: SourceImageCandidateRow) {
+  const confirmedQid = candidate.candidate_match_confidence === 1 && /^Q\d+$/.test(candidate.candidate_entity_id || "");
+  return {
+    match: confirmedQid ? `確定QID · ${candidate.candidate_entity_id}` : candidate.candidate_match_confidence != null ? `一致度 ${candidate.candidate_match_confidence}` : "記録なし",
+    depth: confirmedQid ? "確定QID" : candidate.candidate_match_threshold != null ? String(candidate.candidate_match_threshold) : "記録なし",
+  };
+}
+
 export function LicenseSummary({ candidate }: { candidate: SourceImageCandidateRow }) {
   const profile = candidateLicenseProfile(candidate as unknown as Record<string, unknown>);
   return <div className="license-summary" aria-label="ライセンス条件の整理">
@@ -28,10 +36,12 @@ export function MasterImageCandidateSummary({ candidate, subjectLabel, onOpen }:
 }
 
 export function MasterImageCandidatePanel({ candidate, subjectLabel }: { candidate: SourceImageCandidateRow; subjectLabel: string }) {
+  const match = candidateMatchSummary(candidate);
   return <div className="image-candidate-panel">
     {candidate.thumbnail_url || candidate.image_url ? <img className="image-candidate-preview" src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="image-candidate-preview is-empty">画像なし</div>}
     <div className="image-candidate-panel-status"><span className="status">取得経路: {imageDiscoverySourceLabel(candidate.discovery_source)}</span><span className="status">{candidate.review_status}</span><span className={`status ${candidate.rights_status}`}>{candidate.rights_status}</span></div>
     <LicenseSummary candidate={candidate}/>
+    <dl className="image-candidate-metadata"><div><dt>照合</dt><dd>{match.match}</dd></div><div><dt>探索深度</dt><dd>{match.depth}</dd></div></dl>
     <dl className="image-candidate-metadata"><div><dt>Author</dt><dd>{candidate.author || "記載なし"}</dd></div><div><dt>Credit</dt><dd>{candidate.credit || "記載なし"}</dd></div><div><dt>Usage terms</dt><dd>{candidate.usage_terms || "記載なし"}</dd></div></dl>
     <div className="actions">{candidate.source_url && <a className="button secondary" href={candidate.source_url} target="_blank" rel="noreferrer">データ元を開く ↗</a>}{candidate.license_url && <a className="button secondary" href={candidate.license_url} target="_blank" rel="noreferrer">利用条件を開く ↗</a>}</div>
     <p className="muted">候補の採否・Primary設定は、Venue Drawerの編集タブで行います。</p>
@@ -49,12 +59,14 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, primar
   onOpen?: () => void;
 }) {
   const disabled = busy || primaryExists || candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active;
+  const match = candidateMatchSummary(candidate);
   return <article className="card media-card">
     {candidate.thumbnail_url || candidate.image_url ? <img src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="thumb"/>}
     <p><span className="status">取得経路: {imageDiscoverySourceLabel(candidate.discovery_source)}</span></p>
     <p className="muted"><strong>Provider:</strong> {candidate.provider || "記載なし"}</p>
     <p><span className="status">{candidate.review_status}</span> <span className={`status ${candidate.rights_status}`}>{candidate.rights_status === "approved" ? "明確に利用可能" : candidate.rights_status === "rejected" ? "明確に不可" : "記載なし・不明"}</span></p>
     <p><strong>Reported License: {candidate.license_short_name || "記載なし"}</strong></p>
+    {(candidate.candidate_match_confidence != null || candidate.candidate_match_threshold != null) && <p className="muted"><strong>照合:</strong> {match.match}<br/><strong>探索深度:</strong> {match.depth}</p>}
     <LicenseSummary candidate={candidate}/>
     <details><summary>著作者・クレジット・データ元</summary><p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}</p></details>
     <div className="actions">{onOpen && <button type="button" className="button secondary" onClick={onOpen}>候補を確認</button>}{candidate.source_url && <a className="button secondary" href={candidate.source_url} target="_blank" rel="noreferrer">データ元を開く</a>}{candidate.license_url && <a className="button secondary" href={candidate.license_url} target="_blank" rel="noreferrer">利用条件を開く</a>}</div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { applyStoredWikidataCandidate, classifyExhibitionVenueCandidates } from "@/lib/venue-enrichment/source-application";
+import { classifyExhibitionVenueCandidates, confirmWikidataIdentity } from "@/lib/venue-enrichment/source-application";
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (body.mode !== "apply") return NextResponse.json({ mode: "dry-run", ...summary });
     for (const item of classified.single) {
       try {
-        await applyStoredWikidataCandidate(db, item.venueId, item.candidate);
+        await confirmWikidataIdentity(db, item.venueId, item.candidate, "single source candidate auto-confirmed");
         summary.applied += 1;
       } catch (error) {
         summary.failed.push({ venueId: item.venueId, message: error instanceof Error ? error.message : "Source application failed" });
