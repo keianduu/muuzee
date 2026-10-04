@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { VenueFieldReviewRow } from "@/lib/admin/venue-data-review";
 import { AdminFeedback } from "./admin-feedback";
 
@@ -28,11 +28,15 @@ export function VenueFieldReviewPanel({ venueId, source, runId, targetUrl }: { v
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const lastRequestKey = useRef("");
   const endpoint = source === "wikidata"
     ? `/api/admin/venues/${venueId}/wikidata-preview`
     : `/api/admin/venues/${venueId}/official-preview${runId ? `?run=${encodeURIComponent(runId)}` : ""}`;
 
   useEffect(() => {
+    const requestKey = `${endpoint}:${targetUrl || ""}:${retryCount}`;
+    if (lastRequestKey.current === requestKey) return;
+    lastRequestKey.current = requestKey;
     const controller = new AbortController();
     setLoading(true); setMessage("");
     const shouldStartOfficial = source === "official" && !runId;

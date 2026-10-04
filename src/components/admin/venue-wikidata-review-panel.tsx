@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { VenueMatchCandidateRow } from "@/lib/admin/types";
 import type { VenueFieldReviewRow } from "@/lib/admin/venue-data-review";
 import { AdminFeedback } from "./admin-feedback";
@@ -17,6 +17,7 @@ export function VenueWikidataReviewPanel({ venueId, matched }: { venueId: string
   const [confirmed, setConfirmed] = useState(matched);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const initialLoadStarted = useRef(false);
 
   const loadRows = useCallback(async (id?: string | null) => {
     const query = id ? `?candidate=${encodeURIComponent(id)}` : "";
@@ -48,7 +49,11 @@ export function VenueWikidataReviewPanel({ venueId, matched }: { venueId: string
     } catch (error) { setMessage(error instanceof Error ? error.message : "Wikidata候補を取得できませんでした。"); setState("error"); }
   }, [loadRows, matched, venueId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (initialLoadStarted.current) return;
+    initialLoadStarted.current = true;
+    void load();
+  }, [load]);
 
   async function choose(id: string) {
     setCandidateId(id); setBusy(true); setMessage("");
