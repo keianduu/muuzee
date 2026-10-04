@@ -2,6 +2,8 @@ export const VENUE_SOURCE_PRIORITY: Record<string, number> = {
   wikidata: 1,
   wikipedia: 2,
   trusted_api: 3,
+  geolonia: 3,
+  japan_post: 3,
   official_website: 4,
   manual: 5,
 };
@@ -71,19 +73,22 @@ export type VenueFieldReviewRow = {
   unchanged: boolean;
   protected: boolean;
   defaultSelected: boolean;
+  resultState: "fetched" | "missing" | "unchanged" | "protected";
 };
 
 export const VENUE_SOURCE_LABELS: Record<string, string> = {
-  manual: "Manual",
+  manual: "手動",
   wikidata: "Wikidata",
   wikipedia: "Wikipedia",
   official_website: "公式サイト",
   trusted_api: "Trusted API",
   csv_import: "CSV",
+  geolonia: "Geolonia",
+  japan_post: "日本郵便",
 };
 
 export function venueSourceLabel(source: string | null | undefined) {
-  return source ? VENUE_SOURCE_LABELS[source] || "未記録" : "未記録";
+  return source ? VENUE_SOURCE_LABELS[source] || "不明" : "不明";
 }
 
 export function reviewValueEmpty(value: unknown) {
@@ -110,19 +115,21 @@ export function buildVenueFieldReviewRows(
     const current = provenance.get(key);
     const unchanged = reviewValuesEqual(currentValue, candidateValue);
     const protectedField = (VENUE_SOURCE_PRIORITY[current?.source || ""] || 0) > (VENUE_SOURCE_PRIORITY[source] || 0);
+    const missing = reviewValueEmpty(candidateValue);
     return {
       key,
       label,
       currentValue,
       candidateValue,
       currentSource: current?.source || null,
-      currentSourceLabel: venueSourceLabel(current?.source),
+      currentSourceLabel: reviewValueEmpty(currentValue) ? "—" : venueSourceLabel(current?.source),
       candidateSource: source,
       candidateSourceLabel: venueSourceLabel(source),
       candidateSourceUrl: sourceUrls[key] || null,
       unchanged,
       protected: protectedField,
-      defaultSelected: !unchanged && !protectedField && reviewValueEmpty(currentValue) && !reviewValueEmpty(candidateValue),
+      defaultSelected: !unchanged && !protectedField && reviewValueEmpty(currentValue) && !missing,
+      resultState: missing ? "missing" : protectedField ? "protected" : unchanged ? "unchanged" : "fetched",
     };
   });
 }

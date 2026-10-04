@@ -35,8 +35,8 @@ describe("master list URL and append state", () => {
   });
 
   it("supports Venue review child panels and clears panel-specific state", () => {
-    const opened = detailPanelQuery("q=tokyo&selected=venue-1", "official-fields", { runId: "run-1" });
-    expect(opened).toBe("q=tokyo&selected=venue-1&panel=official-fields&run=run-1");
+    const opened = detailPanelQuery("q=tokyo&selected=venue-1", "official-fields", { runId: "run-1", targetUrl: "https://museum.example" });
+    expect(opened).toBe("q=tokyo&selected=venue-1&panel=official-fields&run=run-1&targetUrl=https%3A%2F%2Fmuseum.example");
     expect(detailPanelQuery(opened, "coordinates")).toBe("q=tokyo&selected=venue-1&panel=coordinates");
     expect(detailPanelQuery(opened, null)).toBe("q=tokyo&selected=venue-1");
   });

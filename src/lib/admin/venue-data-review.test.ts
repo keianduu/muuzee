@@ -65,7 +65,7 @@ describe("Venue field review policy", () => {
     expect(rows.find((row) => row.key === "official_url")).toMatchObject({ protected: true, defaultSelected: false });
   });
 
-  it("uses current provenance only and reports unknown or missing provenance as unrecorded", () => {
+  it("uses current provenance only and reports unknown or missing provenance explicitly", () => {
     const [row] = buildVenueFieldReviewRows(
       { address: "Current" },
       [
@@ -78,8 +78,20 @@ describe("Venue field review policy", () => {
       [["address", "住所"]],
     );
     expect(row).toMatchObject({ currentSource: "official_website", currentSourceLabel: "公式サイト", candidateSourceUrl: "https://museum.example/access" });
-    expect(venueSourceLabel("legacy")).toBe("未記録");
-    expect(venueSourceLabel(null)).toBe("未記録");
+    expect(venueSourceLabel("legacy")).toBe("不明");
+    expect(venueSourceLabel(null)).toBe("不明");
+  });
+
+  it("reports field coverage for fetched, missing, unchanged, and protected values", () => {
+    const rows = buildVenueFieldReviewRows(
+      { name: "Manual", name_en: "Same", city: "" },
+      [{ field_name: "name", source: "manual", is_current: true }],
+      { name: "Candidate", name_en: "Same", city: "Tokyo", address: null },
+      "wikidata",
+      {},
+      [["name", "名称"], ["name_en", "英語名"], ["city", "City"], ["address", "住所"]],
+    );
+    expect(rows.map((row) => row.resultState)).toEqual(["protected", "unchanged", "fetched", "missing"]);
   });
 
   it("applies only selected, changed, non-protected fields", () => {

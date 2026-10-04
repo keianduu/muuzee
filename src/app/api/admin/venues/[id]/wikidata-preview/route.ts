@@ -4,11 +4,13 @@ import { validUuid } from "@/lib/admin/http";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { applyWikidataVenueFields, previewWikidataVenueFields } from "@/lib/venue-enrichment/source-application";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     if (!validUuid(id)) throw new Error("Invalid venue ID");
-    const preview = await previewWikidataVenueFields(createSupabaseAdminClient(), id);
+    const candidateId = new URL(request.url).searchParams.get("candidate");
+    if (candidateId && !validUuid(candidateId)) throw new Error("Invalid candidate ID");
+    const preview = await previewWikidataVenueFields(createSupabaseAdminClient(), id, candidateId);
     return NextResponse.json({ qid: preview.qid, rows: preview.rows });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Wikidata preview failed" }, { status: 400 });

@@ -10,6 +10,7 @@ export type OfficialCrawlRequest = {
   limit?: number;
   missingField?: "address" | "postal_code" | "opening_hours_text" | "closed_days_text" | "access_text" | "description" | "";
   filters?: MasterListOptions;
+  officialUrls?: Record<string, string>;
 };
 
 function summaryFor(rows: OfficialCrawlResult[]): OfficialCrawlSummary {
@@ -53,7 +54,8 @@ async function targetsFor(request: OfficialCrawlRequest): Promise<CrawlVenueInpu
   }
   if (request.missingField) rows = rows.filter((row) => !String(row[request.missingField!] || "").trim());
   const limit = request.mode === "selected" ? Math.min(50, new Set(request.ids || []).size) : requestedLimit;
-  return rows.filter((row) => String(row.official_url || "").trim()).slice(0, limit).map((row) => ({
+  return rows.map((row): Record<string, unknown> => ({ ...row, official_url: request.officialUrls?.[String(row.id)] || row.official_url }))
+    .filter((row) => String(row.official_url || "").trim()).slice(0, limit).map((row) => ({
     id: String(row.id), name: String(row.name), official_url: String(row.official_url),
   }));
 }

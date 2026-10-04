@@ -12,6 +12,8 @@
     "db:seed:smoke": "node scripts/apply-stg-smoke-seed.mjs",
     "db:seed:admin-image-candidate-local": "node --env-file=.env.local scripts/seed-admin-image-candidate-fixture.mjs",
     "db:cleanup:admin-image-candidate-local": "node --env-file=.env.local scripts/seed-admin-image-candidate-fixture.mjs --cleanup",
+    "db:seed:admin-wikidata-review-local": "node --env-file=.env.local scripts/seed-admin-wikidata-review-fixture.mjs",
+    "db:cleanup:admin-wikidata-review-local": "node --env-file=.env.local scripts/seed-admin-wikidata-review-fixture.mjs --cleanup",
     "db:docs": "node scripts/generate-database-docs.mjs",
     "db:docs:check": "node scripts/generate-database-docs.mjs --check"
   },

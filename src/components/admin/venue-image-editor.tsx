@@ -9,6 +9,7 @@ import { displayStatus } from "@/lib/admin/master-labels";
 import { MasterImageCandidateCard } from "./master-image-candidate";
 import { AdminDeleteButton } from "./admin-icon-button";
 import { AdminFieldLabel } from "./admin-field-label";
+import { AdminFeedback } from "./admin-feedback";
 
 export function VenueImageEditor({ venue, busy, candidates, onUpload, onRemove, onOpenImageCandidate, onSetPrimary, onReview }: {
   venue: VenueRow;
@@ -45,7 +46,7 @@ export function VenueImageEditor({ venue, busy, candidates, onUpload, onRemove, 
     <form className="card venue-image-registration" data-venue-image-section="registration" onSubmit={submit}>
       <h2>画像登録</h2>
       {showPreview && <div className="venue-image-preview" aria-live="polite"><img src={previewUrl} alt="登録前プレビュー" onLoad={() => { setPreviewError(""); setPreviewFailed(false); }} onError={() => { setPreviewFailed(true); setPreviewError("画像をPreviewできません。URL側でhotlinkが制限されている可能性があります。"); }}/></div>}
-      {previewError && <p className="error">{previewError}</p>}
+      <AdminFeedback variant="error" message={previewError}/>
       <div className="venue-image-source-grid"><div className="field"><AdminFieldLabel htmlFor="venue-image-file" label="画像ファイル" fieldKey="file"/><input id="venue-image-file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => { setFile(event.target.files?.[0] || null); setPreviewError(""); setPreviewFailed(false); }}/></div><div className="venue-image-or" aria-hidden="true">または</div><div className="field"><AdminFieldLabel htmlFor="venue-image-url" label="画像URL" fieldKey="image_url"/><input id="venue-image-url" name="image_url" type="url" placeholder="https://…" value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setPreviewError(""); setPreviewFailed(false); }}/><small className="muted">ファイルを選択した場合はファイルを優先します。</small></div></div>
       <div className="venue-image-metadata"><div className="field"><AdminFieldLabel label="出典種別" fieldKey="source_type"/><select name="source_type" required defaultValue="other"><option value="official_press">Official press</option><option value="open_collection">Open collection</option><option value="wikimedia">Wikimedia</option><option value="direct">Direct permission</option><option value="other">Other</option></select></div><div className="field"><AdminFieldLabel label="利用可否" fieldKey="rights_status"/><select name="rights_status" required defaultValue="needs_review"><option value="rejected">明確に不可</option><option value="needs_review">記載なし・不明</option><option value="approved">明確に利用可能</option></select></div><div className="field"><AdminFieldLabel label="データ元URL（任意）" fieldKey="source_url"/><input name="source_url" type="url"/><small className="muted">画像URLではなく、可能なら出典ページを入力します。</small></div><div className="field"><AdminFieldLabel label="クレジット（任意）" fieldKey="credit"/><input name="credit"/></div><div className="field"><AdminFieldLabel label="利用期限" fieldKey="valid_until"/><input name="valid_until" type="date"/></div><div className="field"><AdminFieldLabel label="利用条件メモ（任意）" fieldKey="usage_note"/><textarea name="usage_note"/></div><label className="venue-primary-check"><input name="is_primary" type="checkbox" value="true"/> メイン画像</label></div>
       <div className="actions"><button className="button" disabled={busy}>登録</button></div>

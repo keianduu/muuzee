@@ -121,10 +121,12 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 
 ### Venue data review composition
 
-- Venueの`データ`は`Wikidata照合 → 外部データから情報を取得 → 項目の出典 → 位置情報候補`の順にする。通常画面ではraw source record、provenance history、crawl / coordinate / image search trace、threshold一覧を表示しない。
-- WikidataのEntity採用はQID identityだけを確定し、Master fieldを同時に変更しない。Field候補は第二Drawerで`現在値 / 取得値 / 現在のSource / 候補Source`を比較し、明示的に選択した項目だけ反映する。
+- Venueの`データ`は`Wikidata → 公式サイト → 項目の出典 → 位置情報候補`の順にする。通常画面ではraw source record、provenance history、crawl / coordinate / image search trace、threshold一覧を表示しない。
+- Wikidata / 公式サイトの取得Actionは先に第二Drawerを開き、Loading / Success / Empty / Errorを同じDrawerで完結させる。Desktopでは第一Drawerを右端に維持して第二Drawerを左側へ積み、1100px以下では最上位Drawerを全幅表示する。
+- WikidataのEntity採用はQID identityだけを確定し、Master fieldを同時に変更しない。OperatorへQID入力を要求せず、候補identityと全対象Fieldの`取得済み / 取得なし / 変更なし / 保護`を一続きで示す。Field候補は第二Drawerで`現在値 / 取得値 / 現在のSource / 候補Source`を比較し、明示的に選択した項目だけ反映する。
 - Field reviewは現在値が空なら候補をdefault ON、同値はdisabled、Manualやより高優先度のSourceはOFFかつ保護理由を表示する。候補値をclientから信用せず、反映時にserverで取得・正規化・Source priorityを再検証する。
-- `項目の出典`はBasic form順にcurrent provenanceを一項目一行で示す。`Manual / Wikidata / Wikipedia / 公式サイト / Trusted API / CSV`をHuman labelにし、provenanceがなければ推測せず`未記録`とする。`source_url`があるSourceは実際の根拠ページへLinkする。
+- `項目の出典`はBasic form順にcurrent provenanceを一項目一行で示す。値がありprovenanceがなければ推測せず`不明`、値自体が空なら`—`とする。Manual保存は変更Fieldだけを`手動`へ更新し、未変更Fieldのcurrent sourceを維持する。Geolonia / 日本郵便Previewを未変更で保存したFieldは、そのprovider hintを維持する。`source_url`があるSourceは実際の根拠ページへLinkする。
+- Venue workflowの非同期Feedbackはshared compact feedbackを使い、巨大なlegacy noticeを追加しない。
 - 座標候補はSource、緯度・経度、必要な一致度・QID・精度、Google Maps linkと`採用 / 非採用`をcompactに示す。Wikidata Entity判断、座標判断、画像判断は独立させる。同じReview UIをData内と第二Drawerで共有する。
 - Image Candidate cardは取得経路、意味のある探索深度・一致度、rights、license、source linkを候補単位で示す。確定QID由来は偽のscoreとして見せず`確定QID`と表現し、full threshold traceを表示しない。
 

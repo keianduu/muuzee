@@ -57,7 +57,7 @@ function initialValues(venue: VenueRow): FormValues {
     opening_note: venue.opening_note || "",
   };
 }
-export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }: { venue: VenueRow; busy: boolean; onSave: (values: Record<string, string>) => Promise<void>; onOpenCoordinateReview?: () => void }) {
+export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }: { venue: VenueRow; busy: boolean; onSave: (values: Record<string, unknown>) => Promise<void>; onOpenCoordinateReview?: () => void }) {
   const [values, setValues] = useState(() => initialValues(venue));
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoMessage, setGeoMessage] = useState("");
@@ -65,6 +65,7 @@ export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }
   const [postalMessage, setPostalMessage] = useState("");
   const [coordinateSourceHint, setCoordinateSourceHint] = useState("");
   const [coordinatePrecisionHint, setCoordinatePrecisionHint] = useState("");
+  const [fieldSourceHints, setFieldSourceHints] = useState<Record<string, string>>({});
   const lastPreviewAddress = useRef("");
   const lastPostalPrefix = useRef("");
   const mode = subdivisionModeForCountry(values.country_code);
@@ -74,6 +75,7 @@ export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }
 
   function update(key: keyof FormValues, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
+    setFieldSourceHints((current) => { const next = { ...current }; delete next[key]; return next; });
   }
 
   function updateCoordinate(key: "latitude" | "longitude", value: string) {
@@ -100,6 +102,7 @@ export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }
         };
       });
       lastPostalPrefix.current = addressPrefix;
+      setFieldSourceHints((current) => ({ ...current, postal_code: "japan_post", prefecture: "japan_post", city: "japan_post", ...(mayReplaceAddress && addressPrefix ? { address: "japan_post" } : {}) }));
       setPostalMessage(!mayReplaceAddress
         ? `${addressPrefix} を取得しました。入力済みの住所は上書きしていません。`
         : `${addressPrefix} を住所の先頭へ入力しました。番地・建物名を追記してください。`);
@@ -120,6 +123,7 @@ export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }
       setValues((current) => ({ ...current, prefecture: body.prefecture || current.prefecture, city: body.city || current.city, latitude: String(body.latitude), longitude: String(body.longitude) }));
       setCoordinateSourceHint("geolonia");
       setCoordinatePrecisionHint(body.precision || "town");
+      setFieldSourceHints((current) => ({ ...current, prefecture: "geolonia", city: "geolonia", latitude: "geolonia", longitude: "geolonia" }));
       setGeoMessage(`${body.prefecture || ""}${body.city || ""} / ${body.matchedLocality || ""} を取得しました。保存前に確認できます。`);
     } catch (error) {
       setGeoMessage(error instanceof Error ? error.message : "住所から位置情報を取得できませんでした。");
@@ -128,7 +132,7 @@ export function VenueBasicEditor({ venue, busy, onSave, onOpenCoordinateReview }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSave({ ...values, coordinate_source_hint: coordinateSourceHint, coordinate_precision_hint: coordinatePrecisionHint });
+    await onSave({ ...values, coordinate_source_hint: coordinateSourceHint, coordinate_precision_hint: coordinatePrecisionHint, field_source_hints: fieldSourceHints });
   }
 
   return <form className="card venue-basic-form" onSubmit={submit}>

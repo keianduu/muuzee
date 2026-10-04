@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import type { MediaAssetRow, SourceImageCandidateRow, VenueCoordinateCandidateRow, VenueMatchCandidateRow, VenueRow } from "@/lib/admin/types";
+import type { MediaAssetRow, SourceImageCandidateRow, VenueCoordinateCandidateRow, VenueRow } from "@/lib/admin/types";
 import { VENUE_PROVENANCE_FIELDS, venueSourceLabel } from "@/lib/admin/venue-data-review";
 import type { DetailPanel } from "@/lib/admin/master-list-state";
 import { VenueBasicEditor } from "./venue-basic-editor";
@@ -11,15 +11,9 @@ import { VenueRelations } from "./venue-relations";
 import { VenueCoordinateReview } from "./venue-coordinate-review";
 import { MasterTags } from "./master-tags";
 import { VENUE_EDIT_TABS, type VenueEditTab, venueEditTab, venueEditTabQuery } from "@/lib/admin/venue-edit";
+import { AdminFeedback } from "./admin-feedback";
 
-type PanelOptions = { candidateId?: string | null; runId?: string | null };
-
-function wikidataCandidateAddress(candidate: VenueMatchCandidateRow) {
-  const raw = candidate.raw_payload as { normalized?: { address?: string | null }; claims?: Record<string, Array<{ mainsnak?: { datavalue?: { value?: unknown } } }>> } | undefined;
-  if (raw?.normalized?.address) return raw.normalized.address;
-  const value = raw?.claims?.P6375?.[0]?.mainsnak?.datavalue?.value;
-  return value && typeof value === "object" && "text" in value ? String((value as { text: unknown }).text) : "未取得";
-}
+type PanelOptions = { candidateId?: string | null; runId?: string | null; targetUrl?: string | null };
 
 export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows = [], onOpenImageCandidate, onOpenReviewPanel }: {
   venue: VenueRow;
@@ -35,6 +29,7 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
   const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [officialUrl, setOfficialUrl] = useState(venue.official_url || "");
   const editTab = venueEditTab(searchParams.get("venueEdit"));
   function selectEditTab(tab: VenueEditTab) {
     const query = venueEditTabQuery(searchParams.toString(), tab);
@@ -52,16 +47,8 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     } catch (error) { setMessage(error instanceof Error ? error.message : "Request failed"); return null; }
     finally { setBusy(false); }
   }
-  async function save(values: Record<string, string>) {
+  async function save(values: Record<string, unknown>) {
     await request(`/api/admin/venues/${venue.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-  }
-  async function searchWikidataCandidates() { await request(`/api/admin/venues/${venue.id}/enrich`, { method: "POST" }); }
-  async function reviewIdentity(candidate: VenueMatchCandidateRow, action: "confirm" | "reject") {
-    await request(`/api/admin/venues/${venue.id}/matches/${candidate.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
-  }
-  async function crawlOfficialWebsite() {
-    const body = await request(`/api/admin/venues/${venue.id}/official-preview`, { method: "POST" });
-    if (body?.runId) onOpenReviewPanel?.("official-fields", { runId: String(body.runId) });
   }
   async function reviewCoordinate(candidate: VenueCoordinateCandidateRow, action: "accept" | "reject") {
     await request(`/api/admin/venues/${venue.id}/coordinate-candidates/${candidate.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }, { preserveListOrder: true });
@@ -97,20 +84,14 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     </div>}
 
     {(view === "all" || view === "data") && <div className="venue-data-review">
-      <section><div className="section-heading-row"><div><h2>Wikidata照合</h2>{matchedWikidataId && <p className="muted">確定QID: <a href={`https://www.wikidata.org/wiki/${matchedWikidataId}`} target="_blank" rel="noreferrer">{matchedWikidataId} ↗</a></p>}</div><button type="button" className="button secondary" disabled={busy} onClick={searchWikidataCandidates}>Wikidata候補を取得</button></div>
-        {candidates.length ? <div className="wikidata-identity-list">{candidates.map((candidate) => {
-          const address = wikidataCandidateAddress(candidate);
-          const mapUrl = candidate.latitude != null && candidate.longitude != null ? `https://www.google.com/maps?q=${candidate.latitude},${candidate.longitude}` : null;
-          return <article className="card wikidata-identity-card" key={candidate.id}><div className="section-heading-row"><div><strong>{candidate.label_ja || candidate.label_en || candidate.external_id}</strong><p className="muted">{candidate.external_id} · {candidate.status === "matched" ? "確定済み" : candidate.status === "rejected" ? "非採用" : "候補"}</p></div><span className={`status ${candidate.status}`}>{candidate.status}</span></div><p>{candidate.description || "説明なし"}</p><dl><div><dt>英語名</dt><dd>{candidate.label_en || "未取得"}</dd></div><div><dt>住所</dt><dd>{address}</dd></div><div><dt>公式URL</dt><dd>{candidate.official_url ? <a href={candidate.official_url} target="_blank" rel="noreferrer">データ元を開く ↗</a> : "未取得"}</dd></div><div><dt>一致度</dt><dd>{candidate.confidence}</dd></div><div><dt>理由</dt><dd>{candidate.match_reasons.join(" / ") || "記録なし"}</dd></div><div><dt>座標</dt><dd>{candidate.latitude != null && candidate.longitude != null ? `${candidate.latitude}, ${candidate.longitude}` : "未取得"}</dd></div></dl>{mapUrl && <a className="button secondary" href={mapUrl} target="_blank" rel="noreferrer">Google Mapsで確認 ↗</a>}{candidate.status === "candidate" && <div className="actions"><button type="button" className="button" disabled={busy} onClick={() => reviewIdentity(candidate, "confirm")}>採用</button><button type="button" className="button secondary" disabled={busy} onClick={() => reviewIdentity(candidate, "reject")}>非採用</button></div>}</article>;
-        })}</div> : <p className="empty-state">Wikidata候補は未取得です。</p>}
-      </section>
+      <section><div className="section-heading-row"><div><h2>Wikidata</h2><p className="muted">{matchedWikidataId ? <>照合済み · <a href={`https://www.wikidata.org/wiki/${matchedWikidataId}`} target="_blank" rel="noreferrer">データ元を開く ↗</a></> : candidates.some((candidate) => candidate.status === "candidate") ? "確認待ちの候補があります。" : venue.wikidata_match_status === "unmatched" ? "一致する候補は未検出です。" : "まだ検索していません。"}</p></div><button type="button" className="button secondary" onClick={() => onOpenReviewPanel?.("wikidata-fields")}>{matchedWikidataId ? "Wikidataから不足情報を再取得" : candidates.some((candidate) => candidate.status === "candidate") ? "候補を確認" : "Wikidata候補を取得"}</button></div></section>
 
-      <section><h2>外部データから情報を取得</h2><div className="venue-data-actions"><button type="button" className="button secondary" disabled={!matchedWikidataId || busy} onClick={() => onOpenReviewPanel?.("wikidata-fields")}>Wikidataから情報補完</button><button type="button" className="button secondary" disabled={!venue.official_url || busy} onClick={crawlOfficialWebsite}>{busy ? "取得中…" : "公式サイトから情報取得"}</button></div>{!matchedWikidataId && <p className="muted">Wikidataから補完するには、先にQIDを確定してください。</p>}{!venue.official_url && <p className="muted">公式サイトから取得するには、基本情報へ公式URLを登録してください。</p>}</section>
+      <section><h2>公式サイト</h2><p className="muted">保存前のURLでも取得結果を確認できます。取得だけではMasterの公式URLを変更しません。</p><div className="field"><label htmlFor={`venue-review-url-${venue.id}`}>取得先URL</label><input id={`venue-review-url-${venue.id}`} type="url" placeholder="https://example.com/" value={officialUrl} onChange={(event) => setOfficialUrl(event.target.value)}/></div><div className="venue-data-actions"><button type="button" className="button secondary" disabled={!officialUrl.trim()} onClick={() => onOpenReviewPanel?.("official-fields", { targetUrl: officialUrl.trim() })}>公式サイトから情報取得</button></div></section>
 
-      <section><h2>項目の出典</h2><div className="venue-provenance-list">{VENUE_PROVENANCE_FIELDS.map(([key, label]) => { const source = currentSources.get(key); return <div className="venue-provenance-row" key={key}><span><strong>{label}</strong><code>{key}</code></span>{source?.source_url ? <a href={source.source_url} target="_blank" rel="noreferrer">{venueSourceLabel(source.source)} ↗</a> : <b>{venueSourceLabel(source?.source)}</b>}</div>; })}</div></section>
+      <section><h2>項目の出典</h2><div className="venue-provenance-list">{VENUE_PROVENANCE_FIELDS.map(([key, label]) => { const source = currentSources.get(key); const value = (venue as unknown as Record<string, unknown>)[key]; const hasValue = value != null && String(value).trim() !== ""; return <div className="venue-provenance-row" key={key}><span><strong>{label}</strong><code>{key}</code></span>{!hasValue ? <b>—</b> : source?.source_url ? <a href={source.source_url} target="_blank" rel="noreferrer">{venueSourceLabel(source.source)} ↗</a> : <b>{venueSourceLabel(source?.source)}</b>}</div>; })}</div></section>
 
       <section><div className="section-heading-row"><h2>位置情報候補</h2>{coordinateCandidates.length > 0 && onOpenReviewPanel && <button type="button" className="button secondary" onClick={() => onOpenReviewPanel("coordinates")}>第二Drawerで確認</button>}</div><VenueCoordinateReview venueId={venue.id} candidates={coordinateCandidates} busy={busy} onReview={reviewCoordinate}/></section>
     </div>}
-    {message && <div className={message.toLowerCase().includes("fail") || message.includes("必須") ? "error" : "notice"}>{message}</div>}
+    <AdminFeedback variant={message.toLowerCase().includes("fail") || message.includes("必須") ? "error" : "success"} message={message}/>
   </>;
 }

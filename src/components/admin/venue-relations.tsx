@@ -5,6 +5,7 @@ import type { OccurrenceRow, VenueRow } from "@/lib/admin/types";
 import { workDisplayTitleJa } from "@/lib/work-title";
 import { AdminDeleteButton } from "./admin-icon-button";
 import { AdminFieldLabel } from "./admin-field-label";
+import { AdminFeedback } from "./admin-feedback";
 
 type Relation = Record<string, unknown>;
 type Option = { id: string; name: string };
@@ -59,6 +60,6 @@ export function VenueRelations({ venue }: { venue: VenueRow }) {
       {!occurrences.length && <p className="empty-state">関連展覧会はありません。</p>}
       {exhibitionSearchOpen && <div className="relation-search-panel"><div className="field"><AdminFieldLabel htmlFor="exhibition-search" label="Exhibitionを検索" fieldKey="exhibition_search"/><input id="exhibition-search" placeholder="展覧会名を2文字以上入力" onChange={(event) => search("exhibitions", event.target.value)}/></div><div className="relation-options">{exhibitionOptions.map((option) => <button type="button" className="button secondary" disabled={busy || occurrences.some((row) => row.exhibition_id === option.id)} key={option.id} onClick={() => mutate("POST", { kind: "exhibition", targetId: option.id })}>＋ {option.name}</button>)}</div></div>}
     </div></section>
-    {message && <div className={message.includes("できません") || message.includes("失敗") ? "error" : "notice"}>{message}</div>}
+    <AdminFeedback variant={message.includes("できません") || message.includes("失敗") ? "error" : "success"} message={message}/>
   </>;
 }

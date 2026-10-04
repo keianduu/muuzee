@@ -3,6 +3,7 @@ import { validUuid } from "@/lib/admin/http";
 import { previewOfficialVenueFields } from "@/lib/admin/venue-field-review-service";
 import { executeOfficialVenueCrawl } from "@/lib/official-venue-crawler/repository";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { assertHttpUrl, nullableText } from "@/lib/admin/http";
 
 function assertLocalRequest(request: Request) {
   const hostname = new URL(request.url).hostname;
@@ -25,7 +26,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     assertLocalRequest(request);
     const { id } = await params;
     if (!validUuid(id)) throw new Error("Invalid venue ID");
-    const result = await executeOfficialVenueCrawl({ mode: "selected", ids: [id] });
+    const body = await request.json().catch(() => ({})) as { targetUrl?: unknown };
+    const targetUrl = nullableText(body.targetUrl);
+    assertHttpUrl(targetUrl, "Official URL");
+    const result = await executeOfficialVenueCrawl({ mode: "selected", ids: [id], officialUrls: targetUrl ? { [id]: targetUrl } : undefined });
     const preview = await previewOfficialVenueFields(createSupabaseAdminClient(), id, result.runId);
     return NextResponse.json({ ...preview, message: "公式サイト取得結果を確認してください。Master項目はまだ変更していません。" });
   } catch (error) {

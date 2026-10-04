@@ -19,7 +19,7 @@ export type DetailRecord = MasterRecord & Record<string, unknown> & {
 
 type DetailTab = "status" | "edit" | "data";
 
-export function MasterDetailContent({ entity, record, onOpenImageCandidate, onOpenReviewPanel }: { entity: MasterEntity; record: DetailRecord; onOpenImageCandidate?: (candidateId: string | null) => void; onOpenReviewPanel?: (panel: DetailPanel, options?: { candidateId?: string | null; runId?: string | null }) => void }) {
+export function MasterDetailContent({ entity, record, onOpenImageCandidate, onOpenReviewPanel }: { entity: MasterEntity; record: DetailRecord; onOpenImageCandidate?: (candidateId: string | null) => void; onOpenReviewPanel?: (panel: DetailPanel, options?: { candidateId?: string | null; runId?: string | null; targetUrl?: string | null }) => void }) {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<DetailTab>(() => entity === "venues" && searchParams.has("venueEdit") ? "edit" : "status");
   const config = MASTER_CONFIGS[entity];

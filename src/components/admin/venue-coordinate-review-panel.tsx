@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { VenueCoordinateCandidateRow } from "@/lib/admin/types";
 import { VenueCoordinateReview } from "./venue-coordinate-review";
+import { AdminFeedback } from "./admin-feedback";
 
 export function VenueCoordinateReviewPanel({ venueId, candidates }: { venueId: string; candidates: VenueCoordinateCandidateRow[] }) {
   const [busy, setBusy] = useState(false);
@@ -18,5 +19,5 @@ export function VenueCoordinateReviewPanel({ venueId, candidates }: { venueId: s
     } catch (error) { setMessage(error instanceof Error ? error.message : "Coordinate review failed"); }
     finally { setBusy(false); }
   }
-  return <><VenueCoordinateReview venueId={venueId} candidates={candidates} busy={busy} onReview={review}/>{message && <div className={message.includes("failed") ? "error" : "notice"}>{message}</div>}</>;
+  return <><VenueCoordinateReview venueId={venueId} candidates={candidates} busy={busy} onReview={review}/><AdminFeedback variant={message.includes("failed") ? "error" : "success"} message={message}/></>;
 }

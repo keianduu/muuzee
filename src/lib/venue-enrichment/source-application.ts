@@ -114,10 +114,12 @@ export async function rejectWikidataIdentity(db: SupabaseClient, venueId: string
   if (error) throw error;
 }
 
-async function confirmedCandidate(db: SupabaseClient, venueId: string) {
-  const { data, error } = await db.from("venue_external_match_candidates").select("*").eq("venue_id", venueId).eq("provider", "wikidata").eq("status", "matched").order("last_seen_at", { ascending: false }).limit(1).maybeSingle();
+async function reviewCandidate(db: SupabaseClient, venueId: string, candidateId?: string | null) {
+  let query = db.from("venue_external_match_candidates").select("*").eq("venue_id", venueId).eq("provider", "wikidata");
+  query = candidateId ? query.eq("id", candidateId) : query.eq("status", "matched");
+  const { data, error } = await query.order("last_seen_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Wikidata QIDを先に確定してください。");
+  if (!data) throw new Error(candidateId ? "Wikidata候補が見つかりません。" : "Wikidata候補を先に確定してください。");
   return data as StoredWikidataCandidate;
 }
 
@@ -130,8 +132,8 @@ async function freshWikidataVenue(candidate: StoredWikidataCandidate) {
   return normalized;
 }
 
-export async function previewWikidataVenueFields(db: SupabaseClient, venueId: string) {
-  const candidate = await confirmedCandidate(db, venueId);
+export async function previewWikidataVenueFields(db: SupabaseClient, venueId: string, candidateId?: string | null) {
+  const candidate = await reviewCandidate(db, venueId, candidateId);
   const normalized = await freshWikidataVenue(candidate);
   const [{ data: venue, error: venueError }, { data: sources, error: sourceError }] = await Promise.all([
     db.from("venues").select("*").eq("id", venueId).single(),

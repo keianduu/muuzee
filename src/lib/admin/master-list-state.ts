@@ -15,6 +15,7 @@ export function selectedQuery(current: string, selectedId: string | null) {
     params.delete("panel");
     params.delete("candidate");
     params.delete("run");
+    params.delete("targetUrl");
     params.delete("venueEdit");
   }
   return params.toString();
@@ -28,7 +29,7 @@ export function legacyDetailDestination(basePath: string, id: string, returnTo?:
 
 export type DetailPanel = "image" | "wikidata-fields" | "official-fields" | "coordinates";
 
-export function detailPanelQuery(current: string, panel: DetailPanel | null, options: { candidateId?: string | null; runId?: string | null } = {}) {
+export function detailPanelQuery(current: string, panel: DetailPanel | null, options: { candidateId?: string | null; runId?: string | null; targetUrl?: string | null } = {}) {
   const params = new URLSearchParams(current);
   if (panel) {
     params.set("panel", panel);
@@ -36,10 +37,13 @@ export function detailPanelQuery(current: string, panel: DetailPanel | null, opt
     else params.delete("candidate");
     if (options.runId) params.set("run", options.runId);
     else params.delete("run");
+    if (options.targetUrl) params.set("targetUrl", options.targetUrl);
+    else params.delete("targetUrl");
   } else {
     params.delete("panel");
     params.delete("candidate");
     params.delete("run");
+    params.delete("targetUrl");
   }
   return params.toString();
 }
@@ -50,6 +54,7 @@ export function pageQuery(current: string, page: number, pageSize = 50) {
   params.delete("panel");
   params.delete("candidate");
   params.delete("run");
+  params.delete("targetUrl");
   params.delete("venueEdit");
   params.set("page", String(page));
   params.set("pageSize", String(pageSize));
