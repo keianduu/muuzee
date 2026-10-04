@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { assertHttpUrl, nullableText, validUuid } from "@/lib/admin/http";
 import { assertCandidateImageUrl, downloadCandidateImage } from "@/lib/admin/candidate-image";
+import { signedMediaAsset } from "@/lib/admin/media-asset-response";
+import { shouldSetManualMediaPrimary } from "@/lib/admin/media-asset-state";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]); const MAX_BYTES = 20 * 1024 * 1024;
@@ -44,15 +46,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     assertHttpUrl(sourceUrl, "Source URL");
     uploadedPath = `venues/${id}/${randomUUID()}.${extension}`;
     const db = createSupabaseAdminClient();
+    const { count: registeredCount, error: countError } = await db.from("media_assets").select("id", { count: "exact", head: true }).eq("venue_id", id);
+    if (countError) throw countError;
     const { error: uploadError } = await db.storage.from("exhibition-images").upload(uploadedPath, uploadBody, { contentType, upsert: false });
     if (uploadError) throw uploadError;
-    const primary = form.get("is_primary") === "true";
-    if (primary) { const { error } = await db.from("media_assets").update({ is_primary: false }).eq("venue_id", id).eq("is_primary", true); if (error) throw error; }
-    const { error: insertError } = await db.from("media_assets").insert({ venue_id: id, exhibition_id: null, storage_path: uploadedPath, original_filename: originalFilename, source_type: sourceType, source_url: sourceUrl, credit: nullableText(form.get("credit")), usage_note: nullableText(form.get("usage_note")), rights_status: rightsStatus, rights_checked_at: new Date().toISOString(), valid_until: nullableText(form.get("valid_until")), is_primary: primary });
-    if (insertError) throw insertError;
+    const primary = shouldSetManualMediaPrimary(registeredCount);
+    const { data: inserted, error: insertError } = await db.from("media_assets").insert({ venue_id: id, exhibition_id: null, storage_path: uploadedPath, original_filename: originalFilename, source_type: sourceType, source_url: sourceUrl, credit: nullableText(form.get("credit")), usage_note: nullableText(form.get("usage_note")), rights_status: rightsStatus, rights_checked_at: new Date().toISOString(), valid_until: nullableText(form.get("valid_until")), is_primary: primary }).select("id").single();
+    if (insertError || !inserted) throw insertError || new Error("Venue画像を保存できませんでした。");
     if (rightsStatus === "approved") { const { error: venueError } = await db.from("venues").update({ image_search_status: "approved_image_exists" }).eq("id", id); if (venueError) throw venueError; }
+    const asset = await signedMediaAsset(db, inserted.id);
     revalidatePath("/admin/venues"); revalidatePath(`/admin/venues/${id}`);
-    return NextResponse.json({ message: "Venue画像を保存しました。" });
+    return NextResponse.json({ message: "Venue画像を保存しました。", asset });
   }
   catch (error) { if (uploadedPath) { try { await createSupabaseAdminClient().storage.from("exhibition-images").remove([uploadedPath]); } catch {} } return NextResponse.json({ error: error instanceof Error ? error.message : "Upload failed" }, { status: 400 }); }
 }

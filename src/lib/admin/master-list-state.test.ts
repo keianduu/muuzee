@@ -13,6 +13,11 @@ describe("master list URL and append state", () => {
     ]);
   });
 
+  it.each(["manual upload", "manual delete", "candidate selection"])("preserves A/B/C order after %s updates B", () => {
+    const current = [{ id: "a", revision: 0 }, { id: "b", revision: 0 }, { id: "c", revision: 0 }];
+    expect(replaceRowInPlace(current, { id: "b", revision: 1 }).map((row) => row.id)).toEqual(["a", "b", "c"]);
+  });
+
   it("adds and removes selected without losing filters", () => {
     const opened = selectedQuery("q=tokyo&status=draft&tier=A-C", "venue-1");
     expect(opened).toContain("q=tokyo");

@@ -49,10 +49,21 @@ describe("VenueImageEditor", () => {
     const markup = renderToStaticMarkup(<VenueImageEditor venue={venue} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onOpenImageCandidate={vi.fn()} onSetPrimary={vi.fn()}/>);
     expect(markup).toContain("選択できる候補 2件");
     expect(markup).toContain("画像候補を選択");
+    expect(markup).toContain("admin-panel-button");
+    expect(markup).toContain("<svg");
     expect(markup).not.toContain("候補を確認");
     expect(markup).not.toContain("利用条件を開く");
     expect(markup).not.toContain("候補として残す");
     expect(markup).not.toContain("候補から除外");
+  });
+
+  it("shows only registered images once an asset exists", () => {
+    const withAsset = { ...venue, media_assets: [{ id: "asset-1", is_primary: true, signedUrl: "https://example.com/asset.jpg", original_filename: "asset.jpg", rights_status: "approved" }] } as unknown as VenueRow;
+    const markup = renderToStaticMarkup(<VenueImageEditor venue={withAsset} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onOpenImageCandidate={vi.fn()} onSetPrimary={vi.fn()}/>);
+    expect(markup).toContain("asset.jpg");
+    expect(markup).not.toContain('data-venue-image-section="candidates"');
+    expect(markup).not.toContain('data-venue-image-section="registration"');
+    expect(markup).not.toContain("メイン画像</label>");
   });
 
   it("keeps the coordinate secondary trigger only in Basic Edit", () => {
@@ -62,5 +73,13 @@ describe("VenueImageEditor", () => {
     expect(editor).toContain('data-secondary-return-anchor={tab.id === "image" ? "image" : undefined}');
     expect(basic).toContain("位置情報候補を確認");
     expect(basic).toContain('data-secondary-trigger="coordinates"');
+  });
+
+  it("keeps manual upload primary ownership server-side across all editors", () => {
+    for (const file of ["./venue-image-editor.tsx", "./master-editor.tsx", "./exhibition-editor.tsx"]) {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      expect(source).not.toContain('name="is_primary"');
+      expect(source).toContain("useImmediateMediaAssets");
+    }
   });
 });

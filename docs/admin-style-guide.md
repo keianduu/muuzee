@@ -78,7 +78,8 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Secondary is a strong neutral surface with a line border.
 - Tertiary is transparent until hover.
 - Success uses `--success` only for completed or safely confirmed outcomes.
-- Warning uses a muted `--warning` treatment for Human Gate and candidate-selection actions, including coordinate, image, and external-identity candidate decisions.
+- Warning uses a muted `--warning` treatment for warning, caution, and status feedback. A normal action that opens a secondary Drawer is not a warning.
+- Secondary Drawer openers use the black Primary treatment with the shared 16px panel-open icon. The icon is reserved for actions that open another panel and is not added to Save, Register, Delete, source links, or other ordinary actions.
 - Danger uses `--danger` and is reserved for destructive, critical, or irreversible actions.
 - Disabled is an explicit neutral surface/border/text state, never opacity alone.
 
@@ -120,7 +121,8 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Venueの`編集`は`基本情報 / 画像登録 / 関連情報`の三つのsub-tabに分ける。基本情報は1-column formを基準にし、field-levelの`未設定`表示、`name_native`、`aliases`、`is_active`をこのsurfaceへ置かない。
 - Venue Typeは日本語Labelのradio group、Country / 都道府県 / Regionはcurated geo masterを参照する。初期catalogは`JP / FR / US / GB / ES / NL`とし、未知値は既存値を失わないfallback optionとして表示する。日本は郵便番号、住所、都道府県、市区町村を使い、海外は住所、国別Subdivision、Cityを使う。表示から外れる既存値は保存時にも保持する。
 - 所蔵作品、関連展覧会、タグは`関連情報`へまとめ、所蔵作品 → 関連展覧会 → タグの順にquietなrelation listとして置く。追加Search、公開/非表示、削除は同じvisual hierarchyで扱い、Technical statusは必要な補助情報に留める。
-- 画像登録は`登録画像 → 画像候補 → 画像登録`の順に並べる。登録画像がない場合は正方形の`No Image` placeholderを使い、新規Previewはfileまたは有効なURLが選択されるまで表示しない。URL取得失敗時は空の固定frameを残さずErrorを示し、入力やmetadata変更だけでは永続化しない。
+- 画像登録は`登録画像 → 画像候補 → 画像登録`の順に並べる。登録Media Assetが1件以上なら登録画像だけを表示し、画像候補と登録Formを隠す。0件なら正方形の`No Image` placeholder、候補、登録Formを表示する。最後のAsset削除時もDrawerを閉じず即時に0件状態へ戻す。新規Previewはfileまたは有効なURLが選択されるまで表示せず、URL取得失敗時は空の固定frameを残さずErrorを示す。
+- 0件状態からの手動登録はserverが自動的にPrimaryへ設定し、HumanへPrimary checkboxを出さない。Upload / Delete / Candidate選択は返却Assetを局所stateへ即時反映し、一覧は対象rowだけを同じ位置で置換する。
 - 画像候補はVenue / Artist / Works / Exhibition共通で、usable候補が0件ならEmpty、1件かつPrimaryなしなら自動選択、2件以上ならHumanが単一選択する。複数候補からP18だけを自動優先しない。選択Actionは`この画像を設定`へ一本化し、選択候補をPrimary、旧Primaryを解除、他のactive候補を非採用/inactiveにする。Rights statusはこの操作で変更しない。現時点で実候補取り込みがあるのはVenue / Artist / Exhibitionで、Worksは共通永続化境界に対応するが候補取り込み元は未実装である。
 
 ### Venue data review composition

@@ -10,6 +10,8 @@ import { AdminDeleteButton } from "./admin-icon-button";
 import { PublicationToggle } from "./publication-toggle";
 import { MasterImageCandidateCard } from "./master-image-candidate";
 import { isPrimaryCandidateUsable } from "@/lib/admin/primary-image-policy";
+import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
+import { EMPTY_MEDIA_ASSETS, useImmediateMediaAssets } from "./use-immediate-media-assets";
 
 export type ExhibitionEditorProps = {
   exhibition: ExhibitionRow;
@@ -30,6 +32,7 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const assets = useImmediateMediaAssets(exhibition.media_assets ?? EMPTY_MEDIA_ASSETS, "exhibitions", exhibition.id);
   async function request(url: string, init: RequestInit) {
     setBusy(true); setMessage("");
     try {
@@ -43,10 +46,10 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
     finally { setBusy(false); }
   }
   async function save(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); await request(`/api/admin/exhibitions/${exhibition.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) }); }
-  async function upload(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); await request(`/api/admin/exhibitions/${exhibition.id}/media`, { method: "POST", body: new FormData(event.currentTarget) }); }
+  async function upload(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = event.currentTarget; const body = await request(`/api/admin/exhibitions/${exhibition.id}/media`, { method: "POST", body: new FormData(form) }); if (body?.asset) { dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow }); form.reset(); } }
   async function publication(next: boolean) { await request(`/api/admin/exhibitions/${exhibition.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: next ? "publish" : "unpublish" }) }); }
-  async function remove(asset: MediaAssetRow) { if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return; await request(`/api/admin/exhibitions/${exhibition.id}/media/${asset.id}`, { method: "DELETE" }); }
-  async function setPrimaryCandidate(candidateId: string) { await request(`/api/admin/masters/exhibitions/${exhibition.id}/image-candidates/${candidateId}/set-primary`, { method: "POST" }); }
+  async function remove(asset: MediaAssetRow) { if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return; const body = await request(`/api/admin/exhibitions/${exhibition.id}/media/${asset.id}`, { method: "DELETE" }); if (body?.removedAssetId) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, removedAssetId: String(body.removedAssetId) }); }
+  async function setPrimaryCandidate(candidateId: string) { const body = await request(`/api/admin/masters/exhibitions/${exhibition.id}/image-candidates/${candidateId}/set-primary`, { method: "POST" }); if (body?.asset) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow }); }
   const published = exhibition.publication_status === "published";
   const missing = requirements.filter((item) => !item.met);
   const requirementMessageId = `publication-requirements-${exhibition.id}`;
@@ -75,7 +78,7 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
       </div><div className="actions"><button className="button" disabled={busy}>保存</button></div>
     </form>
     <section className="card"><h2>画像を探す</h2><p className="muted">外部検索は自動実行しません。下記プロンプトをコピーし、人が候補と利用条件を確認してください。</p><textarea readOnly value={prompt} style={{ minHeight: 300 }}/><div className="actions"><button className="button secondary" type="button" onClick={() => navigator.clipboard.writeText(prompt).then(() => setMessage("プロンプトをコピーしました。"))}>プロンプトをコピー</button></div></section>
-    <form className="card" onSubmit={upload}><h2>画像・利用条件を登録</h2><div className="form-grid">
+    {!assets.length && <form className="card" onSubmit={upload}><h2>画像・利用条件を登録</h2><div className="form-grid">
       <div className="field full"><AdminFieldLabel htmlFor="exhibition-image" label="画像（JPEG / PNG / WebP / GIF、最大20 MB）" fieldKey="file"/><input id="exhibition-image" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required/></div>
       <div className="field"><AdminFieldLabel htmlFor="exhibition-source-type" label="データ元種別" fieldKey="source_type"/><select id="exhibition-source-type" name="source_type" required defaultValue="official_press"><option value="artpr">ARTPR</option><option value="official_press">Official press</option><option value="organizer_press">Organizer press</option><option value="open_collection">Open collection</option><option value="wikimedia">Wikimedia</option><option value="direct">Direct permission</option><option value="other">Other</option></select></div>
       <div className="field"><AdminFieldLabel htmlFor="exhibition-rights" label="利用可否" fieldKey="rights_status"/><select id="exhibition-rights" name="rights_status" required defaultValue="needs_review"><option value="rejected">明確に再配布NG</option><option value="needs_review">表記がなく判断不能</option><option value="approved">配布OKの明示あり</option></select></div>
@@ -83,10 +86,9 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, prompt, requir
       <div className="field"><AdminFieldLabel htmlFor="exhibition-credit" label="クレジット（任意）" fieldKey="credit"/><input id="exhibition-credit" name="credit"/></div>
       <div className="field"><AdminFieldLabel htmlFor="exhibition-valid-until" label="利用期限" fieldKey="valid_until"/><input id="exhibition-valid-until" name="valid_until" type="date"/></div>
       <div className="field full"><AdminFieldLabel htmlFor="exhibition-usage-note" label="利用条件・判断根拠（任意）" fieldKey="usage_note"/><textarea id="exhibition-usage-note" name="usage_note"/></div>
-      <label><input name="is_primary" type="checkbox" value="true" style={{ width: "auto" }}/> メイン画像に設定</label>
-    </div><div className="actions"><button className="button" disabled={busy}>画像を登録</button></div></form>
-    <section><h2>登録画像</h2><div className="media-grid">{(exhibition.media_assets || []).map((asset) => <article className="card media-card" key={asset.id}>{asset.signedUrl ? <Image src={asset.signedUrl} alt="" width={640} height={400} unoptimized/> : <div className="thumb"/>}<p><strong>{asset.original_filename}</strong><br/><span className={`status ${asset.rights_status}`}>{asset.rights_status}</span>{asset.is_primary && <> <span className="status">メイン画像</span></>}</p><p className="muted">{asset.credit || "クレジットなし"}<br/>{asset.source_url || "データ元URLなし"}</p><AdminDeleteButton disabled={busy} onClick={() => remove(asset)}/></article>)}</div>{!exhibition.media_assets?.length && <p className="muted">画像は未登録です。</p>}</section>
-    <section><h2>画像候補</h2><p className="muted">利用可否が不明または承認済みの候補です。選択してもRights状態は変更しません。</p><div className="media-grid">{imageCandidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={exhibition.title} busy={busy} onSetPrimary={() => setPrimaryCandidate(candidate.id)}/>)}</div>{!imageCandidates.length && <p className="muted">選択できる画像候補はありません。</p>}</section>
+    </div><div className="actions"><button className="button" disabled={busy}>画像を登録</button></div></form>}
+    <section><h2>登録画像</h2><div className="media-grid">{assets.map((asset) => <article className="card media-card" key={asset.id}>{asset.signedUrl ? <Image src={asset.signedUrl} alt="" width={640} height={400} unoptimized/> : <div className="thumb"/>}<p><strong>{asset.original_filename}</strong><br/><span className={`status ${asset.rights_status}`}>{asset.rights_status}</span>{asset.is_primary && <> <span className="status">メイン画像</span></>}</p><p className="muted">{asset.credit || "クレジットなし"}<br/>{asset.source_url || "データ元URLなし"}</p><AdminDeleteButton disabled={busy} onClick={() => remove(asset)}/></article>)}</div>{!assets.length && <p className="muted">No Image</p>}</section>
+    {!assets.length && <section><h2>画像候補</h2><p className="muted">利用可否が不明または承認済みの候補です。選択してもRights状態は変更しません。</p><div className="media-grid">{imageCandidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={exhibition.title} busy={busy} onSetPrimary={() => setPrimaryCandidate(candidate.id)}/>)}</div>{!imageCandidates.length && <p className="muted">選択できる画像候補はありません。</p>}</section>}
     <section><h2>データ元</h2>{(exhibition.source_records || []).map((source) => <details className="card" key={source.id}><summary>{sourceName(source.data_sources)} / {source.external_id}</summary><p>{source.source_url ? <a className="button secondary" href={source.source_url} target="_blank" rel="noreferrer">データ元を開く</a> : "URL未設定"} · fetched {source.fetched_at}</p><pre>{JSON.stringify(source.raw_payload, null, 2)}</pre></details>)}</section>
     {message && <div className={message.includes("失敗") || message.includes("不足") || message.includes("必要") ? "error" : "notice"}>{message}</div>}
   </>;

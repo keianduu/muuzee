@@ -139,6 +139,8 @@ textarea { min-height: 108px; resize: vertical; }
 .admin-shell .button.warning:hover:not(:disabled) { background: color-mix(in srgb, var(--warning) 30%, var(--surface-strong)); border-color: color-mix(in srgb, var(--warning) 82%, var(--ink-950)); color: var(--ink-950); }
 .admin-shell .button.danger { background: var(--danger); border-color: var(--danger); }
 .admin-shell .button:disabled { background: var(--admin-disabled-bg); border-color: var(--admin-disabled-border); color: var(--admin-disabled-text); }
+.admin-panel-button { gap: 8px; }
+.admin-panel-button svg { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .admin-icon-button { width: 36px; height: 36px; flex: 0 0 auto; display: inline-grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: var(--admin-radius-control); background: var(--surface-strong); color: var(--ink-600); }
 .admin-icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .admin-icon-button--danger:hover:not(:disabled), .admin-icon-button--danger:focus-visible { border-color: var(--danger); background: #f1e5e3; color: var(--danger); }

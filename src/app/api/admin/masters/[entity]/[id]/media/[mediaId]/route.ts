@@ -14,6 +14,6 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ entity:
     const { error: deleteError } = await db.from("media_assets").delete().eq("id", mediaId).eq(config.ownerKey, id); if (deleteError) throw deleteError;
     const { error: storageError } = await db.storage.from("exhibition-images").remove([data.storage_path]); if (storageError) throw storageError;
     revalidatePath(`/admin/${entity}`); revalidatePath(`/admin/${entity}/${id}`);
-    return NextResponse.json({ message: "画像を削除しました。" });
+    return NextResponse.json({ message: "画像を削除しました。", removedAssetId: mediaId });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Delete failed" }, { status: 400 }); }
 }

@@ -12,20 +12,23 @@ vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }));
 
 const venueId = "11111111-1111-4111-8111-111111111111";
 
-function fluent(result: Record<string, unknown>) {
+function fluent(result: Record<string, unknown>, singleData: Record<string, unknown>) {
   const query: Record<string, unknown> = {};
-  for (const method of ["eq", "insert", "update"]) query[method] = vi.fn(() => query);
+  for (const method of ["eq", "insert", "update", "select"]) query[method] = vi.fn(() => query);
+  query.single = vi.fn(async () => ({ data: singleData, error: null }));
   query.then = (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve);
   return query;
 }
 
-function mockDb() {
-  const mediaQuery = fluent({ error: null });
+function mockDb(registeredCount = 0) {
+  const asset = { id: "22222222-2222-4222-8222-222222222222", venue_id: venueId, exhibition_id: null, artist_id: null, work_id: null, kind: "image", storage_path: "venues/test.png", original_filename: "venue.png", source_type: "other", source_url: null, credit: null, usage_note: null, reported_license: null, reported_license_url: null, reported_author: null, reported_usage_terms: null, rights_status: "needs_review", rights_checked_at: null, valid_until: null, is_primary: registeredCount === 0, created_at: "2026-10-04T00:00:00Z" };
+  const mediaQuery = fluent({ count: registeredCount, error: null }, asset);
   const upload = vi.fn(async () => ({ error: null }));
   const remove = vi.fn(async () => ({ error: null }));
+  const createSignedUrl = vi.fn(async () => ({ data: { signedUrl: "https://signed.example/venue.png" }, error: null }));
   const db = {
     from: vi.fn(() => mediaQuery),
-    storage: { from: vi.fn(() => ({ upload, remove })) },
+    storage: { from: vi.fn(() => ({ upload, remove, createSignedUrl })) },
   };
   vi.mocked(createSupabaseAdminClient).mockReturnValue(db as never);
   return { db, mediaQuery, upload, remove };
@@ -55,7 +58,8 @@ describe("Venue media registration route", () => {
     expect(response.status).toBe(200);
     expect(downloadCandidateImage).not.toHaveBeenCalled();
     expect(upload).toHaveBeenCalledWith(expect.stringMatching(/\.png$/), expect.any(File), expect.objectContaining({ contentType: "image/png" }));
-    expect(mediaQuery.insert).toHaveBeenCalledWith(expect.objectContaining({ original_filename: "venue.png", source_url: null }));
+    expect(mediaQuery.insert).toHaveBeenCalledWith(expect.objectContaining({ original_filename: "venue.png", source_url: null, is_primary: true }));
+    await expect(response.json()).resolves.toMatchObject({ asset: { is_primary: true, signedUrl: "https://signed.example/venue.png" } });
   });
 
   it("downloads an HTTPS image, stores bytes privately, and records the entered URL", async () => {
@@ -71,6 +75,19 @@ describe("Venue media registration route", () => {
     expect(downloadCandidateImage).toHaveBeenCalledWith(new URL("https://images.example.com/venue.png"), 30_000);
     expect(upload).toHaveBeenCalledWith(expect.stringMatching(/\.png$/), expect.any(Buffer), expect.objectContaining({ contentType: "image/png" }));
     expect(mediaQuery.insert).toHaveBeenCalledWith(expect.objectContaining({ original_filename: "venue.png", source_url: "https://images.example.com/venue.png" }));
+  });
+
+  it("does not trust the client primary field when a registered asset already exists", async () => {
+    const { mediaQuery } = mockDb(1);
+    const form = new FormData();
+    form.set("file", new File([new Uint8Array([1])], "venue.png", { type: "image/png" }));
+    form.set("source_type", "other");
+    form.set("rights_status", "needs_review");
+    form.set("is_primary", "true");
+
+    const response = await POST(request(form), context);
+    expect(response.status).toBe(200);
+    expect(mediaQuery.insert).toHaveBeenCalledWith(expect.objectContaining({ is_primary: false }));
   });
 
   it("fails before Storage upload when URL validation rejects a private target", async () => {

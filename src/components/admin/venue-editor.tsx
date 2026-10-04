@@ -12,6 +12,8 @@ import { VenueCoordinateReview } from "./venue-coordinate-review";
 import { MasterTags } from "./master-tags";
 import { VENUE_EDIT_TABS, type VenueEditTab, venueEditTab, venueEditTabQuery } from "@/lib/admin/venue-edit";
 import { AdminFeedback } from "./admin-feedback";
+import { AdminPanelButton } from "./admin-panel-button";
+import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
 
 type PanelOptions = { candidateId?: string | null; runId?: string | null; targetUrl?: string | null };
 
@@ -54,12 +56,17 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     await request(`/api/admin/venues/${venue.id}/coordinate-candidates/${candidate.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }, { preserveListOrder: true });
   }
   async function setPrimaryImage(candidate: SourceImageCandidateRow) {
-    await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" }, { preserveListOrder: true });
+    const body = await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" }, { preserveListOrder: true });
+    if (body?.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, asset: body.asset as MediaAssetRow });
   }
-  async function upload(form: FormData) { await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: form }); }
+  async function upload(form: FormData) {
+    const body = await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: form }, { preserveListOrder: true });
+    if (body?.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, asset: body.asset as MediaAssetRow });
+  }
   async function remove(asset: MediaAssetRow) {
     if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return;
-    await request(`/api/admin/venues/${venue.id}/media/${asset.id}`, { method: "DELETE" });
+    const body = await request(`/api/admin/venues/${venue.id}/media/${asset.id}`, { method: "DELETE" }, { preserveListOrder: true });
+    if (body?.removedAssetId) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, removedAssetId: String(body.removedAssetId) });
   }
 
   const candidates = [...(venue.venue_external_match_candidates || [])].filter((candidate) => candidate.provider === "wikidata").sort((a, b) => b.confidence - a.confidence);
@@ -81,9 +88,9 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     </div>}
 
     {(view === "all" || view === "data") && <div className="venue-data-review">
-      <section><div className="section-heading-row"><div><h2>Wikidata</h2><p className="muted">{matchedWikidataId ? <>照合済み · <a href={`https://www.wikidata.org/wiki/${matchedWikidataId}`} target="_blank" rel="noreferrer">データ元を開く ↗</a></> : candidates.some((candidate) => candidate.status === "candidate") ? "確認待ちの候補があります。" : venue.wikidata_match_status === "unmatched" ? "一致する候補は未検出です。" : "まだ検索していません。"}</p></div><button type="button" className={`button ${candidates.some((candidate) => candidate.status === "candidate") && !matchedWikidataId ? "warning" : "secondary"}`} onClick={() => onOpenReviewPanel?.("wikidata-fields")}>{matchedWikidataId ? "Wikidataから不足情報を再取得" : candidates.some((candidate) => candidate.status === "candidate") ? "候補を確認" : "Wikidata候補を取得"}</button></div></section>
+      <section><div className="section-heading-row"><div><h2>Wikidata</h2><p className="muted">{matchedWikidataId ? <>照合済み · <a href={`https://www.wikidata.org/wiki/${matchedWikidataId}`} target="_blank" rel="noreferrer">データ元を開く ↗</a></> : candidates.some((candidate) => candidate.status === "candidate") ? "確認待ちの候補があります。" : venue.wikidata_match_status === "unmatched" ? "一致する候補は未検出です。" : "まだ検索していません。"}</p></div><AdminPanelButton onClick={() => onOpenReviewPanel?.("wikidata-fields")}>{matchedWikidataId ? "Wikidataから不足情報を再取得" : candidates.some((candidate) => candidate.status === "candidate") ? "候補を確認" : "Wikidata候補を取得"}</AdminPanelButton></div></section>
 
-      <section><h2>公式サイト</h2><p className="muted">保存前のURLでも取得結果を確認できます。取得だけではMasterの公式URLを変更しません。</p><div className="field"><label htmlFor={`venue-review-url-${venue.id}`}>取得先URL</label><input id={`venue-review-url-${venue.id}`} type="url" placeholder="https://example.com/" value={officialUrl} onChange={(event) => setOfficialUrl(event.target.value)}/></div><div className="venue-data-actions"><button type="button" className="button secondary" disabled={!officialUrl.trim()} onClick={() => onOpenReviewPanel?.("official-fields", { targetUrl: officialUrl.trim() })}>公式サイトから情報取得</button></div></section>
+      <section><h2>公式サイト</h2><p className="muted">保存前のURLでも取得結果を確認できます。取得だけではMasterの公式URLを変更しません。</p><div className="field"><label htmlFor={`venue-review-url-${venue.id}`}>取得先URL</label><input id={`venue-review-url-${venue.id}`} type="url" placeholder="https://example.com/" value={officialUrl} onChange={(event) => setOfficialUrl(event.target.value)}/></div><div className="venue-data-actions"><AdminPanelButton disabled={!officialUrl.trim()} onClick={() => onOpenReviewPanel?.("official-fields", { targetUrl: officialUrl.trim() })}>公式サイトから情報取得</AdminPanelButton></div></section>
 
       <section><h2>項目の出典</h2><div className="venue-provenance-list">{VENUE_PROVENANCE_FIELDS.map(([key, label]) => { const source = currentSources.get(key); const value = (venue as unknown as Record<string, unknown>)[key]; const hasValue = value != null && String(value).trim() !== ""; return <div className="venue-provenance-row" key={key}><span><strong>{label}</strong><code>{key}</code></span>{!hasValue ? <b>—</b> : source?.source_url ? <a href={source.source_url} target="_blank" rel="noreferrer">{venueSourceLabel(source.source)} ↗</a> : <b>{venueSourceLabel(source?.source)}</b>}</div>; })}</div></section>
 

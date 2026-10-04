@@ -6,6 +6,7 @@ import type { SourceImageCandidateRow } from "@/lib/admin/types";
 import { candidateLicenseProfile, imageDiscoverySourceLabel } from "@/lib/admin/master-image";
 import { AdminFeedback } from "./admin-feedback";
 import { useState } from "react";
+import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
 
 function candidateMatchSummary(candidate: SourceImageCandidateRow) {
   const confirmedQid = candidate.candidate_match_confidence === 1 && /^Q\d+$/.test(candidate.candidate_entity_id || "");
@@ -42,7 +43,7 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, onSetP
     {(candidate.candidate_match_confidence != null || candidate.candidate_match_threshold != null) && <p className="muted"><strong>照合:</strong> {match.match}<br/><strong>探索深度:</strong> {match.depth}</p>}
     <LicenseSummary candidate={candidate}/>
     <p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}{candidate.source_url && <><br/><a className="candidate-source-link" href={candidate.source_url} target="_blank" rel="noreferrer">データ元 ↗</a></>}</p>
-    <div className="actions"><button type="button" className="button warning" disabled={disabled} onClick={onSetPrimary}>この画像を設定</button></div>
+    <div className="actions"><button type="button" className="button" disabled={disabled} onClick={onSetPrimary}>この画像を設定</button></div>
     {candidate.rights_status === "rejected" && <p className="muted">明確に利用不可と記録された候補は設定できません。</p>}
   </article>;
 }
@@ -61,6 +62,7 @@ export function MasterImageCandidatePicker({ venueId, candidates, subjectLabel, 
       const response = await fetch(`/api/admin/venues/${venueId}/image-candidates/${candidate.id}/set-primary`, { method: "POST" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "候補画像の設定に失敗しました。");
+      if (body.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venueId, asset: body.asset });
       window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity: "venues", id: venueId, preserveListOrder: true } }));
       onSelected();
     } catch (error) {

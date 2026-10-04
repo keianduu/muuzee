@@ -39,7 +39,6 @@ export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) 
     const reload = (event: Event) => {
       const id = (event as CustomEvent<{ id?: string }>).detail?.id;
       if (!id || id === selectedId) {
-        router.refresh();
         load();
       }
     };
