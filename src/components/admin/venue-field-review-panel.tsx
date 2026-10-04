@@ -37,10 +37,9 @@ export function VenueFieldReviewPanel({ venueId, source, runId, targetUrl }: { v
     const requestKey = `${endpoint}:${targetUrl || ""}:${retryCount}`;
     if (lastRequestKey.current === requestKey) return;
     lastRequestKey.current = requestKey;
-    const controller = new AbortController();
     setLoading(true); setMessage("");
     const shouldStartOfficial = source === "official" && !runId;
-    fetch(endpoint, shouldStartOfficial ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetUrl }), signal: controller.signal } : { cache: "no-store", signal: controller.signal }).then(async (response) => {
+    fetch(endpoint, shouldStartOfficial ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetUrl }) } : { cache: "no-store" }).then(async (response) => {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Preview failed");
       const nextRows = (body.rows || []) as VenueFieldReviewRow[];
@@ -48,9 +47,8 @@ export function VenueFieldReviewPanel({ venueId, source, runId, targetUrl }: { v
       setCrawlStatus(typeof body.crawlStatus === "string" ? body.crawlStatus : null);
       if (typeof body.runId === "string") setResolvedRunId(body.runId);
       setSelected(nextRows.filter((row) => row.defaultSelected).map((row) => row.key));
-    }).catch((error) => { if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Preview failed"); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
+    }).catch((error) => setMessage(error instanceof Error ? error.message : "Preview failed"))
+      .finally(() => setLoading(false));
   }, [endpoint, retryCount, runId, source, targetUrl]);
 
   async function apply() {
