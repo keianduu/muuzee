@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MasterDetailContent, type DetailRecord } from "./master-detail-content";
-import { MasterImageCandidatePanel } from "./master-image-candidate";
+import { MasterImageCandidatePicker } from "./master-image-candidate";
 import { VenueFieldReviewPanel } from "./venue-field-review-panel";
 import { VenueWikidataReviewPanel } from "./venue-wikidata-review-panel";
 import { AdminFeedback } from "./admin-feedback";
@@ -23,6 +23,7 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const openedSecondary = useRef(false);
   const secondaryWasOpen = useRef(false);
+  const secondaryReturnTarget = useRef<string | null>(null);
   const [record, setRecord] = useState<DetailRecord | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,12 +48,14 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
 
   const openImageCandidate = useCallback((candidateId: string | null) => {
     openedSecondary.current = true;
+    secondaryReturnTarget.current = "image";
     const query = detailPanelQuery(searchParams.toString(), "image", { candidateId });
     router.push(`${pathname}?${query}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
   const openReviewPanel = useCallback((panel: DetailPanel, options: { candidateId?: string | null; runId?: string | null; targetUrl?: string | null } = {}) => {
     openedSecondary.current = true;
+    secondaryReturnTarget.current = panel;
     const query = detailPanelQuery(searchParams.toString(), panel, options);
     router.push(`${pathname}?${query}`, { scroll: false });
   }, [pathname, router, searchParams]);
@@ -109,7 +112,13 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
       window.requestAnimationFrame(() => secondaryCloseButton.current?.focus());
     } else if (secondaryWasOpen.current) {
       secondaryWasOpen.current = false;
-      window.requestAnimationFrame(() => closeButton.current?.focus());
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        const target = secondaryReturnTarget.current
+          ? document.querySelector<HTMLElement>(`[data-secondary-return-anchor="${secondaryReturnTarget.current}"]`) || document.querySelector<HTMLElement>(`[data-secondary-trigger="${secondaryReturnTarget.current}"]`)
+          : null;
+        (target || closeButton.current)?.focus({ preventScroll: true });
+        secondaryReturnTarget.current = null;
+      }));
     }
   }, [secondaryRequested]);
 
@@ -118,7 +127,7 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
   const title = currentRecord ? entity === "works" ? workDisplayTitleJa(currentRecord) || config.label : String(currentRecord[config.titleKey] || config.label) : config.label;
   const sourceRecords = currentRecord ? (currentRecord.source_records || []) as Array<{ source_image_candidates?: SourceImageCandidateRow[] }> : [];
   const imageCandidates = sourceRecords.flatMap((source) => source.source_image_candidates || []);
-  const selectedCandidate = imageCandidates.find((candidate) => candidate.id === searchParams.get("candidate"));
+  const selectableImageCandidates = imageCandidates.filter((candidate) => candidate.is_active && candidate.review_status !== "rejected" && candidate.rights_status !== "rejected");
   const coordinateCandidates = currentRecord ? (currentRecord.venue_coordinate_candidates || []) as VenueCoordinateCandidateRow[] : [];
   const secondaryTitle = requestedPanel === "wikidata-fields" ? "Wikidataから取得した情報" : requestedPanel === "official-fields" ? "公式サイトから取得した情報" : requestedPanel === "coordinates" ? "位置情報候補を確認" : "画像候補を確認";
   const secondaryEyebrow = requestedPanel === "image" ? "Image Candidate" : "Data Review";
@@ -130,7 +139,7 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
     </aside>
     {secondaryRequested && <aside className="master-drawer master-drawer--secondary" role="dialog" aria-modal="true" aria-labelledby="venue-review-drawer-title">
       <header className="master-drawer-header"><div><p className="eyebrow">{secondaryEyebrow}</p><h1 id="venue-review-drawer-title">{secondaryTitle}</h1><p className="muted">{title}</p></div><button ref={secondaryCloseButton} className="drawer-close" type="button" aria-label={`${secondaryTitle}を閉じる`} onClick={closeSecondary}>×</button></header>
-      <div className="master-drawer-body master-drawer-body--secondary">{requestedPanel === "image" ? searchParams.get("candidate") ? selectedCandidate ? <MasterImageCandidatePanel candidate={selectedCandidate} subjectLabel={title}/> : <AdminFeedback variant="error" message="画像候補が見つかりません。"/> : <><p className="muted">現在のVenueに紐づく画像候補を確認します。</p>{imageCandidates.length ? <div className="image-candidate-list">{imageCandidates.map((candidate) => <button type="button" className="image-candidate-index-row" key={candidate.id} onClick={() => openImageCandidate(candidate.id)}><span>{candidate.license_short_name || "ライセンス記載なし"}</span><strong>{candidate.review_status} / {candidate.rights_status}</strong></button>)}</div> : <p className="empty-state">画像候補はありません。</p>}</> : requestedPanel === "wikidata-fields" && currentRecord ? <VenueWikidataReviewPanel venueId={currentRecord.id} matched={currentRecord.wikidata_match_status === "matched"}/> : requestedPanel === "official-fields" && currentRecord ? <VenueFieldReviewPanel venueId={currentRecord.id} source="official" runId={searchParams.get("run")} targetUrl={searchParams.get("targetUrl")}/> : requestedPanel === "coordinates" && currentRecord ? <VenueCoordinateReviewPanel venueId={currentRecord.id} candidates={coordinateCandidates}/> : <p className="drawer-loading">読み込み中…</p>}</div>
+      <div className="master-drawer-body master-drawer-body--secondary">{requestedPanel === "image" && currentRecord ? selectableImageCandidates.length ? <MasterImageCandidatePicker venueId={currentRecord.id} candidates={selectableImageCandidates} subjectLabel={title} onSelected={closeSecondary}/> : <p className="empty-state">画像候補はありません。</p> : requestedPanel === "wikidata-fields" && currentRecord ? <VenueWikidataReviewPanel venueId={currentRecord.id} matched={currentRecord.wikidata_match_status === "matched"}/> : requestedPanel === "official-fields" && currentRecord ? <VenueFieldReviewPanel venueId={currentRecord.id} source="official" runId={searchParams.get("run")} targetUrl={searchParams.get("targetUrl")}/> : requestedPanel === "coordinates" && currentRecord ? <VenueCoordinateReviewPanel venueId={currentRecord.id} candidates={coordinateCandidates} onSelected={closeSecondary}/> : <p className="drawer-loading">読み込み中…</p>}</div>
     </aside>}
   </div>;
 }

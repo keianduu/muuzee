@@ -30,6 +30,7 @@
   --admin-space-inline: 4px;
   --admin-space-field: 8px;
   --admin-space-group: 12px;
+  --admin-space-card: 16px;
   --admin-space-section: 24px;
   --admin-space-page: 32px;
   --admin-control-height: 36px;
@@ -83,7 +84,7 @@ p { line-height: 1.55; }
 .notice, .error { border: 1px solid var(--line); border-left: 4px solid var(--terra); background: white; padding: 14px 16px; margin: 18px 0; }
 .error { border-left-color: #a33; color: #7c2929; }
 .admin-shell .notice, .admin-shell .error { border-left-width: 3px; border-left-color: var(--warning); border-radius: var(--admin-radius-control); }
-.admin-feedback { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: var(--admin-radius-control); background: var(--surface); color: var(--ink-800); font-size: 13px; line-height: 1.5; }
+.admin-feedback { display: flex; align-items: flex-start; gap: var(--admin-space-field); margin: var(--admin-space-group) 0; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: var(--admin-radius-control); background: var(--surface); color: var(--ink-800); font-size: 13px; line-height: 1.5; }
 .admin-feedback-icon { flex: 0 0 auto; width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surface-hover); color: var(--ink-800); font-size: var(--admin-font-meta); font-weight: 750; }
 .admin-feedback--success .admin-feedback-icon { background: color-mix(in srgb, var(--success) 16%, var(--surface)); color: var(--success); }
 .admin-feedback--warning .admin-feedback-icon { background: color-mix(in srgb, var(--warning) 16%, var(--surface)); color: var(--warning); }
@@ -133,7 +134,7 @@ textarea { min-height: 108px; resize: vertical; }
 .admin-icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .admin-icon-button--danger:hover:not(:disabled), .admin-icon-button--danger:focus-visible { border-color: var(--danger); background: #f1e5e3; color: var(--danger); }
 .admin-icon-button:disabled { cursor: not-allowed; opacity: .45; }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--admin-space-field); margin-top: var(--admin-space-group); }
 .table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--line); border-radius: 12px; }
 table { width: 100%; border-collapse: collapse; min-width: 760px; }
 th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; font-size: 13px; }
@@ -240,10 +241,11 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .venue-coordinate-group { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .venue-map-link { width: fit-content; }
 .venue-coordinate-review-link { width: fit-content; }
-.venue-data-review > section + section { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
-.venue-data-review h2 { margin: 0 0 12px; }
+.venue-data-review > section { display: grid; gap: var(--admin-space-group); }
+.venue-data-review > section + section { margin-top: var(--admin-space-page); padding-top: var(--admin-space-section); border-top: 1px solid var(--line); }
+.venue-data-review h2 { margin: 0; }
 .venue-data-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.wikidata-identity-list, .venue-coordinate-candidates { display: grid; gap: 10px; }
+.wikidata-identity-list, .venue-coordinate-candidates { display: grid; gap: var(--admin-space-group); }
 .wikidata-identity-card dl, .venue-coordinate-candidate dl { display: grid; gap: 0; margin: 12px 0; }
 .wikidata-identity-card dl > div, .venue-coordinate-candidate dl > div { display: grid; grid-template-columns: 100px minmax(0,1fr); gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .wikidata-identity-card dt, .venue-coordinate-candidate dt { color: var(--ink-500); }
@@ -269,10 +271,17 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .wikidata-review-candidates input { margin-top: 3px; accent-color: var(--ink-950); }
 .wikidata-review-candidates span { display: grid; gap: 3px; }
 .wikidata-review-candidates small { color: var(--ink-500); }
-.section-heading-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.section-heading-row h2 { margin-bottom: 10px; }
-.relation-search-panel { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.section-heading-row { display: flex; align-items: center; justify-content: space-between; gap: var(--admin-space-group); margin: 0; }
+.section-heading-row h2 { margin: 0; }
+.section-heading-row p { margin: var(--admin-space-inline) 0 0; }
+.relation-search-panel { display: grid; gap: var(--admin-space-field); margin-top: var(--admin-space-section); padding-top: var(--admin-space-section); border-top: 1px solid var(--line); }
 .venue-image-editor > * + * { margin-top: 24px; }
+.candidate-section, .venue-relation-section { display: grid; gap: var(--admin-space-group); }
+.venue-image-editor section > h2 { margin: 0 0 var(--admin-space-group); }
+.candidate-picker { display: grid; gap: var(--admin-space-group); }
+.candidate-picker-count { margin: 0; color: var(--ink-600); font-size: var(--admin-font-meta); }
+.candidate-source-link { color: var(--ink-800); text-underline-offset: 3px; }
+.detail-tab-panel > .card + .card { margin-top: var(--admin-space-card); }
 .venue-image-placeholder, .venue-image-preview { width: min(100%,280px); aspect-ratio: 1 / 1; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-hover); color: var(--ink-500); font-size: 13px; }
 .venue-image-preview { margin: 0 0 18px; }
 .venue-image-preview img { width: 100%; height: 100%; object-fit: contain; background: var(--white); }

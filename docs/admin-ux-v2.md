@@ -74,7 +74,7 @@ Venueは国内・海外の両方を対象にする。curated country catalogはP
 
 所蔵作品は既存`collection_holdings`のvisibility semanticsを共有する。関連展覧会は`exhibition_occurrences`に独立したvisibilityを持たせ、relation freshnessを示す`relation_status`とは混同しない。非表示occurrenceはPublic projectionから除外し、公開中Exhibitionが唯一の公開occurrenceを失う削除はserverで拒否する。このPhysical migrationはOrder 340のProduction初回migration計画へ引き渡す。
 
-画像は`登録画像 → 画像候補 → 画像登録`の順に置く。登録画像が0件なら`No Image`を表示し、新規Previewはlocal fileまたは有効なHTTPS URLを選択するまで表示しない。URL Preview失敗時は空の固定frameを残さずErrorへ置き換える。明示的な登録操作だけがprivate Storageへ保存し、server-side URL取得はHTTPS、redirect先、private/local address、MIME、20MB上限、timeoutを検証する。候補には画像、provider、discovery source、rights、reported license、author / credit、data sourceと採否・Primary操作を示し、詳細は既存の第二Drawerでも確認できる。
+画像は`登録画像 → 画像候補 → 画像登録`の順に置く。登録画像が0件なら`No Image`を表示し、新規Previewはlocal fileまたは有効なHTTPS URLを選択するまで表示しない。URL Preview失敗時は空の固定frameを残さずErrorへ置き換える。明示的な登録操作だけがprivate Storageへ保存し、server-side URL取得はHTTPS、redirect先、private/local address、MIME、20MB上限、timeoutを検証する。usable候補0件はEmpty、1件かつPrimaryなしは自動選択、2件以上は既存の`panel=image`第二DrawerでHumanが1件を選択する。複数候補からP18だけを自動優先しない。第二Drawerの判断Actionは`この画像を設定`だけとし、選択時は候補画像を検証・Storage保存・Media Asset作成または再利用し、旧Primaryを解除して選択AssetだけをPrimaryにする。選択候補はaccepted、他のactive候補はrejected / inactiveへ収束させるが、各候補のrights statusは変更しない。成功後は第二Drawerを閉じ、第一Drawerを再取得してTriggerへfocusを戻す。
 
 Image Candidate UIのLOCAL QAには`npm run db:seed:admin-image-candidate-local`で決定的なsynthetic fixtureを作成し、`npm run db:cleanup:admin-image-candidate-local`で明示的に削除できる。scriptはLOCAL Supabase URL以外を拒否し、STG / Production dataへ適用しない。
 
@@ -84,7 +84,7 @@ Venue DataのWikidata flowは`Entity候補取得 → QID採用 / 非採用 → F
 
 Field reviewは取得Actionと同時に第二Drawerを開き、Loading / Success / Empty / Errorをそこで表示する。現在値、取得値、current Source、candidate Sourceと根拠URLを比較し、全対象Fieldを`取得済み / 取得なし / 変更なし / 保護`として示す。空のcurrentに値がある候補だけdefault ON、同値は変更なし、Manual / 高優先度Sourceは保護する。Wikidata候補がない場合はQIDや補完Actionを要求せず、手動または公式サイト入力へ案内する。Data本体の`項目の出典`はBasic form順のcurrent source summaryだけを表示し、history件数が増えてもField rowを重複させない。値があるのにprovenanceがないlegacy値は`不明`、空Fieldは`—`とする。
 
-座標候補は`venue_coordinate_candidates`にSourceごとのjudgmentを保存し、Wikidata identityと独立して採用 / 非採用する。採用時だけcurrent latitude / longitude、coordinate metadata、緯度・経度のprovenanceを更新する。非採用は対象候補だけを更新し、current座標、他候補、Wikidata identityを変更しない。Data内と`panel=coordinates`は同じcomponentを使い、Basicの座標領域からも第二Drawerへ移動できる。
+座標候補は`venue_coordinate_candidates`にSourceごとのjudgmentを保存し、Wikidata identityと独立して採用 / 非採用する。current座標がなくeligible候補が1件なら自動選択し、複数ならHuman判断まで自動選択しない。採用時はcurrent latitude / longitude、coordinate metadata、緯度・経度のprovenanceを更新し、選択候補をaccepted、同Venueの他候補を監査用rowを残したままrejectedへ収束させる。個別の非採用は対象候補だけを更新し、current座標、他候補、Wikidata identityを変更しない。Data内には全候補をinline表示し、`第二Drawerで確認`を置かない。Basicの座標領域だけが同じcomponentを使う`panel=coordinates`第二Drawerへ移動できる。採用成功後は第二Drawerを閉じ、第一Drawerを再取得してTriggerへfocusを戻す。
 
 個別Venueの公式サイト取得は既存LOCAL-only crawlerを`selected` modeで再利用する。Data tabのURLは未保存でも取得対象にできるが、crawl開始やpreviewではMasterの`official_url`を暗黙更新しない。第二Drawerを先に開き、crawl結果またはErrorをそこで表示する。Humanが選択したFieldだけ`official_website` provenanceとfield-level source URL付きで反映する。partial結果は取得済みFieldとwarningを同時に表示する。Batchの`Crawl → CSV → Preview → Confirm`は別workflowとして維持し、STG / Production向けcrawlerへ拡張しない。
 

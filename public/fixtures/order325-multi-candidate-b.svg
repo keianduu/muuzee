@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img" aria-labelledby="title desc">
+  <title id="title">LOCAL candidate B</title>
+  <desc id="desc">Synthetic gallery facade fixture for local QA.</desc>
+  <rect width="960" height="640" fill="#dbe5e1"/>
+  <rect x="100" y="84" width="760" height="472" rx="38" fill="#173b3a"/>
+  <g fill="#f3f0e8">
+    <rect x="166" y="160" width="164" height="300" rx="8"/>
+    <rect x="398" y="160" width="164" height="300" rx="8"/>
+    <rect x="630" y="160" width="164" height="300" rx="8"/>
+  </g>
+  <path d="M196 402l56-110 48 110zm232 0 52-178 52 178zm230 0 54-138 54 138z" fill="#e1a641"/>
+  <text x="480" y="602" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#173b3a">LOCAL FIXTURE · CANDIDATE B</text>
+</svg>

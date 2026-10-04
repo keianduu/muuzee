@@ -5,7 +5,7 @@ import type { VenueCoordinateCandidateRow } from "@/lib/admin/types";
 import { VenueCoordinateReview } from "./venue-coordinate-review";
 import { AdminFeedback } from "./admin-feedback";
 
-export function VenueCoordinateReviewPanel({ venueId, candidates }: { venueId: string; candidates: VenueCoordinateCandidateRow[] }) {
+export function VenueCoordinateReviewPanel({ venueId, candidates, onSelected }: { venueId: string; candidates: VenueCoordinateCandidateRow[]; onSelected?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   async function review(candidate: VenueCoordinateCandidateRow, action: "accept" | "reject") {
@@ -16,6 +16,7 @@ export function VenueCoordinateReviewPanel({ venueId, candidates }: { venueId: s
       if (!response.ok) throw new Error(body.error || "Coordinate review failed");
       setMessage(body.message || "更新しました。");
       window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity: "venues", id: venueId, preserveListOrder: true } }));
+      if (action === "accept") onSelected?.();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Coordinate review failed"); }
     finally { setBusy(false); }
   }

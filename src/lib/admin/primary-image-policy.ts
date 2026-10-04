@@ -7,8 +7,8 @@ export type PrimaryImageCandidate = {
 };
 
 export type AutoPrimaryDecision =
-  | { candidateId: string; reason: "wikidata_p18" | "single_candidate" }
-  | { candidateId: null; reason: "primary_exists" | "no_candidates" | "multiple_candidates_without_p18" };
+  | { candidateId: string; reason: "single_candidate" }
+  | { candidateId: null; reason: "primary_exists" | "no_candidates" | "multiple_candidates" };
 
 export function isPrimaryCandidateUsable(candidate: PrimaryImageCandidate) {
   return candidate.is_active !== false
@@ -23,11 +23,9 @@ export function chooseAutoPrimaryCandidate(input: {
   if (input.primaryCount > 0) return { candidateId: null, reason: "primary_exists" };
 
   const candidates = input.candidates.filter(isPrimaryCandidateUsable);
-  const p18 = candidates.find((candidate) => candidate.discovery_source === "wikidata_p18");
-  if (p18) return { candidateId: p18.id, reason: "wikidata_p18" };
   if (candidates.length === 1) return { candidateId: candidates[0].id, reason: "single_candidate" };
   if (!candidates.length) return { candidateId: null, reason: "no_candidates" };
-  return { candidateId: null, reason: "multiple_candidates_without_p18" };
+  return { candidateId: null, reason: "multiple_candidates" };
 }
 
 export function mediaAssetMetadataFromCandidate(candidate: Record<string, unknown>) {

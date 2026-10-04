@@ -95,7 +95,7 @@ Work titleは日本語、英語、原題、原言語を`title_ja` / `title_en` /
 - `rejected`: 明確に不可
 - `needs_review`: 記載なし・不明
 
-An external image candidate keeps its reported rights and begins without an automatic Muuzee approval. Venue and Artist use one shared Primary policy: preserve an existing Primary; otherwise select a usable Wikidata P18 as the Preferred Representative Image even when alternatives exist; without P18, select only an exactly-one usable fallback; leave multiple non-P18 candidates to human selection. Inactive or rejected candidates are excluded. Copying to Storage and selecting Primary never changes `rights_status` or approves rights.
+An external image candidate keeps its reported rights and begins without an automatic Muuzee approval. Venue and Artist use one shared Primary policy: preserve an existing Primary; otherwise auto-select only when exactly one usable candidate exists; leave every multiple-candidate set to human single selection without preferring P18. Inactive or rejected candidates are excluded. Copying to Storage and selecting Primary never changes `rights_status` or approves rights. An explicit winner becomes accepted/active and the other active candidates become rejected/inactive while remaining available as audit rows.
 
 Venue Priority Tier uses `auto_priority_tier`, optional `manual_priority_tier`, and generated `effective_priority_tier = coalesce(manual, auto)`. The Draft calculation is centralized in `refresh_venue_priority_tiers`; Tier and data completeness never publish content by themselves.
 

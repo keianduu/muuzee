@@ -4,6 +4,8 @@
 
 import type { SourceImageCandidateRow } from "@/lib/admin/types";
 import { candidateLicenseProfile, imageDiscoverySourceLabel } from "@/lib/admin/master-image";
+import { AdminFeedback } from "./admin-feedback";
+import { useState } from "react";
 
 function candidateMatchSummary(candidate: SourceImageCandidateRow) {
   const confirmedQid = candidate.candidate_match_confidence === 1 && /^Q\d+$/.test(candidate.candidate_entity_id || "");
@@ -23,42 +25,13 @@ export function LicenseSummary({ candidate }: { candidate: SourceImageCandidateR
   </div>;
 }
 
-export function MasterImageCandidateSummary({ candidate, subjectLabel, onOpen }: {
-  candidate: SourceImageCandidateRow;
-  subjectLabel: string;
-  onOpen: () => void;
-}) {
-  return <article className="image-candidate-summary">
-    {candidate.thumbnail_url || candidate.image_url ? <img src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="thumb"/>}
-    <div><p><strong>{imageDiscoverySourceLabel(candidate.discovery_source)}</strong></p><p><span className="status">{candidate.review_status}</span> <span className={`status ${candidate.rights_status}`}>{candidate.rights_status}</span></p><p className="muted">{candidate.license_short_name || "ライセンス記載なし"}</p></div>
-    <button type="button" className="button secondary" onClick={onOpen}>候補を確認</button>
-  </article>;
-}
-
-export function MasterImageCandidatePanel({ candidate, subjectLabel }: { candidate: SourceImageCandidateRow; subjectLabel: string }) {
-  const match = candidateMatchSummary(candidate);
-  return <div className="image-candidate-panel">
-    {candidate.thumbnail_url || candidate.image_url ? <img className="image-candidate-preview" src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="image-candidate-preview is-empty">画像なし</div>}
-    <div className="image-candidate-panel-status"><span className="status">取得経路: {imageDiscoverySourceLabel(candidate.discovery_source)}</span><span className="status">{candidate.review_status}</span><span className={`status ${candidate.rights_status}`}>{candidate.rights_status}</span></div>
-    <LicenseSummary candidate={candidate}/>
-    <dl className="image-candidate-metadata"><div><dt>照合</dt><dd>{match.match}</dd></div><div><dt>探索深度</dt><dd>{match.depth}</dd></div></dl>
-    <dl className="image-candidate-metadata"><div><dt>Author</dt><dd>{candidate.author || "記載なし"}</dd></div><div><dt>Credit</dt><dd>{candidate.credit || "記載なし"}</dd></div><div><dt>Usage terms</dt><dd>{candidate.usage_terms || "記載なし"}</dd></div></dl>
-    <div className="actions">{candidate.source_url && <a className="button secondary" href={candidate.source_url} target="_blank" rel="noreferrer">データ元を開く ↗</a>}{candidate.license_url && <a className="button secondary" href={candidate.license_url} target="_blank" rel="noreferrer">利用条件を開く ↗</a>}</div>
-    <p className="muted">候補の採否・Primary設定は、Venue Drawerの編集タブで行います。</p>
-  </div>;
-}
-
-export function MasterImageCandidateCard({ candidate, subjectLabel, busy, primaryExists, onSetPrimary, onAccept, onReject, onOpen }: {
+export function MasterImageCandidateCard({ candidate, subjectLabel, busy, onSetPrimary }: {
   candidate: SourceImageCandidateRow;
   subjectLabel: string;
   busy: boolean;
-  primaryExists?: boolean;
   onSetPrimary: () => void;
-  onAccept?: () => void;
-  onReject?: () => void;
-  onOpen?: () => void;
 }) {
-  const disabled = busy || primaryExists || candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active;
+  const disabled = busy || candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active;
   const match = candidateMatchSummary(candidate);
   return <article className="card media-card">
     {candidate.thumbnail_url || candidate.image_url ? <img src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="thumb"/>}
@@ -68,11 +41,31 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, primar
     <p><strong>Reported License: {candidate.license_short_name || "記載なし"}</strong></p>
     {(candidate.candidate_match_confidence != null || candidate.candidate_match_threshold != null) && <p className="muted"><strong>照合:</strong> {match.match}<br/><strong>探索深度:</strong> {match.depth}</p>}
     <LicenseSummary candidate={candidate}/>
-    <details><summary>著作者・クレジット・データ元</summary><p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}</p></details>
-    <div className="actions">{onOpen && <button type="button" className="button secondary" onClick={onOpen}>候補を確認</button>}{candidate.source_url && <a className="button secondary" href={candidate.source_url} target="_blank" rel="noreferrer">データ元を開く</a>}{candidate.license_url && <a className="button secondary" href={candidate.license_url} target="_blank" rel="noreferrer">利用条件を開く</a>}</div>
-    {(onAccept || onReject) && <><h3>画像候補の判断</h3><div className="actions">{onAccept && <button type="button" className="button secondary" disabled={busy} onClick={onAccept}>候補として残す</button>}{onReject && <button type="button" className="button danger" disabled={busy} onClick={onReject}>候補から除外</button>}</div></>}
-    <h3>Primary画像</h3><div className="actions"><button type="button" className="button" disabled={disabled} onClick={onSetPrimary}>この画像を設定</button></div>
-    {primaryExists && <p className="muted">既存Primaryは自動で上書きしません。</p>}
+    <p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}{candidate.source_url && <><br/><a className="candidate-source-link" href={candidate.source_url} target="_blank" rel="noreferrer">データ元 ↗</a></>}</p>
+    <div className="actions"><button type="button" className="button" disabled={disabled} onClick={onSetPrimary}>この画像を設定</button></div>
     {candidate.rights_status === "rejected" && <p className="muted">明確に利用不可と記録された候補は設定できません。</p>}
   </article>;
+}
+
+export function MasterImageCandidatePicker({ venueId, candidates, subjectLabel, onSelected }: {
+  venueId: string;
+  candidates: SourceImageCandidateRow[];
+  subjectLabel: string;
+  onSelected: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  async function select(candidate: SourceImageCandidateRow) {
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch(`/api/admin/venues/${venueId}/image-candidates/${candidate.id}/set-primary`, { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "候補画像の設定に失敗しました。");
+      window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity: "venues", id: venueId, preserveListOrder: true } }));
+      onSelected();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "候補画像の設定に失敗しました。");
+    } finally { setBusy(false); }
+  }
+  return <div className="candidate-picker"><p className="candidate-picker-count">選択できる候補 {candidates.length}件</p><div className="media-grid">{candidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={subjectLabel} busy={busy} onSetPrimary={() => select(candidate)}/>)}</div><AdminFeedback variant="error" message={message}/></div>;
 }

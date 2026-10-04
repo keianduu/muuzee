@@ -10,6 +10,7 @@ import { CANDIDATE_MIN_THRESHOLD, distanceMeters, ENTITY_AUTO_MATCH_THRESHOLD, f
 import type { VenueEnrichmentBatchResult, VenueEnrichmentResult } from "./types";
 import { confirmWikidataIdentity, selectSingleSourceCandidate, type StoredWikidataCandidate } from "./source-application";
 import { discoverVenueImageFiles, imageDiscoveryStatus, saveVenueImageDiscovery } from "./image-discovery";
+import { autoSelectSingleVenueCoordinateCandidate } from "@/lib/admin/venue-coordinate-review";
 
 type Venue = {
   id: string; name: string; name_en: string | null; address: string | null; prefecture: string | null; city: string | null;
@@ -203,7 +204,8 @@ async function applyMatchedEntity(db: SupabaseClient, ids: Record<string, string
   const diagnostics = await buildCandidateDiagnostics(db, ids, refreshed as Venue, candidates, statuses);
   const { error } = await db.from("venues").update(diagnostics.updates).eq("id", venue.id);
   if (error) throw error;
-  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: false, coordinateSource: null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: false, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: true };
+  const coordinateSelection = diagnostics.coordinateCandidateFound ? await autoSelectSingleVenueCoordinateCandidate(db, venue.id) : null;
+  return { venueId: venue.id, venueName: venue.name, matchStatus: "matched", wikidataId: candidate.id, confidence: candidate.confidence, coordinateAdded: coordinateSelection?.action === "accept", coordinateSource: coordinateSelection?.action === "accept" ? diagnostics.updates.coordinate_candidate_source as "wikidata" | "geolonia" : null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: false, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: true };
 }
 
 export async function enrichVenue(venueId: string, options: { forceWikidataId?: string; autoConfirmSingle?: boolean } = {}, db: SupabaseClient = createSupabaseAdminClient()): Promise<VenueEnrichmentResult> {
@@ -246,7 +248,8 @@ export async function enrichVenue(venueId: string, options: { forceWikidataId?: 
   Object.assign(updates, diagnostics.updates);
   const { error: updateError } = await db.from("venues").update(updates).eq("id", venue.id);
   if (updateError) throw updateError;
-  return { venueId: venue.id, venueName: venue.name, matchStatus, wikidataId: null, confidence: top?.confidence ?? null, coordinateAdded: false, coordinateSource: null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: diagnostics.imageCandidateAdded, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: Boolean(top) };
+  const coordinateSelection = diagnostics.coordinateCandidateFound ? await autoSelectSingleVenueCoordinateCandidate(db, venue.id) : null;
+  return { venueId: venue.id, venueName: venue.name, matchStatus, wikidataId: null, confidence: top?.confidence ?? null, coordinateAdded: coordinateSelection?.action === "accept", coordinateSource: coordinateSelection?.action === "accept" ? diagnostics.updates.coordinate_candidate_source as "wikidata" | "geolonia" : null, coordinateCandidateFound: diagnostics.coordinateCandidateFound, imageCandidateAdded: diagnostics.imageCandidateAdded, imageCandidateFound: diagnostics.imageCandidateFound, imageFoundAtRelaxedThreshold: diagnostics.imageFoundAtRelaxedThreshold, entityCandidateFound: Boolean(top) };
 }
 
 export async function enrichVenueBatch(limit = 20, db: SupabaseClient = createSupabaseAdminClient()): Promise<VenueEnrichmentBatchResult> {

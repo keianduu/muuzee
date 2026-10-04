@@ -38,7 +38,7 @@ Public relation projections use deterministic canonical foreign keys plus `visib
 
 ## Images and coordinates
 
-One Wikidata coordinate is applied automatically unless a higher-priority coordinate exists. P18 / Wikimedia Commons remains a Media Candidate because selecting a Primary image and evaluating rights are separate content operations. The existing three-way rights classification remains unchanged.
+One eligible coordinate is applied automatically only when no current confirmed coordinate exists and the candidate set contains exactly one item. Multiple coordinate candidates require human single selection. P18 / Wikimedia Commons remains a Media Candidate because selecting a Primary image and evaluating rights are separate content operations. A Primary image is auto-selected only from an exactly-one usable candidate set; multiple candidates require human single selection without P18 preference. The existing three-way rights classification remains unchanged.
 
 ## LOCAL migration result
 

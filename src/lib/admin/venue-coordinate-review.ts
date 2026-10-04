@@ -22,6 +22,15 @@ export function coordinateCandidateVenueUpdate(candidate: VenueCoordinateCandida
   };
 }
 
+export function coordinateAutoSelectionCandidateId(input: {
+  hasCurrentCoordinates: boolean;
+  candidates: Array<Pick<VenueCoordinateCandidateRow, "id" | "review_status">>;
+}) {
+  if (input.hasCurrentCoordinates) return null;
+  const eligible = input.candidates.filter((candidate) => candidate.review_status === "candidate");
+  return eligible.length === 1 ? eligible[0].id : null;
+}
+
 async function saveCoordinateProvenance(db: SupabaseClient, candidate: VenueCoordinateCandidateRow, field: "latitude" | "longitude", value: number) {
   const source = candidate.source === "wikidata" ? "wikidata" : "trusted_api";
   const { error: clearError } = await db.from("venue_field_sources").update({ is_current: false }).eq("venue_id", candidate.venue_id).eq("field_name", field).eq("is_current", true);
@@ -48,9 +57,27 @@ export async function reviewVenueCoordinateCandidate(db: SupabaseClient, venueId
   const { error: decisionError } = await db.from("venue_coordinate_candidates").update({ review_status: action === "accept" ? "accepted" : "rejected", decided_at: decidedAt }).eq("id", candidateId);
   if (decisionError) throw decisionError;
   if (action === "reject") return { action, candidateId };
+  const { error: excludedError } = await db.from("venue_coordinate_candidates").update({ review_status: "rejected", decided_at: decidedAt }).eq("venue_id", venueId).neq("id", candidateId);
+  if (excludedError) throw excludedError;
   const { error: venueError } = await db.from("venues").update(coordinateCandidateVenueUpdate(candidate)).eq("id", venueId);
   if (venueError) throw venueError;
   await saveCoordinateProvenance(db, candidate, "latitude", Number(candidate.latitude));
   await saveCoordinateProvenance(db, candidate, "longitude", Number(candidate.longitude));
   return { action, candidateId, latitude: Number(candidate.latitude), longitude: Number(candidate.longitude) };
+}
+
+export async function autoSelectSingleVenueCoordinateCandidate(db: SupabaseClient, venueId: string) {
+  const [{ data: venue, error: venueError }, { data: candidates, error: candidatesError }] = await Promise.all([
+    db.from("venues").select("latitude,longitude,coordinate_source").eq("id", venueId).single(),
+    db.from("venue_coordinate_candidates").select("id,review_status").eq("venue_id", venueId),
+  ]);
+  if (venueError) throw venueError;
+  if (candidatesError) throw candidatesError;
+  const candidateId = coordinateAutoSelectionCandidateId({
+    hasCurrentCoordinates: venue?.latitude != null || venue?.longitude != null || Boolean(venue?.coordinate_source),
+    candidates: (candidates || []) as Array<Pick<VenueCoordinateCandidateRow, "id" | "review_status">>,
+  });
+  return candidateId
+    ? reviewVenueCoordinateCandidate(db, venueId, candidateId, "accept")
+    : { action: "none" as const, candidateId: null };
 }

@@ -3,9 +3,10 @@ import { assertCandidateImageUrl, downloadCandidateImage } from "./candidate-ima
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { MASTER_CONFIGS, type MasterEntity } from "./master-config";
 import { chooseAutoPrimaryCandidate, isPrimaryCandidateUsable, mediaAssetMetadataFromCandidate } from "./primary-image-policy";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function setMasterPrimaryFromCandidate(entity: MasterEntity, masterId: string, candidateId: string, options: { replaceExisting?: boolean } = {}) {
-  const db = createSupabaseAdminClient(); const config = MASTER_CONFIGS[entity]; const owner = config.ownerKey;
+export async function setMasterPrimaryFromCandidate(entity: MasterEntity, masterId: string, candidateId: string, options: { replaceExisting?: boolean } = {}, db: SupabaseClient = createSupabaseAdminClient()) {
+  const config = MASTER_CONFIGS[entity]; const owner = config.ownerKey;
   const { data: current, error: currentError } = await db.from("media_assets").select("id").eq(owner, masterId).eq("is_primary", true).maybeSingle();
   if (currentError) throw currentError; if (current && !options.replaceExisting) return { changed: false, reason: "primary_exists" as const };
   const { data: sources, error: sourceError } = await db.from("source_records").select("id").eq(owner, masterId); if (sourceError) throw sourceError;
@@ -17,21 +18,27 @@ export async function setMasterPrimaryFromCandidate(entity: MasterEntity, master
   const { data: existing } = await db.from("media_assets").select("id").eq(owner, masterId).eq("source_url", sourceUrl).maybeSingle();
   let assetId = existing?.id as string | undefined; let storagePath: string | null = null;
   if (!assetId) {
-    const url = assertCandidateImageUrl(candidate.thumbnail_url || candidate.image_url, candidate.provider);
+    const url = assertCandidateImageUrl(candidate.image_url, candidate.provider);
     const { bytes, contentType, extension } = await downloadCandidateImage(url); storagePath = `${entity}/${masterId}/${randomUUID()}.${extension}`;
     const { error: uploadError } = await db.storage.from("exhibition-images").upload(storagePath, bytes, { contentType }); if (uploadError) throw uploadError;
     const owners = { exhibition_id: null, venue_id: null, artist_id: null, work_id: null, [owner]: masterId };
     const { data: asset, error } = await db.from("media_assets").insert({ ...owners, kind: "image", storage_path: storagePath, original_filename: candidate.stable_identifier || `candidate-${candidate.id}.${extension}`, ...mediaAssetMetadataFromCandidate(candidate), is_primary: false }).select("id").single();
     if (error || !asset) { await db.storage.from("exhibition-images").remove([storagePath]); throw error || new Error("候補画像を保存できませんでした。"); } assetId = asset.id;
   }
-  if (options.replaceExisting) await db.from("media_assets").update({ is_primary: false }).eq(owner, masterId).eq("is_primary", true).neq("id", assetId);
+  if (options.replaceExisting) {
+    const { error: demoteError } = await db.from("media_assets").update({ is_primary: false }).eq(owner, masterId).eq("is_primary", true).neq("id", assetId);
+    if (demoteError) throw demoteError;
+  }
   const { error } = await db.from("media_assets").update({ is_primary: true }).eq("id", assetId).eq(owner, masterId); if (error) throw error;
-  await db.from("source_image_candidates").update({ review_status: "accepted" }).eq("id", candidateId);
+  const { error: selectedError } = await db.from("source_image_candidates").update({ review_status: "accepted", is_active: true }).eq("id", candidateId).in("source_record_id", sourceIds);
+  if (selectedError) throw selectedError;
+  const { error: excludedError } = await db.from("source_image_candidates").update({ review_status: "rejected", is_active: false }).in("source_record_id", sourceIds).neq("id", candidateId).eq("is_active", true);
+  if (excludedError) throw excludedError;
   return { changed: true, reason: "primary_set" as const, assetId };
 }
 
-export async function autoSetPreferredMasterCandidatePrimary(entity: MasterEntity, masterId: string) {
-  const db = createSupabaseAdminClient(); const owner = MASTER_CONFIGS[entity].ownerKey;
+export async function autoSetPreferredMasterCandidatePrimary(entity: MasterEntity, masterId: string, db: SupabaseClient = createSupabaseAdminClient()) {
+  const owner = MASTER_CONFIGS[entity].ownerKey;
   const [{ data: primary }, { data: sources }] = await Promise.all([db.from("media_assets").select("id").eq(owner, masterId).eq("is_primary", true).limit(1), db.from("source_records").select("id").eq(owner, masterId)]);
   if (primary?.length) return { changed: false, reason: "primary_exists" as const };
   const ids = (sources || []).map((row) => row.id); if (!ids.length) return { changed: false, reason: "no_candidates" as const };
@@ -39,11 +46,11 @@ export async function autoSetPreferredMasterCandidatePrimary(entity: MasterEntit
   if (error) throw error;
   const decision = chooseAutoPrimaryCandidate({ primaryCount: 0, candidates: data || [] });
   return decision.candidateId
-    ? setMasterPrimaryFromCandidate(entity, masterId, decision.candidateId)
+    ? setMasterPrimaryFromCandidate(entity, masterId, decision.candidateId, {}, db)
     : { changed: false, reason: decision.reason };
 }
 
-// Compatibility alias for callers created before P18 became the preferred representative image.
+// Compatibility alias for existing callers of the shared exact-one-candidate policy.
 export const autoSetSingleMasterCandidatePrimary = autoSetPreferredMasterCandidatePrimary;
 
 export function shouldAutoSetMasterPrimary(input: { primaryCount: number; activeCandidateCount: number }) {
@@ -75,15 +82,15 @@ export async function masterAutoPrimaryMaintenance(entity: MasterEntity, options
   const limit = Math.max(1, Math.min(5000, options.limit || eligible.length || 1));
   const selected = eligible.slice(0, limit);
   let applied = 0;
-  const reasons = { wikidata_p18: 0, single_candidate: 0 };
+  const reasons = { single_candidate: 0 };
   const errors: Array<{ masterId: string; message: string }> = [];
   if (options.apply) {
     for (const row of selected) {
       try {
-        const result = await setMasterPrimaryFromCandidate(entity, row.id, row.decision.candidateId!);
+        const result = await setMasterPrimaryFromCandidate(entity, row.id, row.decision.candidateId!, {}, db);
         if (result.changed) {
           applied += 1;
-          reasons[row.decision.reason as keyof typeof reasons] += 1;
+          reasons.single_candidate += 1;
         }
       } catch (caught) {
         errors.push({ masterId: row.id, message: caught instanceof Error ? caught.message : "Auto primary failed" });
@@ -94,7 +101,7 @@ export async function masterAutoPrimaryMaintenance(entity: MasterEntity, options
     dryRun: !options.apply,
     targetCount: eligible.length,
     selectedCount: selected.length,
-    p18TargetCount: eligible.filter((row) => row.decision.reason === "wikidata_p18").length,
+    p18TargetCount: 0,
     singleCandidateTargetCount: eligible.filter((row) => row.decision.reason === "single_candidate").length,
     applied,
     appliedByReason: reasons,

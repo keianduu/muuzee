@@ -30,9 +30,8 @@ Tier再計算は`exhibition_artists.artist_id`を参照し、画面表示時の�
 
 ArtistとVenueは同じImage ComponentとPrimary判定を使う。
 
-- Primaryなし + usableなWikidata P18: Candidate総数が複数でもP18を自動Primary化
-- Primaryなし + P18なし + usable Candidateが1件だけ: 自動Primary化
-- Primaryなし + P18なし + Candidate複数: 人が「この画像を設定」
+- Primaryなし + usable Candidateが1件だけ: Source種別を問わず自動Primary化
+- Primaryなし + usable Candidateが複数: P18を優先せず人が「この画像を設定」で1件を選ぶ
 - 既存Primaryあり: 自動上書きしない
 - inactive、Candidate reviewが`rejected`、またはRightsが`rejected`: Primary設定不可
 - Primary設定とRights Approvedは別状態

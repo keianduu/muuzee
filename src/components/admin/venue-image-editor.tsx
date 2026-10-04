@@ -11,7 +11,7 @@ import { AdminDeleteButton } from "./admin-icon-button";
 import { AdminFieldLabel } from "./admin-field-label";
 import { AdminFeedback } from "./admin-feedback";
 
-export function VenueImageEditor({ venue, busy, candidates, onUpload, onRemove, onOpenImageCandidate, onSetPrimary, onReview }: {
+export function VenueImageEditor({ venue, busy, candidates, onUpload, onRemove, onOpenImageCandidate, onSetPrimary }: {
   venue: VenueRow;
   busy: boolean;
   candidates: SourceImageCandidateRow[];
@@ -19,7 +19,6 @@ export function VenueImageEditor({ venue, busy, candidates, onUpload, onRemove, 
   onRemove: (asset: MediaAssetRow) => void;
   onOpenImageCandidate?: (candidateId: string | null) => void;
   onSetPrimary: (candidate: SourceImageCandidateRow) => void;
-  onReview: (candidate: SourceImageCandidateRow, updates: { review_status?: "accepted" | "rejected"; rights_status?: "rejected" | "needs_review" | "approved" }) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -32,6 +31,8 @@ export function VenueImageEditor({ venue, busy, candidates, onUpload, onRemove, 
   const previewUrl = objectUrl || (validRemotePreview ? trimmedUrl : "");
   const showPreview = Boolean(previewUrl && !previewFailed);
   const assets = [...(venue.media_assets || [])].sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)));
+  const selectableCandidates = candidates.filter((candidate) => candidate.is_active && candidate.review_status !== "rejected" && candidate.rights_status !== "rejected");
+  const primaryExists = assets.some((asset) => asset.is_primary);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,7 +43,7 @@ export function VenueImageEditor({ venue, busy, candidates, onUpload, onRemove, 
 
   return <div className="venue-image-editor">
     <section data-venue-image-section="registered"><h2>登録画像</h2>{assets.length ? <div className="media-grid">{assets.map((asset) => <article className="card media-card" key={asset.id}>{asset.signedUrl ? <Image src={asset.signedUrl} alt="" width={640} height={400} unoptimized/> : <div className="thumb"/>}<p><strong>{asset.original_filename || "Image"}</strong><br/><span className={`status ${asset.rights_status}`}>{displayStatus(asset.rights_status)}</span>{asset.is_primary && <> <span className="status approved">メイン画像</span></>}</p><AdminDeleteButton disabled={busy} onClick={() => onRemove(asset)}/></article>)}</div> : <div className="venue-image-placeholder" role="img" aria-label="登録画像なし">No Image</div>}</section>
-    <section data-venue-image-section="candidates"><h2>画像候補</h2><p className="muted">Candidateの出典・権利状態を確認してから採用します。</p><div className="media-grid">{candidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={venue.name} busy={busy} onOpen={onOpenImageCandidate ? () => onOpenImageCandidate(candidate.id) : undefined} onSetPrimary={() => onSetPrimary(candidate)} onAccept={() => onReview(candidate, { review_status: "accepted" })} onReject={() => onReview(candidate, { review_status: "rejected" })}/>)}</div>{!candidates.length && <p className="empty-state">画像候補はありません。</p>}</section>
+    <section className="candidate-section" data-venue-image-section="candidates"><div className="section-heading-row"><div><h2>画像候補</h2><p className="muted">選択できる候補 {selectableCandidates.length}件</p></div>{selectableCandidates.length > 1 && onOpenImageCandidate && <button type="button" className="button secondary" data-secondary-trigger="image" onClick={() => onOpenImageCandidate(null)}>画像候補を選択</button>}</div>{selectableCandidates.length === 1 && !primaryExists && <div className="media-grid"><MasterImageCandidateCard candidate={selectableCandidates[0]} subjectLabel={venue.name} busy={busy} onSetPrimary={() => onSetPrimary(selectableCandidates[0])}/></div>}{!selectableCandidates.length && <p className="empty-state">画像候補はありません。</p>}{primaryExists && selectableCandidates.length === 1 && <p className="muted">現在のメイン画像として設定済みです。</p>}</section>
     <form className="card venue-image-registration" data-venue-image-section="registration" onSubmit={submit}>
       <h2>画像登録</h2>
       {showPreview && <div className="venue-image-preview" aria-live="polite"><img src={previewUrl} alt="登録前プレビュー" onLoad={() => { setPreviewError(""); setPreviewFailed(false); }} onError={() => { setPreviewFailed(true); setPreviewError("画像をPreviewできません。URL側でhotlinkが制限されている可能性があります。"); }}/></div>}

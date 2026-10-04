@@ -53,9 +53,6 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
   async function reviewCoordinate(candidate: VenueCoordinateCandidateRow, action: "accept" | "reject") {
     await request(`/api/admin/venues/${venue.id}/coordinate-candidates/${candidate.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }, { preserveListOrder: true });
   }
-  async function review(candidate: SourceImageCandidateRow, updates: { review_status?: "accepted" | "rejected"; rights_status?: "rejected" | "needs_review" | "approved" }) {
-    await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
-  }
   async function setPrimaryImage(candidate: SourceImageCandidateRow) {
     await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" }, { preserveListOrder: true });
   }
@@ -75,10 +72,10 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
 
   return <>
     {(view === "all" || view === "edit") && <div className="venue-edit-surface">
-      <div className="venue-edit-tabs" role="tablist" aria-label="Venue編集セクション">{VENUE_EDIT_TABS.map((tab) => <button type="button" role="tab" aria-selected={editTab === tab.id} className={editTab === tab.id ? "is-active" : ""} key={tab.id} onClick={() => selectEditTab(tab.id)}>{tab.label}</button>)}</div>
+      <div className="venue-edit-tabs" role="tablist" aria-label="Venue編集セクション">{VENUE_EDIT_TABS.map((tab) => <button type="button" role="tab" aria-selected={editTab === tab.id} className={editTab === tab.id ? "is-active" : ""} data-secondary-return-anchor={tab.id === "image" ? "image" : undefined} key={tab.id} onClick={() => selectEditTab(tab.id)}>{tab.label}</button>)}</div>
       <div role="tabpanel">
         {editTab === "basic" && <VenueBasicEditor venue={venue} busy={busy} onSave={save} onOpenCoordinateReview={onOpenReviewPanel ? () => onOpenReviewPanel("coordinates") : undefined}/>}
-        {editTab === "image" && <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage} onReview={review}/>}
+        {editTab === "image" && <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage}/>}
         {editTab === "relations" && <><VenueRelations venue={venue}/><MasterTags entity="venues" masterId={venue.id} rows={tagRows} title="タグ" compactType/></>}
       </div>
     </div>}
@@ -90,7 +87,7 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
 
       <section><h2>項目の出典</h2><div className="venue-provenance-list">{VENUE_PROVENANCE_FIELDS.map(([key, label]) => { const source = currentSources.get(key); const value = (venue as unknown as Record<string, unknown>)[key]; const hasValue = value != null && String(value).trim() !== ""; return <div className="venue-provenance-row" key={key}><span><strong>{label}</strong><code>{key}</code></span>{!hasValue ? <b>—</b> : source?.source_url ? <a href={source.source_url} target="_blank" rel="noreferrer">{venueSourceLabel(source.source)} ↗</a> : <b>{venueSourceLabel(source?.source)}</b>}</div>; })}</div></section>
 
-      <section><div className="section-heading-row"><h2>位置情報候補</h2>{coordinateCandidates.length > 0 && onOpenReviewPanel && <button type="button" className="button secondary" onClick={() => onOpenReviewPanel("coordinates")}>第二Drawerで確認</button>}</div><VenueCoordinateReview venueId={venue.id} candidates={coordinateCandidates} busy={busy} onReview={reviewCoordinate}/></section>
+      <section><div className="section-heading-row"><h2>位置情報候補</h2></div><VenueCoordinateReview venueId={venue.id} candidates={coordinateCandidates} busy={busy} onReview={reviewCoordinate}/></section>
     </div>}
     <AdminFeedback variant={message.toLowerCase().includes("fail") || message.includes("必須") ? "error" : "success"} message={message}/>
   </>;
