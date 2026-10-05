@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { assertHttpUrl, nullableText, validUuid } from "@/lib/admin/http";
+import { assertCandidateImageUrl, downloadCandidateImage } from "@/lib/admin/candidate-image";
 import { isMasterEntity, MASTER_CONFIGS } from "@/lib/admin/master-config";
 import { signedMediaAsset } from "@/lib/admin/media-asset-response";
 import { shouldSetManualMediaPrimary } from "@/lib/admin/media-asset-state";
@@ -15,23 +16,43 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
   try {
     const { entity, id } = await params;
     if (!isMasterEntity(entity) || !validUuid(id)) throw new Error("Invalid master");
-    const config = MASTER_CONFIGS[entity]; const form = await request.formData(); const file = form.get("file");
-    if (!(file instanceof File) || !file.size) throw new Error("Image fileは必須です。");
-    if (!ALLOWED_TYPES.has(file.type) || file.size > MAX_BYTES) throw new Error("JPEG / PNG / WebP / GIF（20MB以下）のみ対応です。");
+    const config = MASTER_CONFIGS[entity]; const form = await request.formData();
+    const fileValue = form.get("file");
+    const file = fileValue instanceof File && fileValue.size ? fileValue : null;
+    const imageUrlValue = nullableText(form.get("image_url"));
+    if (!file && !imageUrlValue) throw new Error("画像ファイルまたは画像URLを指定してください。");
+
+    let uploadBody: File | Buffer;
+    let contentType: string;
+    let extension: string;
+    let originalFilename: string;
+    if (file) {
+      if (!ALLOWED_TYPES.has(file.type) || file.size > MAX_BYTES) throw new Error("JPEG / PNG / WebP / GIF（20MB以下）のみ対応です。");
+      uploadBody = file;
+      contentType = file.type;
+      extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+      originalFilename = file.name;
+    } else {
+      const imageUrl = assertCandidateImageUrl(imageUrlValue!, null);
+      const downloaded = await downloadCandidateImage(imageUrl, 30_000);
+      uploadBody = downloaded.bytes;
+      contentType = downloaded.contentType;
+      extension = downloaded.extension;
+      originalFilename = decodeURIComponent(imageUrl.pathname.split("/").pop() || `remote-image.${extension}`).slice(0, 255);
+    }
     const sourceType = nullableText(form.get("source_type")); if (!sourceType) throw new Error("Source typeは必須です。");
     const rightsStatus = nullableText(form.get("rights_status"));
     if (!rightsStatus || !["approved", "rejected", "needs_review"].includes(rightsStatus)) throw new Error("Rights classificationは必須です。");
-    const sourceUrl = nullableText(form.get("source_url")); assertHttpUrl(sourceUrl, "Source URL");
-    const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+    const sourceUrl = nullableText(form.get("source_url")) || (!file ? imageUrlValue : null); assertHttpUrl(sourceUrl, "Source URL");
     uploadedPath = `${entity}/${id}/${randomUUID()}.${extension}`;
     const db = createSupabaseAdminClient();
     const { count: registeredCount, error: countError } = await db.from("media_assets").select("id", { count: "exact", head: true }).eq(config.ownerKey, id);
     if (countError) throw countError;
-    const { error: uploadError } = await db.storage.from("exhibition-images").upload(uploadedPath, file, { contentType: file.type, upsert: false });
+    const { error: uploadError } = await db.storage.from("exhibition-images").upload(uploadedPath, uploadBody, { contentType, upsert: false });
     if (uploadError) throw uploadError;
     const primary = shouldSetManualMediaPrimary(registeredCount);
     const ownership = { exhibition_id: null, venue_id: null, artist_id: null, work_id: null, [config.ownerKey]: id };
-    const { data: inserted, error } = await db.from("media_assets").insert({ ...ownership, kind: "image", storage_path: uploadedPath, original_filename: file.name, source_type: sourceType, source_url: sourceUrl, credit: nullableText(form.get("credit")), usage_note: nullableText(form.get("usage_note")), rights_status: rightsStatus, rights_checked_at: new Date().toISOString(), valid_until: nullableText(form.get("valid_until")), is_primary: primary }).select("id").single();
+    const { data: inserted, error } = await db.from("media_assets").insert({ ...ownership, kind: "image", storage_path: uploadedPath, original_filename: originalFilename, source_type: sourceType, source_url: sourceUrl, credit: nullableText(form.get("credit")), usage_note: nullableText(form.get("usage_note")), rights_status: rightsStatus, rights_checked_at: new Date().toISOString(), valid_until: nullableText(form.get("valid_until")), is_primary: primary }).select("id").single();
     if (error || !inserted) throw error || new Error("画像を保存できませんでした。");
     const asset = await signedMediaAsset(db, inserted.id);
     revalidatePath(`/admin/${entity}`); revalidatePath(`/admin/${entity}/${id}`);

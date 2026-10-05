@@ -35,14 +35,14 @@ describe("VenueImageEditor", () => {
       />,
     );
 
-    const registered = markup.indexOf('data-venue-image-section="registered"');
-    const candidates = markup.indexOf('data-venue-image-section="candidates"');
-    const registration = markup.indexOf('data-venue-image-section="registration"');
+    const registered = markup.indexOf('data-admin-image-section="registered"');
+    const candidates = markup.indexOf('data-admin-image-section="candidates"');
+    const registration = markup.indexOf('data-admin-image-section="registration"');
     expect(registered).toBeGreaterThan(-1);
     expect(candidates).toBeGreaterThan(registered);
     expect(registration).toBeGreaterThan(candidates);
     expect(markup).toContain('aria-label="登録画像なし"');
-    expect(markup).not.toContain("venue-image-preview");
+    expect(markup).not.toContain("admin-image-preview");
   });
 
   it("uses one image selection entry point and removes competing candidate actions", () => {
@@ -57,12 +57,18 @@ describe("VenueImageEditor", () => {
     expect(markup).not.toContain("候補から除外");
   });
 
+  it("keeps inline candidate actions for consumers without a secondary drawer", () => {
+    const markup = renderToStaticMarkup(<VenueImageEditor venue={venue} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onSetPrimary={vi.fn()}/>);
+    expect(markup.match(/この画像を設定/g)).toHaveLength(2);
+    expect(markup).not.toContain("画像候補を選択");
+  });
+
   it("shows only registered images once an asset exists", () => {
     const withAsset = { ...venue, media_assets: [{ id: "asset-1", is_primary: true, signedUrl: "https://example.com/asset.jpg", original_filename: "asset.jpg", rights_status: "approved" }] } as unknown as VenueRow;
     const markup = renderToStaticMarkup(<VenueImageEditor venue={withAsset} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onOpenImageCandidate={vi.fn()} onSetPrimary={vi.fn()}/>);
     expect(markup).toContain("asset.jpg");
-    expect(markup).not.toContain('data-venue-image-section="candidates"');
-    expect(markup).not.toContain('data-venue-image-section="registration"');
+    expect(markup).not.toContain('data-admin-image-section="candidates"');
+    expect(markup).not.toContain('data-admin-image-section="registration"');
     expect(markup).not.toContain("メイン画像</label>");
   });
 
@@ -70,13 +76,13 @@ describe("VenueImageEditor", () => {
     const editor = readFileSync(new URL("./venue-editor.tsx", import.meta.url), "utf8");
     const basic = readFileSync(new URL("./venue-basic-editor.tsx", import.meta.url), "utf8");
     expect(editor).not.toContain("第二Drawerで確認");
-    expect(editor).toContain('data-secondary-return-anchor={tab.id === "image" ? "image" : undefined}');
+    expect(editor).toContain('returnAnchor="image"');
     expect(basic).toContain("位置情報候補を確認");
     expect(basic).toContain('data-secondary-trigger="coordinates"');
   });
 
   it("keeps manual upload primary ownership server-side across all editors", () => {
-    for (const file of ["./venue-image-editor.tsx", "./master-editor.tsx", "./exhibition-editor.tsx"]) {
+    for (const file of ["./admin-image-manager.tsx", "./exhibition-editor.tsx"]) {
       const source = readFileSync(new URL(file, import.meta.url), "utf8");
       expect(source).not.toContain('name="is_primary"');
       expect(source).toContain("useImmediateMediaAssets");

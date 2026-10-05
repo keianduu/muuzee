@@ -54,6 +54,8 @@ Drawer Open時にだけDetail APIを呼び、一覧取得時に全DetailやDiagn
 
 Exhibitionも`/admin/exhibitions?selected={id}`をCanonicalなDetail stateとし、`q / status / image / schedule`を保持したまま右Drawerを開く。一覧からのOpenはpush semantics、Closeは`selected`だけを除去し、Browser Back / Escape / focus trap / focus return / background scroll lock / deep-link reloadはMaster Drawerと同じ契約に従う。従来の`/admin/exhibitions/[id]`はbookmark互換のため残し、List + `selected`へRedirectする。
 
+Order 325.5 Phase Aでは、Detailの共通責務を`Drawer shell / 状態・編集・データtabs / Edit sub-tabs / Image Manager / Candidate Picker / immediate media state`として分離する。Entity固有責務は各Editorへ残し、Venueの住所・座標・公式サイト取得、ArtistのField・外部Source診断・展覧会/作品Relation、WorksのTitle/Relation、ExhibitionのOccurrence/日付/公開条件を巨大なconfig-driven formへ統合しない。Artistの`編集`はVenueと同じEdit tab visualを使う`基本情報 / 画像登録 / 関連情報`とし、基本情報はArtist schemaのFieldだけを1-columnで表示する。Artistの複数画像候補はVenueと同じ`panel=image`第二Drawer、即時Media state、focus / Back / Escape契約を使う。Works / ExhibitionのHuman-facing IA展開はArtist Human Review後のPhase Bに留保する。
+
 PublicationはMaster / Exhibitionとも共有Toggleによる2-state UIとする。ONは`published`、OFFは`draft`であり、新しい`ready`を生成しない。legacy `ready`は非公開として表示する。ExhibitionのON操作は既存公開条件を満たす場合だけ許可し、不足理由をToggle付近へ表示する。
 
 Layer順は`Base < Sidebar < Popover / Tooltip < Drawer / Dialog`を共有tokenで固定する。Action menuはSidebarより前面、Drawerは通常Popoverより前面に表示し、狭幅ではPopoverをViewport内へ収める。

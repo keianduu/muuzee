@@ -29,7 +29,9 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
   const [loading, setLoading] = useState(false);
   const config = MASTER_CONFIGS[entity];
   const requestedPanel = searchParams.get("panel") as DetailPanel | null;
-  const secondaryRequested = entity === "venues" && ["image", "wikidata-fields", "official-fields", "coordinates"].includes(requestedPanel || "");
+  const secondaryRequested = requestedPanel === "image"
+    ? ["venues", "artists"].includes(entity)
+    : entity === "venues" && ["wikidata-fields", "official-fields", "coordinates"].includes(requestedPanel || "");
 
   const close = useCallback(() => {
     const query = selectedQuery(searchParams.toString(), null);
@@ -135,11 +137,11 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
     <button type="button" className="master-drawer-scrim" aria-label="一覧へ戻る" tabIndex={-1} onClick={close}/>
     <aside className="master-drawer master-drawer--primary" role="dialog" aria-modal={secondaryRequested ? undefined : "true"} aria-hidden={secondaryRequested || undefined} aria-labelledby="master-drawer-title">
       <header className="master-drawer-header"><div><p className="eyebrow">{config.label} Master</p><h1 id="master-drawer-title">{title}</h1>{currentRecord && <span className={`status ${currentRecord.publication_status}`}>{displayStatus(currentRecord.publication_status)}</span>}</div><button ref={closeButton} className="drawer-close" type="button" aria-label="詳細を閉じる" onClick={close}>×</button></header>
-      <div className="master-drawer-body">{loading && !currentRecord && <p className="drawer-loading">Loading...（読み込み中）</p>}<AdminFeedback variant="error" message={error}/>{currentRecord && <MasterDetailContent entity={entity} record={currentRecord} onOpenImageCandidate={entity === "venues" ? openImageCandidate : undefined} onOpenReviewPanel={entity === "venues" ? openReviewPanel : undefined}/>}</div>
+      <div className="master-drawer-body">{loading && !currentRecord && <p className="drawer-loading">Loading...（読み込み中）</p>}<AdminFeedback variant="error" message={error}/>{currentRecord && <MasterDetailContent entity={entity} record={currentRecord} onOpenImageCandidate={["venues", "artists"].includes(entity) ? openImageCandidate : undefined} onOpenReviewPanel={entity === "venues" ? openReviewPanel : undefined}/>}</div>
     </aside>
-    {secondaryRequested && <aside className="master-drawer master-drawer--secondary" role="dialog" aria-modal="true" aria-labelledby="venue-review-drawer-title">
-      <header className="master-drawer-header"><div><p className="eyebrow">{secondaryEyebrow}</p><h1 id="venue-review-drawer-title">{secondaryTitle}</h1><p className="muted">{title}</p></div><button ref={secondaryCloseButton} className="drawer-close" type="button" aria-label={`${secondaryTitle}を閉じる`} onClick={closeSecondary}>×</button></header>
-      <div className="master-drawer-body master-drawer-body--secondary">{requestedPanel === "image" && currentRecord ? selectableImageCandidates.length ? <MasterImageCandidatePicker venueId={currentRecord.id} candidates={selectableImageCandidates} subjectLabel={title} onSelected={closeSecondary}/> : <p className="empty-state">画像候補はありません。</p> : requestedPanel === "wikidata-fields" && currentRecord ? <VenueWikidataReviewPanel venueId={currentRecord.id} matched={currentRecord.wikidata_match_status === "matched"}/> : requestedPanel === "official-fields" && currentRecord ? <VenueFieldReviewPanel venueId={currentRecord.id} source="official" runId={searchParams.get("run")} targetUrl={searchParams.get("targetUrl")}/> : requestedPanel === "coordinates" && currentRecord ? <VenueCoordinateReviewPanel venueId={currentRecord.id} candidates={coordinateCandidates} onSelected={closeSecondary}/> : <p className="drawer-loading">読み込み中…</p>}</div>
+    {secondaryRequested && <aside className="master-drawer master-drawer--secondary" role="dialog" aria-modal="true" aria-labelledby="master-secondary-drawer-title">
+      <header className="master-drawer-header"><div><p className="eyebrow">{secondaryEyebrow}</p><h1 id="master-secondary-drawer-title">{secondaryTitle}</h1><p className="muted">{title}</p></div><button ref={secondaryCloseButton} className="drawer-close" type="button" aria-label={`${secondaryTitle}を閉じる`} onClick={closeSecondary}>×</button></header>
+      <div className="master-drawer-body master-drawer-body--secondary">{requestedPanel === "image" && currentRecord ? selectableImageCandidates.length ? <MasterImageCandidatePicker entity={entity} ownerId={currentRecord.id} candidates={selectableImageCandidates} subjectLabel={title} onSelected={closeSecondary}/> : <p className="empty-state">画像候補はありません。</p> : requestedPanel === "wikidata-fields" && currentRecord ? <VenueWikidataReviewPanel venueId={currentRecord.id} matched={currentRecord.wikidata_match_status === "matched"}/> : requestedPanel === "official-fields" && currentRecord ? <VenueFieldReviewPanel venueId={currentRecord.id} source="official" runId={searchParams.get("run")} targetUrl={searchParams.get("targetUrl")}/> : requestedPanel === "coordinates" && currentRecord ? <VenueCoordinateReviewPanel venueId={currentRecord.id} candidates={coordinateCandidates} onSelected={closeSecondary}/> : <p className="drawer-loading">読み込み中…</p>}</div>
     </aside>}
   </div>;
 }

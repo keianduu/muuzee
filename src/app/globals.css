@@ -239,10 +239,12 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .tag button { border: 0; background: transparent; color: var(--muted); padding: 0; }
 .tag-form { display: grid; grid-template-columns: 160px minmax(180px,1fr) auto; align-items: end; gap: 10px; margin-top: 16px; }
 .tag-form--compact { grid-template-columns: minmax(0,1fr) auto; }
-.venue-edit-tabs { display: flex; width: fit-content; gap: 4px; margin: 0 0 20px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-hover); }
-.venue-edit-tabs button { min-height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--admin-radius-control); background: transparent; color: var(--ink-600); font-size: 13px; font-weight: 650; }
-.venue-edit-tabs button.is-active { border-color: var(--line); background: var(--surface-strong); color: var(--ink-950); box-shadow: var(--admin-shadow-1); }
-.venue-basic-fields, .venue-image-metadata { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; }
+.admin-edit-tabs { display: flex; width: fit-content; gap: 4px; margin: 0 0 20px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-hover); }
+.admin-edit-tabs button { min-height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--admin-radius-control); background: transparent; color: var(--ink-600); font-size: 13px; font-weight: 650; }
+.admin-edit-tabs button.is-active { border-color: var(--line); background: var(--surface-strong); color: var(--ink-950); box-shadow: var(--admin-shadow-1); }
+.artist-basic-form .form-grid { grid-template-columns: minmax(0,1fr); }
+.artist-edit-surface { display: grid; gap: var(--admin-space-section); }
+.venue-basic-fields, .admin-image-metadata { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; }
 .venue-type-field { min-width: 0; margin: 0; padding: 0; border: 0; }
 .venue-type-field legend { display: grid; gap: 2px; margin-bottom: 8px; padding: 0; }
 .venue-radio-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
@@ -286,22 +288,22 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .section-heading-row h2 { margin: 0; }
 .section-heading-row p { margin: var(--admin-space-inline) 0 0; }
 .relation-search-panel { display: grid; gap: var(--admin-space-field); margin-top: var(--admin-space-section); padding-top: var(--admin-space-section); border-top: 1px solid var(--line); }
-.venue-image-editor > * + * { margin-top: 24px; }
+.admin-image-manager > * + * { margin-top: 24px; }
 .candidate-section, .venue-relation-section { display: grid; gap: var(--admin-space-group); }
 .venue-relations { display: grid; gap: 24px; }
 .venue-relations > section > h2:first-child { margin-top: 0; }
-.venue-image-editor section > h2 { margin: 0 0 var(--admin-space-group); }
+.admin-image-manager section > h2 { margin: 0 0 var(--admin-space-group); }
 .candidate-picker { display: grid; gap: var(--admin-space-group); }
 .candidate-picker-count { margin: 0; color: var(--ink-600); font-size: var(--admin-font-meta); }
 .candidate-source-link { color: var(--ink-800); text-underline-offset: 3px; }
 .detail-tab-panel > .card + .card { margin-top: var(--admin-space-card); }
-.venue-image-placeholder, .venue-image-preview { width: min(100%,280px); aspect-ratio: 1 / 1; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-hover); color: var(--ink-500); font-size: 13px; }
-.venue-image-preview { margin: 0 0 18px; }
-.venue-image-preview img { width: 100%; height: 100%; object-fit: contain; background: var(--white); }
-.venue-image-source-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
-.venue-image-or { position: relative; display: flex; align-items: center; gap: 10px; color: var(--ink-500); font-size: 12px; }
-.venue-image-or::before, .venue-image-or::after { content: ""; height: 1px; flex: 1; background: var(--line); }
-.venue-image-metadata { margin-top: 18px; }
+.admin-image-placeholder, .admin-image-preview { width: min(100%,280px); aspect-ratio: 1 / 1; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-hover); color: var(--ink-500); font-size: 13px; }
+.admin-image-preview { margin: 0 0 18px; }
+.admin-image-preview img { width: 100%; height: 100%; object-fit: contain; background: var(--white); }
+.admin-image-source-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
+.admin-image-or { position: relative; display: flex; align-items: center; gap: 10px; color: var(--ink-500); font-size: 12px; }
+.admin-image-or::before, .admin-image-or::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+.admin-image-metadata { margin-top: 18px; }
 .venue-primary-check { width: fit-content; display: inline-flex; align-items: center; gap: 8px; color: var(--ink-800); font-size: 13px; font-weight: 650; }
 .master-row { cursor: pointer; transition: background-color 180ms ease; }
 .master-row:hover, .master-row:focus-visible { background: var(--surface); outline: none; }

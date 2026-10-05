@@ -20,11 +20,11 @@ describe.each(["artists", "works"] as const)("%s media acquisition visibility", 
     const empty = renderToStaticMarkup(<MasterEditor entity={entity} record={record([])} view="edit" embeddedInList/>);
     expect(empty).toContain("No Image");
     expect(empty).toContain("画像候補");
-    expect(empty).toContain("画像を登録");
+    expect(empty).toContain("画像登録");
 
     const registered = renderToStaticMarkup(<MasterEditor entity={entity} record={record([asset()])} view="edit" embeddedInList/>);
     expect(registered).toContain("registered.jpg");
     expect(registered).not.toContain("画像候補");
-    expect(registered).not.toContain("画像を登録");
+    expect(registered).not.toContain("画像登録");
   });
 });

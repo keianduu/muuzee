@@ -6,7 +6,7 @@ import type { SourceImageCandidateRow } from "@/lib/admin/types";
 import { candidateLicenseProfile, imageDiscoverySourceLabel } from "@/lib/admin/master-image";
 import { AdminFeedback } from "./admin-feedback";
 import { useState } from "react";
-import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
+import { dispatchAdminMediaMutation, type AdminMediaEntity } from "@/lib/admin/media-asset-state";
 
 function candidateMatchSummary(candidate: SourceImageCandidateRow) {
   const confirmedQid = candidate.candidate_match_confidence === 1 && /^Q\d+$/.test(candidate.candidate_entity_id || "");
@@ -48,8 +48,9 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, onSetP
   </article>;
 }
 
-export function MasterImageCandidatePicker({ venueId, candidates, subjectLabel, onSelected }: {
-  venueId: string;
+export function MasterImageCandidatePicker({ entity, ownerId, candidates, subjectLabel, onSelected }: {
+  entity: AdminMediaEntity;
+  ownerId: string;
   candidates: SourceImageCandidateRow[];
   subjectLabel: string;
   onSelected: () => void;
@@ -59,11 +60,11 @@ export function MasterImageCandidatePicker({ venueId, candidates, subjectLabel, 
   async function select(candidate: SourceImageCandidateRow) {
     setBusy(true); setMessage("");
     try {
-      const response = await fetch(`/api/admin/venues/${venueId}/image-candidates/${candidate.id}/set-primary`, { method: "POST" });
+      const response = await fetch(`/api/admin/masters/${entity}/${ownerId}/image-candidates/${candidate.id}/set-primary`, { method: "POST" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "候補画像の設定に失敗しました。");
-      if (body.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venueId, asset: body.asset });
-      window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity: "venues", id: venueId, preserveListOrder: true } }));
+      if (body.asset) dispatchAdminMediaMutation({ entity, ownerId, asset: body.asset });
+      window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity, id: ownerId, preserveListOrder: true } }));
       onSelected();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "候補画像の設定に失敗しました。");

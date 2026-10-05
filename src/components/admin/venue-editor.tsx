@@ -14,6 +14,7 @@ import { VENUE_EDIT_TABS, type VenueEditTab, venueEditTab, venueEditTabQuery } f
 import { AdminFeedback } from "./admin-feedback";
 import { AdminPanelButton } from "./admin-panel-button";
 import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
+import { AdminTabs } from "./admin-tabs";
 
 type PanelOptions = { candidateId?: string | null; runId?: string | null; targetUrl?: string | null };
 
@@ -79,7 +80,7 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
 
   return <>
     {(view === "all" || view === "edit") && <div className="venue-edit-surface">
-      <div className="venue-edit-tabs" role="tablist" aria-label="Venue編集セクション">{VENUE_EDIT_TABS.map((tab) => <button type="button" role="tab" aria-selected={editTab === tab.id} className={editTab === tab.id ? "is-active" : ""} data-secondary-return-anchor={tab.id === "image" ? "image" : undefined} key={tab.id} onClick={() => selectEditTab(tab.id)}>{tab.label}</button>)}</div>
+      <AdminTabs tabs={VENUE_EDIT_TABS} value={editTab} onChange={selectEditTab} label="Venue編集セクション" variant="edit" returnAnchor="image"/>
       <div role="tabpanel">
         {editTab === "basic" && <VenueBasicEditor venue={venue} busy={busy} onSave={save} onOpenCoordinateReview={onOpenReviewPanel ? () => onOpenReviewPanel("coordinates") : undefined}/>}
         {editTab === "image" && <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage}/>}
