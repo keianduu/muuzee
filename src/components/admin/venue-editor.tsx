@@ -81,7 +81,7 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
       <div role="tabpanel">
         {editTab === "basic" && <VenueBasicEditor venue={venue} busy={busy} onSave={save} onOpenCoordinateReview={onOpenReviewPanel ? () => onOpenReviewPanel("coordinates") : undefined}/>}
         {editTab === "image" && <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage}/>}
-        {editTab === "relations" && <div className="venue-relations"><VenueRelations venue={venue}/><MasterTags entity="venues" masterId={venue.id} rows={tagRows} title="タグ" compactType/></div>}
+        {editTab === "relations" && <div className="venue-relations"><VenueRelations venue={venue}/><MasterTags entity="venues" masterId={venue.id} rows={tagRows} title="タグ"/></div>}
       </div>
     </div>}
 

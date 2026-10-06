@@ -41,7 +41,7 @@ Venue一覧は実効Tier Badgeを表示し、A→B→C→D→E→未分類で並
 ## Status / Edit / Data IA
 
 - `状態`: 取得過程ではなく、現在利用できる情報を示す。Master共通はPublication、画像の可用性、実際に紐づく外部Source名、Requirementsを表示し、Venueだけ位置情報を追加する。Completeness percentage、独立したRights、不足Field text、API照合、crawl診断は表示しない。
-- `編集`: Masterの実データ、Tag、Relation、画像Upload / Candidate判断、座標Candidate採否。
+- `編集`: Masterの実データ、既存Tag Catalogからの付与・解除、Relation、画像Upload / Candidate判断、座標Candidate採否。Tagの作成・rename・merge・deleteはDetail外のTag管理機能が所有する。
 - `データ`: Current field provenance、linked external source、既に取得済みの未解決candidateを検査するsurface。Shared Data Reviewは`項目の出典 → 外部データ → 要確認（存在時のみ）`のlayout、spacing、source list、review queue、feedback、empty stateを所有する。raw payload、provenance history、検索trace、crawl status dashboardはDB / auditへ残す。
 - `データ取り込み`: Wikidata / Wikipedia / APJ DAJ / Getty ULAN / 公式サイト等のBatch / Import / Targeted Resolutionを所有する。通常Detailからroutine取得・再取得を行わず、Batchで取得できなかったFieldは`編集`でManual correctionする。
 

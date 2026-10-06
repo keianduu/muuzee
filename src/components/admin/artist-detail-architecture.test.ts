@@ -47,12 +47,16 @@ describe("Artist shared detail architecture", () => {
     expect(venue).toContain("<VenueCoordinateReview");
   });
 
-  it("uses the contained shared tag form while retaining the Artist type selector", () => {
+  it("uses the contained shared existing-tag selector without free-form creation", () => {
     const tags = readFileSync(new URL("./master-tags.tsx", import.meta.url), "utf8");
+    const tagModel = readFileSync(new URL("../../lib/admin/tags.ts", import.meta.url), "utf8");
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
-    expect(tags).toContain('<select name="type"');
-    expect(tags).toContain("genre");
-    expect(css).toMatch(/\.tag-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,120px\)\s+minmax\(0,1fr\)/);
-    expect(css).toMatch(/\.tag-form:not\(\.tag-form--compact\)\s*>\s*\.button\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
+    expect(tags).toContain("既存タグ");
+    expect(tags).toContain("/api/admin/tags");
+    expect(tagModel).toContain('"genre", "movement", "era", "theme", "other"');
+    expect(tags).not.toContain('name="name"');
+    expect(tags).not.toContain("router.refresh");
+    expect(tags).not.toContain("muuzee:master-updated");
+    expect(css).toMatch(/\.tag-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,120px\)\s+minmax\(0,1fr\)\s+auto/);
   });
 });

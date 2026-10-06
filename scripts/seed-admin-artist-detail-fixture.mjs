@@ -15,7 +15,11 @@ const EXTRA_WORKS = [
   { id: "32550000-0000-4325-8325-000000000040", slug: "order3255-long-work-a", title: "LOCAL QA — 長い作品名称と役割ラベルがRelated Worksの行内で自然に折り返されることを確認する作品 A", title_ja: "LOCAL QA — 長い作品名称と役割ラベルがRelated Worksの行内で自然に折り返されることを確認する作品 A", publication_status: "published" },
   { id: "32550000-0000-4325-8325-000000000041", slug: "order3255-long-work-b", title: "LOCAL QA — Relation Containment Work B with an intentionally long multilingual display title", title_en: "LOCAL QA — Relation Containment Work B with an intentionally long multilingual display title", publication_status: "draft" },
 ];
-const TAG_ID = "32550000-0000-4325-8325-000000000050";
+const TAGS = [
+  { id: "32550000-0000-4325-8325-000000000050", type: "genre", name: "LOCAL QA — Genre A", slug: "order3255-genre-a" },
+  { id: "32550000-0000-4325-8325-000000000051", type: "movement", name: "LOCAL QA — Movement B with a long existing Tag name that must wrap inside the Drawer", slug: "order3255-movement-b" },
+  { id: "32550000-0000-4325-8325-000000000052", type: "theme", name: "LOCAL QA — Theme C", slug: "order3255-theme-c" },
+];
 const SOURCE_KEY = "muuzee_local_artist_detail_fixture";
 
 function fail(message) {
@@ -61,7 +65,7 @@ async function cleanupFixture() {
   await must(db.from("artists").delete().eq("id", ARTIST_ID), "Delete fixture Artist");
   await must(db.from("exhibitions").delete().in("id", EXTRA_EXHIBITIONS.map((item) => item.id)), "Delete fixture Exhibitions");
   await must(db.from("works").delete().in("id", EXTRA_WORKS.map((item) => item.id)), "Delete fixture Works");
-  await must(db.from("tags").delete().eq("id", TAG_ID), "Delete fixture Tag");
+  await must(db.from("tags").delete().in("id", TAGS.map((tag) => tag.id)), "Delete fixture Tags");
   await must(db.from("data_sources").delete().eq("id", DATA_SOURCE_ID).eq("key", SOURCE_KEY), "Delete fixture Data Source");
 }
 
@@ -176,8 +180,8 @@ await must(db.from("artist_field_sources").insert([
 
 await must(db.from("exhibitions").insert(EXTRA_EXHIBITIONS), "Insert fixture Exhibitions");
 await must(db.from("works").insert(EXTRA_WORKS), "Insert fixture Works");
-await must(db.from("tags").insert({ id: TAG_ID, type: "other", name: "LOCAL QA — 長いタグ名称がDrawer幅からはみ出さず折り返されることを確認", slug: "order3255-long-artist-tag" }), "Insert fixture Tag");
-await must(db.from("artist_tags").insert({ artist_id: ARTIST_ID, tag_id: TAG_ID }), "Insert fixture Artist tag");
+await must(db.from("tags").insert(TAGS), "Insert fixture Tags");
+await must(db.from("artist_tags").insert({ artist_id: ARTIST_ID, tag_id: TAGS[1].id }), "Insert fixture Artist tag");
 
 await must(db.from("exhibition_artists").insert({
   id: EXHIBITION_RELATION_ID,
@@ -233,6 +237,8 @@ console.log(JSON.stringify({
   usableCandidateCount: 2,
   exhibitionRelationCount: 3,
   workRelationCount: 3,
+  tagCatalogCount: TAGS.length,
+  attachedTagCount: 1,
   openPath: `/admin/artists?selected=${ARTIST_ID}`,
   cleanup: "npm run db:cleanup:admin-artist-detail-local",
 }, null, 2));

@@ -138,8 +138,9 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 
 ### Detail containment
 
-- Detail panel、edit surface、card、relation section/list/row、Tag form/listはDrawer content幅を上限とし、`min-width: 0`と安全なtext wrappingを保つ。通常のRelation名は一件一行で表示し、複数名を`/`で連結した一文へしない。
-- Type選択を持つTag formはDrawer内で`種別 / タグ名`の二列、追加Buttonを次行に配置し、390pxでは一列へstackする。FieldとButtonはDrawer幅を押し広げない。
+- Detail panel、edit surface、card、relation section/list/row、Tag selector/listはDrawer content幅を上限とし、`min-width: 0`と安全なtext wrappingを保つ。通常のRelation名は一件一行で表示し、複数名を`/`で連結した一文へしない。
+- DetailのTag操作は既存Tag Catalogからの付与・解除だけを行う。`種別 / 既存タグ / 付与`を同じshared selectorで扱い、付与済みTagは候補から除外する。Tagの新規作成、type設計、rename、merge、deleteは別のTag管理機能が所有し、Detailへ自由入力や作成fallbackを置かない。390pxではselectorを一列へstackし、FieldとButtonはDrawer幅を押し広げない。
+- TagはEditorial metadataであり、Master一覧のkeyword Search / Filter taxonomyとは別責務とする。Detail Tag操作を理由にMaster検索条件を暗黙に変更しない。
 - 横Scrollは列幅が必要な`.table-wrap`等の意図的なcontainerだけが所有する。Drawer全体を`overflow-x: hidden`で切り捨てず、長いRelation名、Source URL、tag、form controlを内容幅内で折り返す。
 
 ### Layer order

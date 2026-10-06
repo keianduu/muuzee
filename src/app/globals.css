@@ -237,10 +237,10 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag { max-width: 100%; display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 999px; background: var(--paper); font-size: 12px; overflow-wrap: anywhere; }
 .tag button { border: 0; background: transparent; color: var(--muted); padding: 0; }
-.tag-form { width: 100%; min-width: 0; max-width: 100%; display: grid; grid-template-columns: minmax(0,120px) minmax(0,1fr); align-items: end; gap: 10px; margin-top: 16px; }
+.tag-form { width: 100%; min-width: 0; max-width: 100%; display: grid; grid-template-columns: minmax(0,120px) minmax(0,1fr) auto; align-items: end; gap: 10px; margin-top: 16px; }
 .tag-form > .field { min-width: 0; max-width: 100%; }
-.tag-form:not(.tag-form--compact) > .button { grid-column: 1 / -1; justify-self: start; }
-.tag-form--compact { grid-template-columns: minmax(0,1fr) auto; }
+.tag-form > .button { justify-self: start; }
+.tag-empty-state { margin: 12px 0 0; }
 .admin-edit-tabs { display: flex; width: fit-content; max-width: 100%; gap: 4px; margin: 0; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-hover); }
 .admin-edit-tabs button { min-height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--admin-radius-control); background: transparent; color: var(--ink-600); font-size: 13px; font-weight: 650; }
 .admin-edit-tabs button.is-active { border-color: var(--line); background: var(--surface-strong); color: var(--ink-950); box-shadow: var(--admin-shadow-1); }
