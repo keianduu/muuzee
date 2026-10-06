@@ -7,6 +7,15 @@ const EXHIBITION_RELATION_ID = "32550000-0000-4325-8325-000000000020";
 const WORK_RELATION_ID = "32550000-0000-4325-8325-000000000021";
 const EXHIBITION_ID = "30000000-0000-4000-8000-000000000004";
 const WORK_ID = "30000000-0000-4000-8000-000000000003";
+const EXTRA_EXHIBITIONS = [
+  { id: "32550000-0000-4325-8325-000000000030", slug: "order3255-long-exhibition-a", title: "LOCAL QA — 非常に長い展覧会タイトルがDrawer幅の中で安全に折り返されることを確認するための展覧会 A", publication_status: "published" },
+  { id: "32550000-0000-4325-8325-000000000031", slug: "order3255-long-exhibition-b", title: "LOCAL QA — Multiple Artist Relation Review Exhibition B with an intentionally long English title", publication_status: "draft" },
+];
+const EXTRA_WORKS = [
+  { id: "32550000-0000-4325-8325-000000000040", slug: "order3255-long-work-a", title: "LOCAL QA — 長い作品名称と役割ラベルがRelated Worksの行内で自然に折り返されることを確認する作品 A", title_ja: "LOCAL QA — 長い作品名称と役割ラベルがRelated Worksの行内で自然に折り返されることを確認する作品 A", publication_status: "published" },
+  { id: "32550000-0000-4325-8325-000000000041", slug: "order3255-long-work-b", title: "LOCAL QA — Relation Containment Work B with an intentionally long multilingual display title", title_en: "LOCAL QA — Relation Containment Work B with an intentionally long multilingual display title", publication_status: "draft" },
+];
+const TAG_ID = "32550000-0000-4325-8325-000000000050";
 const SOURCE_KEY = "muuzee_local_artist_detail_fixture";
 
 function fail(message) {
@@ -43,10 +52,16 @@ async function cleanupFixture() {
   const media = await must(db.from("media_assets").select("storage_path").eq("artist_id", ARTIST_ID), "Read fixture Media Assets");
   const storagePaths = (media || []).map((item) => item.storage_path).filter(Boolean);
   if (storagePaths.length) await must(db.storage.from("exhibition-images").remove(storagePaths), "Delete fixture Storage objects");
-  await must(db.from("exhibition_artists").delete().eq("id", EXHIBITION_RELATION_ID), "Delete fixture Exhibition relation");
-  await must(db.from("work_artists").delete().eq("id", WORK_RELATION_ID), "Delete fixture Work relation");
-  await must(db.from("source_records").delete().eq("id", SOURCE_RECORD_ID).eq("artist_id", ARTIST_ID), "Delete fixture Source Record");
+  await must(db.from("exhibition_artists").delete().eq("artist_id", ARTIST_ID), "Delete fixture Exhibition relations");
+  await must(db.from("work_artists").delete().eq("artist_id", ARTIST_ID), "Delete fixture Work relations");
+  await must(db.from("artist_external_match_candidates").delete().eq("artist_id", ARTIST_ID), "Delete fixture Artist candidates");
+  await must(db.from("artist_field_sources").delete().eq("artist_id", ARTIST_ID), "Delete fixture provenance");
+  await must(db.from("artist_tags").delete().eq("artist_id", ARTIST_ID), "Delete fixture Artist tags");
+  await must(db.from("source_records").delete().eq("artist_id", ARTIST_ID), "Delete fixture Source Records");
   await must(db.from("artists").delete().eq("id", ARTIST_ID), "Delete fixture Artist");
+  await must(db.from("exhibitions").delete().in("id", EXTRA_EXHIBITIONS.map((item) => item.id)), "Delete fixture Exhibitions");
+  await must(db.from("works").delete().in("id", EXTRA_WORKS.map((item) => item.id)), "Delete fixture Works");
+  await must(db.from("tags").delete().eq("id", TAG_ID), "Delete fixture Tag");
   await must(db.from("data_sources").delete().eq("id", DATA_SOURCE_ID).eq("key", SOURCE_KEY), "Delete fixture Data Source");
 }
 
@@ -139,6 +154,31 @@ await must(db.from("source_image_candidates").insert([
   },
 ]), "Insert fixture Image Candidates");
 
+await must(db.from("artist_external_match_candidates").insert({
+  id: "32550000-0000-4325-8325-000000000060",
+  artist_id: ARTIST_ID,
+  provider: "wikidata",
+  external_id: "Q231121",
+  label_ja: "草間彌生",
+  label_en: "Yayoi Kusama",
+  birth_year: 1929,
+  confidence: 0.18,
+  match_reasons: ["LOCAL fixture for read-only candidate review"],
+  status: "candidate",
+  raw_payload: { fixture: true, verified_qid: true },
+}), "Insert fixture Artist identity candidate");
+
+await must(db.from("artist_field_sources").insert([
+  { id: "32550000-0000-4325-8325-000000000070", artist_id: ARTIST_ID, field_name: "name", source: "manual", source_url: null, value_snapshot: "LOCAL Artist Detail Review", review_status: "applied", is_current: true },
+  { id: "32550000-0000-4325-8325-000000000071", artist_id: ARTIST_ID, field_name: "name_en", source: "wikidata", source_url: "https://www.wikidata.org/wiki/Q231121", value_snapshot: "LOCAL Artist Detail Review", review_status: "applied", is_current: true },
+  { id: "32550000-0000-4325-8325-000000000072", artist_id: ARTIST_ID, field_name: "nationality_country_code", source: "getty_ulan", source_url: "https://www.getty.edu/research/tools/vocabularies/ulan/", value_snapshot: "JP", review_status: "applied", is_current: true },
+]), "Insert fixture Artist provenance");
+
+await must(db.from("exhibitions").insert(EXTRA_EXHIBITIONS), "Insert fixture Exhibitions");
+await must(db.from("works").insert(EXTRA_WORKS), "Insert fixture Works");
+await must(db.from("tags").insert({ id: TAG_ID, type: "other", name: "LOCAL QA — 長いタグ名称がDrawer幅からはみ出さず折り返されることを確認", slug: "order3255-long-artist-tag" }), "Insert fixture Tag");
+await must(db.from("artist_tags").insert({ artist_id: ARTIST_ID, tag_id: TAG_ID }), "Insert fixture Artist tag");
+
 await must(db.from("exhibition_artists").insert({
   id: EXHIBITION_RELATION_ID,
   exhibition_id: EXHIBITION_ID,
@@ -162,14 +202,37 @@ await must(db.from("work_artists").insert({
   visibility_overridden: true,
 }), "Insert fixture Work relation");
 
+await must(db.from("exhibition_artists").insert(EXTRA_EXHIBITIONS.map((exhibition, index) => ({
+  id: `32550000-0000-4325-8325-00000000002${index + 2}`,
+  exhibition_id: exhibition.id,
+  artist_id: ARTIST_ID,
+  role: index ? "featured artist" : "artist",
+  source_artist_name: "LOCAL Artist Detail Review",
+  match_status: "matched",
+  relation_status: "active",
+  source_record_id: SOURCE_RECORD_ID,
+}))), "Insert fixture extra Exhibition relations");
+
+await must(db.from("work_artists").insert(EXTRA_WORKS.map((work, index) => ({
+  id: `32550000-0000-4325-8325-00000000002${index + 4}`,
+  work_id: work.id,
+  artist_id: ARTIST_ID,
+  role: index ? "collaborating artist" : "artist",
+  source: "manual",
+  source_url: "https://github.com/keianduu/muuzee",
+  source_record_id: SOURCE_RECORD_ID,
+  visibility_status: "public",
+  visibility_overridden: true,
+}))), "Insert fixture extra Work relations");
+
 console.log(JSON.stringify({
   action: "seed",
   artistId: ARTIST_ID,
   artistName: "LOCAL Artist Detail Review",
   registeredMediaCount: 0,
   usableCandidateCount: 2,
-  exhibitionRelationCount: 1,
-  workRelationCount: 1,
+  exhibitionRelationCount: 3,
+  workRelationCount: 3,
   openPath: `/admin/artists?selected=${ARTIST_ID}`,
   cleanup: "npm run db:cleanup:admin-artist-detail-local",
 }, null, 2));

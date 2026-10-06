@@ -42,7 +42,7 @@ Venue一覧は実効Tier Badgeを表示し、A→B→C→D→E→未分類で並
 
 - `状態`: 取得過程ではなく、現在利用できる情報を示す。Master共通はPublication、画像の可用性、外部データ有無、Requirementsを表示し、Venueだけ位置情報を追加する。Completeness percentage、独立したRights、不足Field text、API照合、crawl診断は表示しない。
 - `編集`: Masterの実データ、Tag、Relation、画像Upload / Candidate判断、座標Candidate採否。
-- `データ`: Humanが外部候補を判断するsurface。Venueは`Wikidata照合 / 外部データから情報を取得 / 項目の出典 / 位置情報候補`だけを主表示し、raw source record、provenance history、検索trace、crawl status dashboardはDB / auditへ残す。
+- `データ`: Humanが外部候補を判断するsurface。Shared Data Reviewは`外部identity / source照合 → 外部データから情報を取得・確認 → current項目出典 → Entity固有candidate / review`のlayout、spacing、provenance、feedback、empty stateを所有し、Venue / ArtistはSource、Field、候補、APIをadapterとして渡す。Venueは`Wikidata照合 / 公式サイト取得 / 項目の出典 / 位置情報候補`、Artistは`Wikidata照合 / Artist external source / 項目の出典 / Artist Source Review`だけを主表示し、raw source record、provenance history、検索trace、crawl status dashboardはDB / auditへ残す。
 
 Human-facing画像状態は`未取得 / 画像なし / 候補あり / 利用不可 / 利用可能`の5状態とする。approved Media AssetがあればPrimary指定にかかわらず`利用可能`、active non-rejected Candidateまたは`needs_review` Assetは`候補あり`、rejected-only evidenceは`利用不可`、完了した探索のno-result evidenceがあれば`画像なし`、判断可能な探索証拠がなければ`未取得`とする。raw `image_search_status`はDB / auditへ残し、通常DetailのDataには表示しない。
 
@@ -54,7 +54,7 @@ Drawer Open時にだけDetail APIを呼び、一覧取得時に全DetailやDiagn
 
 Exhibitionも`/admin/exhibitions?selected={id}`をCanonicalなDetail stateとし、`q / status / image / schedule`を保持したまま右Drawerを開く。一覧からのOpenはpush semantics、Closeは`selected`だけを除去し、Browser Back / Escape / focus trap / focus return / background scroll lock / deep-link reloadはMaster Drawerと同じ契約に従う。従来の`/admin/exhibitions/[id]`はbookmark互換のため残し、List + `selected`へRedirectする。
 
-Order 325.5 Phase Aでは、Detailの共通責務を`Drawer shell / 状態・編集・データtabs / Edit sub-tabs / Image Manager / Candidate Picker / immediate media state`として分離する。Entity固有責務は各Editorへ残し、Venueの住所・座標・公式サイト取得、ArtistのField・外部Source診断・展覧会/作品Relation、WorksのTitle/Relation、ExhibitionのOccurrence/日付/公開条件を巨大なconfig-driven formへ統合しない。Artistの`編集`はVenueと同じEdit tab visualを使う`基本情報 / 画像登録 / 関連情報`とし、基本情報はArtist schemaのFieldだけを1-columnで表示する。Artistの複数画像候補はVenueと同じ`panel=image`第二Drawer、即時Media state、focus / Back / Escape契約を使う。Works / ExhibitionのHuman-facing IA展開はArtist Human Review後のPhase Bに留保する。
+Order 325.5 Phase Aでは、Detailの共通責務を`Drawer shell / 状態・編集・データtabs / Edit sub-tabs / Image Manager / Candidate Picker / immediate media state / Data Review presentation`として分離する。Entity固有責務は各Editorへ残し、Venueの住所・座標・公式サイト取得、ArtistのField・Source・展覧会/作品Relation、WorksのTitle/Relation、ExhibitionのOccurrence/日付/公開条件を巨大なconfig-driven formへ統合しない。Artistの`編集`はVenueと同じEdit tab visualを使う`基本情報 / 画像登録 / 関連情報`とし、基本情報はArtist schemaのFieldだけを1-columnで表示する。Edit sub-tabは下marginを持たず、Artist / Venue共通の親surfaceが20pxの単一gapを所有する。Artist Relationは展覧会・作品を一件一行へ分け、長い名称とtagをDrawer幅内でwrapする。Artistの複数画像候補はVenueと同じ`panel=image`第二Drawer、即時Media state、focus / Back / Escape契約を使う。Artistのidentity candidate確定route、Wikidata preview、APJ DAJ / Getty ULAN個別実行はPhase A時点で安全なper-Artist backend capabilityがないため、偽のActionを作らずread-onlyまたは対応済みWikipedia selected actionだけを表示する。Works / ExhibitionのHuman-facing IA展開はArtist Human Review後のPhase Bに留保する。
 
 PublicationはMaster / Exhibitionとも共有Toggleによる2-state UIとする。ONは`published`、OFFは`draft`であり、新しい`ready`を生成しない。legacy `ready`は非公開として表示する。ExhibitionのON操作は既存公開条件を満たす場合だけ許可し、不足理由をToggle付近へ表示する。
 

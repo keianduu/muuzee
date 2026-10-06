@@ -12,8 +12,17 @@ describe("Artist shared detail architecture", () => {
     expect(editor).toContain("<AdminImageManager");
     expect(editor).toContain("record.exhibition_artists");
     expect(editor).toContain("record.work_artists");
+    expect(detail).toContain("<ArtistDataReview artist={record}");
     expect(editor).not.toContain("postal_code");
     expect(editor).not.toContain("coordinate_status");
+  });
+
+  it("loads Artist identity candidates and delegates edit spacing to the parent surface", () => {
+    const repository = readFileSync(new URL("../../lib/admin/master-repository.ts", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(repository).toContain("artist_external_match_candidates(*)");
+    expect(css).toMatch(/\.admin-edit-tabs\s*\{[^}]*margin:\s*0;/);
+    expect(css).toMatch(/\.artist-edit-surface, \.venue-edit-surface\s*\{[^}]*gap:\s*20px;/);
   });
 
   it("opens the shared candidate drawer for Artist while keeping Venue-only review panels scoped", () => {

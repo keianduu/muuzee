@@ -76,20 +76,8 @@ export type VenueFieldReviewRow = {
   resultState: "fetched" | "missing" | "unchanged" | "protected";
 };
 
-export const VENUE_SOURCE_LABELS: Record<string, string> = {
-  manual: "手動",
-  wikidata: "Wikidata",
-  wikipedia: "Wikipedia",
-  official_website: "公式サイト",
-  trusted_api: "Trusted API",
-  csv_import: "CSV",
-  geolonia: "Geolonia",
-  japan_post: "日本郵便",
-};
-
-export function venueSourceLabel(source: string | null | undefined) {
-  return source ? VENUE_SOURCE_LABELS[source] || "不明" : "不明";
-}
+export { ADMIN_SOURCE_LABELS as VENUE_SOURCE_LABELS, adminSourceLabel as venueSourceLabel } from "./data-review";
+import { adminSourceLabel as venueSourceLabel } from "./data-review";
 
 export function reviewValueEmpty(value: unknown) {
   return value == null || String(value).trim() === "";

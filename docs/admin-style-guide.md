@@ -90,6 +90,7 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Toolbar/filter actions remain content-sized and align to the control baseline rather than stretching to an input column width.
 - Context/view tabs use a contained neutral surface with a bordered/elevated active item.
 - Detail tabs use the same contained selection language.
+- Edit sub-tabs own only their control surface and never own the spacing below themselves. The parent edit surface owns a single 20px gap from sub-tabs to the active panel; child margin and parent gap must not stack at the same boundary.
 - Status chips are passive 24px pill labels and must not resemble action buttons.
 - Detailの画像状態は`未取得 / 画像なし / 候補あり / 利用不可 / 利用可能`の5つを常にpassive chipとして並べ、currentだけをborder、surface、weight、`✓`で強調する。Primary有無、candidate件数、raw `image_search_status`はこのHuman-facing stateへ混ぜない。
 - Requirement chipは充足済みをgreen + `✓`、公開必須の未充足をred、任意の未充足をneutral grayで示す。未充足chipへ`○`等の疑似状態iconを付けない。
@@ -127,6 +128,7 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 
 ### Venue data review composition
 
+- Data Reviewの共有visual primitiveはsection spacing、heading row、current provenance row、feedback、empty stateを所有し、Venue / ArtistのadapterはSource名、Field、候補、APIだけを渡す。概念順は`外部identity / source照合 → 外部データから情報を取得・確認 → 項目の出典 → Entity固有candidate / review`とする。
 - Venueの`データ`は`Wikidata → 公式サイト → 項目の出典 → 位置情報候補`の順にする。通常画面ではraw source record、provenance history、crawl / coordinate / image search trace、threshold一覧を表示しない。
 - Wikidata / 公式サイトの取得Actionは先に第二Drawerを開き、Loading / Success / Empty / Errorを同じDrawerで完結させる。Desktopでは第一Drawerを右端に維持して第二Drawerを左側へ積み、1100px以下では最上位Drawerを全幅表示する。
 - WikidataのEntity採用はQID identityだけを確定し、Master fieldを同時に変更しない。OperatorへQID入力を要求せず、候補identityと全対象Fieldの`取得済み / 取得なし / 変更なし / 保護`を一続きで示す。Field候補は第二Drawerで`現在値 / 取得値 / 現在のSource / 候補Source`を比較し、明示的に選択した項目だけ反映する。
@@ -135,6 +137,11 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Venue workflowの非同期Feedbackはshared compact feedbackを使い、巨大なlegacy noticeを追加しない。
 - 座標候補はSource、緯度・経度、必要な一致度・QID・精度、Google Maps linkと`採用 / 非採用`をcompactに示す。Wikidata Entity判断、座標判断、画像判断は独立させる。Data tabでは全候補をinline表示し、第二Drawerへの重複導線を置かない。Basic Editだけが既存第二Drawerを開ける。現行座標がなくeligible候補が1件なら自動選択し、複数ならHumanが1件を選ぶ。採用候補以外は監査用rowを残したまま非採用に収束させる。Basic formが開いたまま採用した場合は、そのVenue専用eventで緯度・経度と座標hintだけを即時同期し、未保存の他Fieldを上書きしない。
 - Image Candidate cardは取得経路、意味のある探索深度・一致度、rights、license、source linkを候補単位で示す。確定QID由来は偽のscoreとして見せず`確定QID`と表現し、full threshold traceを表示しない。
+
+### Detail containment
+
+- Detail panel、edit surface、card、relation section/list/row、Tag form/listはDrawer content幅を上限とし、`min-width: 0`と安全なtext wrappingを保つ。通常のRelation名は一件一行で表示し、複数名を`/`で連結した一文へしない。
+- 横Scrollは列幅が必要な`.table-wrap`等の意図的なcontainerだけが所有する。Drawer全体を`overflow-x: hidden`で切り捨てず、長いRelation名、Source URL、tag、form controlを内容幅内で折り返す。
 
 ### Layer order
 

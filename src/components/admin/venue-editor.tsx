@@ -15,6 +15,7 @@ import { AdminFeedback } from "./admin-feedback";
 import { AdminPanelButton } from "./admin-panel-button";
 import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
 import { AdminTabs } from "./admin-tabs";
+import { AdminDataReview, AdminDataSection, AdminProvenanceSummary } from "./admin-data-review";
 
 type PanelOptions = { candidateId?: string | null; runId?: string | null; targetUrl?: string | null };
 
@@ -75,7 +76,6 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
   const matchedCandidate = candidates.find((candidate) => candidate.status === "matched");
   const matchedWikidataId = matchedCandidate?.external_id || linkedWikidataSource?.external_id || null;
   const imageCandidates = (venue.source_records || []).flatMap((source) => source.source_image_candidates || []);
-  const currentSources = new Map((venue.venue_field_sources || []).filter((source) => source.is_current).map((source) => [source.field_name, source]));
   const coordinateCandidates = [...(venue.venue_coordinate_candidates || [])].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   return <>
@@ -88,15 +88,15 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
       </div>
     </div>}
 
-    {(view === "all" || view === "data") && <div className="venue-data-review">
-      <section><div className="section-heading-row"><div><h2>Wikidata</h2><p className="muted">{matchedWikidataId ? <>照合済み · <a href={`https://www.wikidata.org/wiki/${matchedWikidataId}`} target="_blank" rel="noreferrer">データ元を開く ↗</a></> : candidates.some((candidate) => candidate.status === "candidate") ? "確認待ちの候補があります。" : venue.wikidata_match_status === "unmatched" ? "一致する候補は未検出です。" : "まだ検索していません。"}</p></div><AdminPanelButton onClick={() => onOpenReviewPanel?.("wikidata-fields")}>{matchedWikidataId ? "Wikidataから不足情報を再取得" : candidates.some((candidate) => candidate.status === "candidate") ? "候補を確認" : "Wikidata候補を取得"}</AdminPanelButton></div></section>
+    {(view === "all" || view === "data") && <AdminDataReview className="venue-data-review">
+      <AdminDataSection title="Wikidata" description={matchedWikidataId ? <>照合済み · <a href={`https://www.wikidata.org/wiki/${matchedWikidataId}`} target="_blank" rel="noreferrer">データ元を開く ↗</a></> : candidates.some((candidate) => candidate.status === "candidate") ? "確認待ちの候補があります。" : venue.wikidata_match_status === "unmatched" ? "一致する候補は未検出です。" : "まだ検索していません。"} action={<AdminPanelButton onClick={() => onOpenReviewPanel?.("wikidata-fields")}>{matchedWikidataId ? "Wikidataから不足情報を再取得" : candidates.some((candidate) => candidate.status === "candidate") ? "候補を確認" : "Wikidata候補を取得"}</AdminPanelButton>}/>
 
-      <section><h2>公式サイト</h2><p className="muted">保存前のURLでも取得結果を確認できます。取得だけではMasterの公式URLを変更しません。</p><div className="field"><label htmlFor={`venue-review-url-${venue.id}`}>取得先URL</label><input id={`venue-review-url-${venue.id}`} type="url" placeholder="https://example.com/" value={officialUrl} onChange={(event) => setOfficialUrl(event.target.value)}/></div><div className="venue-data-actions"><AdminPanelButton disabled={!officialUrl.trim()} onClick={() => onOpenReviewPanel?.("official-fields", { targetUrl: officialUrl.trim() })}>公式サイトから情報取得</AdminPanelButton></div></section>
+      <AdminDataSection title="公式サイト" description="保存前のURLでも取得結果を確認できます。取得だけではMasterの公式URLを変更しません。"><div className="field"><label htmlFor={`venue-review-url-${venue.id}`}>取得先URL</label><input id={`venue-review-url-${venue.id}`} type="url" placeholder="https://example.com/" value={officialUrl} onChange={(event) => setOfficialUrl(event.target.value)}/></div><div className="venue-data-actions"><AdminPanelButton disabled={!officialUrl.trim()} onClick={() => onOpenReviewPanel?.("official-fields", { targetUrl: officialUrl.trim() })}>公式サイトから情報取得</AdminPanelButton></div></AdminDataSection>
 
-      <section><h2>項目の出典</h2><div className="venue-provenance-list">{VENUE_PROVENANCE_FIELDS.map(([key, label]) => { const source = currentSources.get(key); const value = (venue as unknown as Record<string, unknown>)[key]; const hasValue = value != null && String(value).trim() !== ""; return <div className="venue-provenance-row" key={key}><span><strong>{label}</strong><code>{key}</code></span>{!hasValue ? <b>—</b> : source?.source_url ? <a href={source.source_url} target="_blank" rel="noreferrer">{venueSourceLabel(source.source)} ↗</a> : <b>{venueSourceLabel(source?.source)}</b>}</div>; })}</div></section>
+      <AdminDataSection title="項目の出典"><AdminProvenanceSummary record={venue as unknown as Record<string, unknown>} fields={VENUE_PROVENANCE_FIELDS} sources={venue.venue_field_sources || []} sourceLabel={venueSourceLabel}/></AdminDataSection>
 
-      <section><div className="section-heading-row"><h2>位置情報候補</h2></div><VenueCoordinateReview venueId={venue.id} candidates={coordinateCandidates} busy={busy} onReview={reviewCoordinate}/></section>
-    </div>}
+      <AdminDataSection title="位置情報候補"><VenueCoordinateReview venueId={venue.id} candidates={coordinateCandidates} busy={busy} onReview={reviewCoordinate}/></AdminDataSection>
+    </AdminDataReview>}
     <AdminFeedback variant={message.toLowerCase().includes("fail") || message.includes("必須") ? "error" : "success"} message={message}/>
   </>;
 }

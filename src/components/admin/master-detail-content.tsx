@@ -12,6 +12,7 @@ import type { MasterRecord } from "@/lib/admin/master-repository";
 import type { VenueRow } from "@/lib/admin/types";
 import type { DetailPanel } from "@/lib/admin/master-list-state";
 import { AdminTabs } from "./admin-tabs";
+import { ArtistDataReview } from "./artist-data-review";
 
 export type DetailRecord = MasterRecord & Record<string, unknown> & {
   completeness: { percent: number; items: Array<{ key: string; label: string; met: boolean }> };
@@ -32,7 +33,7 @@ export function MasterDetailContent({ entity, record, onOpenImageCandidate, onOp
   return <>
     <AdminTabs tabs={DETAIL_TABS} value={tab} onChange={setTab} label="詳細セクション"/>
     <div role="tabpanel" className="detail-tab-panel">
-      {(entity !== "venues" || tab === "status") && !(entity === "artists" && tab === "edit") && <MasterEditor entity={entity} record={record} view={tab} embeddedInList/>}
+      {(entity !== "venues" || tab === "status") && !(entity === "artists" && (tab === "edit" || tab === "data")) && <MasterEditor entity={entity} record={record} view={tab} embeddedInList/>}
       {tab === "edit" && entity === "artists" && <div className="artist-edit-surface">
         <AdminTabs tabs={ARTIST_EDIT_TABS} value={artistEditTab} onChange={setArtistEditTab} label="Artist編集セクション" variant="edit" returnAnchor="image"/>
         <MasterEditor entity={entity} record={record} view="edit" editSection={artistEditTab} embeddedInList onOpenImageCandidate={onOpenImageCandidate}/>
@@ -41,6 +42,7 @@ export function MasterDetailContent({ entity, record, onOpenImageCandidate, onOp
       {tab === "edit" && entity !== "venues" && entity !== "artists" && (
         <MasterTags entity={entity} masterId={record.id} rows={(record[`${config.singular}_tags`] || []) as Array<Record<string, unknown>>}/>
       )}
+      {tab === "data" && entity === "artists" && <ArtistDataReview artist={record}/>}
       {tab === "edit" && entity === "works" && <WorkRelations workId={record.id} artists={(record.work_artists || []) as Array<Record<string, unknown>>} holdings={(record.collection_holdings || []) as Array<Record<string, unknown>>} presentations={(record.work_presentations || []) as Array<Record<string, unknown>>}/>}
       {entity === "venues" && (
         <VenueEditor key={record.id} venue={record as unknown as VenueRow} prompt={createVenueImageResearchPrompt({ name: String(record.name), address: record.address ? String(record.address) : null, officialUrl: record.official_url ? String(record.official_url) : null })} showBasicForm={false} view={tab} tagRows={(record.venue_tags || []) as Array<Record<string, unknown>>} onOpenImageCandidate={onOpenImageCandidate} onOpenReviewPanel={onOpenReviewPanel}/>
