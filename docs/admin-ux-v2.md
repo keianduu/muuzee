@@ -40,13 +40,14 @@ Venue一覧は実効Tier Badgeを表示し、A→B→C→D→E→未分類で並
 
 ## Status / Edit / Data IA
 
-- `状態`: 取得過程ではなく、現在利用できる情報を示す。Master共通はPublication、画像の可用性、外部データ有無、Requirementsを表示し、Venueだけ位置情報を追加する。Completeness percentage、独立したRights、不足Field text、API照合、crawl診断は表示しない。
+- `状態`: 取得過程ではなく、現在利用できる情報を示す。Master共通はPublication、画像の可用性、実際に紐づく外部Source名、Requirementsを表示し、Venueだけ位置情報を追加する。Completeness percentage、独立したRights、不足Field text、API照合、crawl診断は表示しない。
 - `編集`: Masterの実データ、Tag、Relation、画像Upload / Candidate判断、座標Candidate採否。
-- `データ`: Humanが外部候補を判断するsurface。Shared Data Reviewは`外部identity / source照合 → 外部データから情報を取得・確認 → current項目出典 → Entity固有candidate / review`のlayout、spacing、provenance、feedback、empty stateを所有し、Venue / ArtistはSource、Field、候補、APIをadapterとして渡す。Venueは`Wikidata照合 / 公式サイト取得 / 項目の出典 / 位置情報候補`、Artistは`Wikidata照合 / Artist external source / 項目の出典 / Artist Source Review`だけを主表示し、raw source record、provenance history、検索trace、crawl status dashboardはDB / auditへ残す。
+- `データ`: Current field provenance、linked external source、既に取得済みの未解決candidateを検査するsurface。Shared Data Reviewは`項目の出典 → 外部データ → 要確認（存在時のみ）`のlayout、spacing、source list、review queue、feedback、empty stateを所有する。raw payload、provenance history、検索trace、crawl status dashboardはDB / auditへ残す。
+- `データ取り込み`: Wikidata / Wikipedia / APJ DAJ / Getty ULAN / 公式サイト等のBatch / Import / Targeted Resolutionを所有する。通常Detailからroutine取得・再取得を行わず、Batchで取得できなかったFieldは`編集`でManual correctionする。
 
 Human-facing画像状態は`未取得 / 画像なし / 候補あり / 利用不可 / 利用可能`の5状態とする。approved Media AssetがあればPrimary指定にかかわらず`利用可能`、active non-rejected Candidateまたは`needs_review` Assetは`候補あり`、rejected-only evidenceは`利用不可`、完了した探索のno-result evidenceがあれば`画像なし`、判断可能な探索証拠がなければ`未取得`とする。raw `image_search_status`はDB / auditへ残し、通常DetailのDataには表示しない。
 
-`外部データ`は`source_records`が1件以上なら`あり`、0件なら`なし`とし、providerや件数はDataへ置く。Venueの`位置情報`はcurrent latitude/longitudeがあればSource種別を問わず`確認済み`、currentなしでusable candidateがあれば`候補あり`、それ以外は`取得不可`とする。ExhibitionはVenue relationを参照するため位置情報Statusを持たない。
+`状態 > 外部データ`はlinked `source_records.data_sources`と必要なcurrent provenanceからdistinct Source名を表示し、Manual / CSVは通常除外する。Sourceが無ければ`なし`。Data tabではlinked Source recordのSource名、external ID、根拠URLを表示し、存在しないProviderを`未取得`checklistとして並べない。Venueの`位置情報`はcurrent latitude/longitudeがあればSource種別を問わず`確認済み`、currentなしでusable candidateがあれば`候補あり`、それ以外は`取得不可`とする。ExhibitionはVenue relationを参照するため位置情報Statusを持たない。
 
 Publication-requiredはVenue=`name`、Artist=`name`、Works=`Title + Artist Relation + Holding Venue Relation`、Exhibition=`Title + Venue + Start or End date + Primary image + approved rights`であり、Completeness item全体を公開必須として扱わない。ArtistのTierは運用情報として残せるが、別のQuality cardでCompleteness、画像、Requirementsを重複表示しない。
 
@@ -54,7 +55,7 @@ Drawer Open時にだけDetail APIを呼び、一覧取得時に全DetailやDiagn
 
 Exhibitionも`/admin/exhibitions?selected={id}`をCanonicalなDetail stateとし、`q / status / image / schedule`を保持したまま右Drawerを開く。一覧からのOpenはpush semantics、Closeは`selected`だけを除去し、Browser Back / Escape / focus trap / focus return / background scroll lock / deep-link reloadはMaster Drawerと同じ契約に従う。従来の`/admin/exhibitions/[id]`はbookmark互換のため残し、List + `selected`へRedirectする。
 
-Order 325.5 Phase Aでは、Detailの共通責務を`Drawer shell / 状態・編集・データtabs / Edit sub-tabs / Image Manager / Candidate Picker / immediate media state / Data Review presentation`として分離する。Entity固有責務は各Editorへ残し、Venueの住所・座標・公式サイト取得、ArtistのField・Source・展覧会/作品Relation、WorksのTitle/Relation、ExhibitionのOccurrence/日付/公開条件を巨大なconfig-driven formへ統合しない。Artistの`編集`はVenueと同じEdit tab visualを使う`基本情報 / 画像登録 / 関連情報`とし、基本情報はArtist schemaのFieldだけを1-columnで表示する。Edit sub-tabは下marginを持たず、Artist / Venue共通の親surfaceが20pxの単一gapを所有する。Artist Relationは展覧会・作品を一件一行へ分け、長い名称とtagをDrawer幅内でwrapする。Artistの複数画像候補はVenueと同じ`panel=image`第二Drawer、即時Media state、focus / Back / Escape契約を使う。Artistのidentity candidate確定route、Wikidata preview、APJ DAJ / Getty ULAN個別実行はPhase A時点で安全なper-Artist backend capabilityがないため、偽のActionを作らずread-onlyまたは対応済みWikipedia selected actionだけを表示する。Works / ExhibitionのHuman-facing IA展開はArtist Human Review後のPhase Bに留保する。
+Order 325.5 Phase Aでは、Detailの共通責務を`Drawer shell / 状態・編集・データtabs / Edit sub-tabs / Image Manager / Candidate Picker / immediate media state / Data Review presentation`として分離する。Entity固有責務は各Editorへ残し、Venueの住所・座標、ArtistのField・Source・展覧会/作品Relation、WorksのTitle/Relation、ExhibitionのOccurrence/日付/公開条件を巨大なconfig-driven formへ統合しない。Artistの`編集`はVenueと同じEdit tab visualを使う`基本情報 / 画像登録 / 関連情報`とし、基本情報はArtist schemaのFieldだけを1-columnで表示する。Edit sub-tabは下marginを持たず、Artist / Venue共通の親surfaceが20pxの単一gapを所有する。Artist Relationは展覧会・作品を一件一行へ分け、長い名称とtagをDrawer幅内でwrapする。Artistの複数画像候補はVenueと同じ`panel=image`第二Drawer、即時Media state、focus / Back / Escape契約を使う。Artist / Venueのroutine外部取得ActionはData Import / Targeted Resolutionへ移し、Detailはlinked Sourceとcurrent provenance、unresolved candidateだけを表示する。Works / ExhibitionのHuman-facing IA展開はArtist Human Review後のPhase Bに留保する。
 
 PublicationはMaster / Exhibitionとも共有Toggleによる2-state UIとする。ONは`published`、OFFは`draft`であり、新しい`ready`を生成しない。legacy `ready`は非公開として表示する。ExhibitionのON操作は既存公開条件を満たす場合だけ許可し、不足理由をToggle付近へ表示する。
 
@@ -80,15 +81,17 @@ Venueは国内・海外の両方を対象にする。curated country catalogはP
 
 Image Candidate UIのLOCAL QAには`npm run db:seed:admin-image-candidate-local`で決定的なsynthetic fixtureを作成し、`npm run db:cleanup:admin-image-candidate-local`で明示的に削除できる。scriptはLOCAL Supabase URL以外を拒否し、STG / Production dataへ適用しない。
 
-## Venue data review workflow (Order 325 Phase D)
+## Venue data review workflow (Order 325 Phase D, acquisition history)
+
+以下はOrder 325 Phase Dで検証した取得・適用capabilityの履歴であり、Order 325.5以降の通常Detail UIからはroutine acquisition actionを外している。API / batch capabilityはData Import / Targeted Resolutionのため保持する。
 
 Venue DataのWikidata flowは`Entity候補取得 → QID採用 / 非採用 → Field preview → Human選択 → Apply → current provenance更新`である。候補取得とQID採用はMaster fieldを変更しない。Wikidata field applyは確定QIDをserverで再取得し、許可fieldとSource priorityを再検証する。`name_native`と`aliases`はHuman review対象に含めない。
 
-Field reviewは取得Actionと同時に第二Drawerを開き、Loading / Success / Empty / Errorをそこで表示する。現在値、取得値、current Source、candidate Sourceと根拠URLを比較し、全対象Fieldを`取得済み / 取得なし / 変更なし / 保護`として示す。空のcurrentに値がある候補だけdefault ON、同値は変更なし、Manual / 高優先度Sourceは保護する。Wikidata候補がない場合はQIDや補完Actionを要求せず、手動または公式サイト入力へ案内する。Data本体の`項目の出典`はBasic form順のcurrent source summaryだけを表示し、history件数が増えてもField rowを重複させない。値があるのにprovenanceがないlegacy値は`不明`、空Fieldは`—`とする。
+Field review capabilityは現在値、取得値、current Source、candidate Sourceと根拠URLを比較し、全対象Fieldを`取得済み / 取得なし / 変更なし / 保護`として扱う。通常Detailではこの取得Actionを開始せず、Data Import / Targeted Resolution側から得た結果を適用する境界として保持する。Data本体の`項目の出典`はBasic form順のcurrent source summaryだけを表示し、history件数が増えてもField rowを重複させない。値があるのにprovenanceがないlegacy値は`不明`、空Fieldは`—`とする。
 
 座標候補は`venue_coordinate_candidates`にSourceごとのjudgmentを保存し、Wikidata identityと独立して採用 / 非採用する。current座標がなくeligible候補が1件なら自動選択し、複数ならHuman判断まで自動選択しない。採用時はcurrent latitude / longitude、coordinate metadata、緯度・経度のprovenanceを更新し、選択候補をaccepted、同Venueの他候補を監査用rowを残したままrejectedへ収束させる。個別の非採用は対象候補だけを更新し、current座標、他候補、Wikidata identityを変更しない。Data内には全候補をinline表示し、`第二Drawerで確認`を置かない。Basicの座標領域だけが同じcomponentを使う`panel=coordinates`第二Drawerへ移動できる。採用成功後はVenue ID付きの`muuzee:venue-coordinate-selected`でマウント中Basic formの緯度・経度と座標Source / Precision hintだけを即時同期し、dirtyな他Fieldは保持する。その後に第二Drawerを閉じ、第一Drawerを再取得してTriggerへfocusを戻す。
 
-個別Venueの公式サイト取得は既存LOCAL-only crawlerを`selected` modeで再利用する。Data tabのURLは未保存でも取得対象にできるが、crawl開始やpreviewではMasterの`official_url`を暗黙更新しない。第二Drawerを先に開き、crawl結果またはErrorをそこで表示する。Humanが選択したFieldだけ`official_website` provenanceとfield-level source URL付きで反映する。partial結果は取得済みFieldとwarningを同時に表示する。Batchの`Crawl → CSV → Preview → Confirm`は別workflowとして維持し、STG / Production向けcrawlerへ拡張しない。
+公式サイト取得capabilityは既存LOCAL-only crawlerの`selected` modeを含めて保持するが、通常Detailからは起動しない。Batchの`Crawl → CSV → Preview → Confirm`または将来のTargeted Resolution workflowが取得を所有し、Masterへ反映する場合は`official_website` provenanceとfield-level source URLを保持する。
 
 Image Candidateは画像登録sub-tabと`panel=image`で取得経路、探索深度 / 確定QID、一致度、rights、license、source linkを候補単位で示す。Venue Dataから画像・座標search traceやfull threshold tableは除外する。
 

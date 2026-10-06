@@ -12,10 +12,9 @@ import { VenueCoordinateReview } from "./venue-coordinate-review";
 import { MasterTags } from "./master-tags";
 import { VENUE_EDIT_TABS, type VenueEditTab, venueEditTab, venueEditTabQuery } from "@/lib/admin/venue-edit";
 import { AdminFeedback } from "./admin-feedback";
-import { AdminPanelButton } from "./admin-panel-button";
 import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
 import { AdminTabs } from "./admin-tabs";
-import { AdminDataReview, AdminDataSection, AdminProvenanceSummary } from "./admin-data-review";
+import { AdminDataReview, AdminDataSection, AdminExternalSourceList, AdminProvenanceSummary, AdminReviewQueue } from "./admin-data-review";
 
 type PanelOptions = { candidateId?: string | null; runId?: string | null; targetUrl?: string | null };
 
@@ -33,7 +32,6 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
   const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [officialUrl, setOfficialUrl] = useState(venue.official_url || "");
   const editTab = venueEditTab(searchParams.get("venueEdit"));
   function selectEditTab(tab: VenueEditTab) {
     const query = venueEditTabQuery(searchParams.toString(), tab);
@@ -72,11 +70,10 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
   }
 
   const candidates = [...(venue.venue_external_match_candidates || [])].filter((candidate) => candidate.provider === "wikidata").sort((a, b) => b.confidence - a.confidence);
-  const linkedWikidataSource = (venue.source_records || []).find((source) => (Array.isArray(source.data_sources) ? source.data_sources : source.data_sources ? [source.data_sources] : []).some((item) => item.key === "wikidata"));
-  const matchedCandidate = candidates.find((candidate) => candidate.status === "matched");
-  const matchedWikidataId = matchedCandidate?.external_id || linkedWikidataSource?.external_id || null;
+  const pendingIdentityCandidates = candidates.filter((candidate) => candidate.status === "candidate");
   const imageCandidates = (venue.source_records || []).flatMap((source) => source.source_image_candidates || []);
   const coordinateCandidates = [...(venue.venue_coordinate_candidates || [])].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  const pendingCoordinateCandidates = coordinateCandidates.filter((candidate) => candidate.review_status === "candidate");
 
   return <>
     {(view === "all" || view === "edit") && <div className="venue-edit-surface">
@@ -89,13 +86,20 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     </div>}
 
     {(view === "all" || view === "data") && <AdminDataReview className="venue-data-review">
-      <AdminDataSection title="Wikidata" description={matchedWikidataId ? <>照合済み · <a href={`https://www.wikidata.org/wiki/${matchedWikidataId}`} target="_blank" rel="noreferrer">データ元を開く ↗</a></> : candidates.some((candidate) => candidate.status === "candidate") ? "確認待ちの候補があります。" : venue.wikidata_match_status === "unmatched" ? "一致する候補は未検出です。" : "まだ検索していません。"} action={<AdminPanelButton onClick={() => onOpenReviewPanel?.("wikidata-fields")}>{matchedWikidataId ? "Wikidataから不足情報を再取得" : candidates.some((candidate) => candidate.status === "candidate") ? "候補を確認" : "Wikidata候補を取得"}</AdminPanelButton>}/>
-
-      <AdminDataSection title="公式サイト" description="保存前のURLでも取得結果を確認できます。取得だけではMasterの公式URLを変更しません。"><div className="field"><label htmlFor={`venue-review-url-${venue.id}`}>取得先URL</label><input id={`venue-review-url-${venue.id}`} type="url" placeholder="https://example.com/" value={officialUrl} onChange={(event) => setOfficialUrl(event.target.value)}/></div><div className="venue-data-actions"><AdminPanelButton disabled={!officialUrl.trim()} onClick={() => onOpenReviewPanel?.("official-fields", { targetUrl: officialUrl.trim() })}>公式サイトから情報取得</AdminPanelButton></div></AdminDataSection>
-
       <AdminDataSection title="項目の出典"><AdminProvenanceSummary record={venue as unknown as Record<string, unknown>} fields={VENUE_PROVENANCE_FIELDS} sources={venue.venue_field_sources || []} sourceLabel={venueSourceLabel}/></AdminDataSection>
 
-      <AdminDataSection title="位置情報候補"><VenueCoordinateReview venueId={venue.id} candidates={coordinateCandidates} busy={busy} onReview={reviewCoordinate}/></AdminDataSection>
+      <AdminDataSection title="外部データ"><AdminExternalSourceList sourceRecords={venue.source_records || []}/></AdminDataSection>
+
+      {(pendingIdentityCandidates.length > 0 || pendingCoordinateCandidates.length > 0) && <AdminDataSection title="要確認">
+        <AdminReviewQueue title="Wikidata identity候補" items={pendingIdentityCandidates.map((candidate) => ({
+          id: candidate.id,
+          label: candidate.label_ja || candidate.label_en || "名称未取得",
+          externalId: candidate.external_id,
+          sourceUrl: /^Q\d+$/.test(candidate.external_id) ? `https://www.wikidata.org/wiki/${candidate.external_id}` : null,
+          meta: candidate.confidence != null ? `一致度 ${candidate.confidence}` : null,
+        }))}/>
+        {pendingCoordinateCandidates.length > 0 && <section className="admin-review-queue"><h3>位置情報候補</h3><VenueCoordinateReview venueId={venue.id} candidates={pendingCoordinateCandidates} busy={busy} onReview={reviewCoordinate}/></section>}
+      </AdminDataSection>}
     </AdminDataReview>}
     <AdminFeedback variant={message.toLowerCase().includes("fail") || message.includes("必須") ? "error" : "success"} message={message}/>
   </>;

@@ -31,4 +31,28 @@ describe("Artist shared detail architecture", () => {
     expect(drawer).toContain("entity === \"venues\" && [\"wikidata-fields\", \"official-fields\", \"coordinates\"]");
     expect(drawer).toContain("<MasterImageCandidatePicker entity={entity} ownerId={currentRecord.id}");
   });
+
+  it("keeps external acquisition out of Artist and Venue detail while retaining review candidates", () => {
+    const artist = readFileSync(new URL("./artist-data-review.tsx", import.meta.url), "utf8");
+    const venue = readFileSync(new URL("./venue-editor.tsx", import.meta.url), "utf8");
+    for (const source of [artist, venue]) {
+      expect(source).toContain("<AdminExternalSourceList");
+      expect(source).toContain("<AdminProvenanceSummary");
+      expect(source).not.toContain("Wikipediaから不足情報を補完");
+      expect(source).not.toContain("Wikidata候補を取得");
+      expect(source).not.toContain("Wikidataから不足情報を再取得");
+      expect(source).not.toContain("公式サイトから情報取得");
+    }
+    expect(artist).toContain("pendingCandidates.length > 0");
+    expect(venue).toContain("<VenueCoordinateReview");
+  });
+
+  it("uses the contained shared tag form while retaining the Artist type selector", () => {
+    const tags = readFileSync(new URL("./master-tags.tsx", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(tags).toContain('<select name="type"');
+    expect(tags).toContain("genre");
+    expect(css).toMatch(/\.tag-form\s*\{[^}]*grid-template-columns:\s*minmax\(0,120px\)\s+minmax\(0,1fr\)/);
+    expect(css).toMatch(/\.tag-form:not\(\.tag-form--compact\)\s*>\s*\.button\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
+  });
 });

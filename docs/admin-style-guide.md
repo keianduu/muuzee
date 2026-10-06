@@ -126,21 +126,20 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - 0件状態からの手動登録はserverが自動的にPrimaryへ設定し、HumanへPrimary checkboxを出さない。Upload / Delete / Candidate選択は返却Assetを局所stateへ即時反映し、一覧は対象rowだけを同じ位置で置換する。
 - 画像候補はVenue / Artist / Works / Exhibition共通で、usable候補が0件ならEmpty、1件かつPrimaryなしなら自動選択、2件以上ならHumanが単一選択する。複数候補からP18だけを自動優先しない。選択Actionは`この画像を設定`へ一本化し、選択候補をPrimary、旧Primaryを解除、他のactive候補を非採用/inactiveにする。Rights statusはこの操作で変更しない。現時点で実候補取り込みがあるのはVenue / Artist / Exhibitionで、Worksは共通永続化境界に対応するが候補取り込み元は未実装である。
 
-### Venue data review composition
+### Detail data review composition
 
-- Data Reviewの共有visual primitiveはsection spacing、heading row、current provenance row、feedback、empty stateを所有し、Venue / ArtistのadapterはSource名、Field、候補、APIだけを渡す。概念順は`外部identity / source照合 → 外部データから情報を取得・確認 → 項目の出典 → Entity固有candidate / review`とする。
-- Venueの`データ`は`Wikidata → 公式サイト → 項目の出典 → 位置情報候補`の順にする。通常画面ではraw source record、provenance history、crawl / coordinate / image search trace、threshold一覧を表示しない。
-- Wikidata / 公式サイトの取得Actionは先に第二Drawerを開き、Loading / Success / Empty / Errorを同じDrawerで完結させる。Desktopでは第一Drawerを右端に維持して第二Drawerを左側へ積み、1100px以下では最上位Drawerを全幅表示する。
-- WikidataのEntity採用はQID identityだけを確定し、Master fieldを同時に変更しない。OperatorへQID入力を要求せず、候補identityと全対象Fieldの`取得済み / 取得なし / 変更なし / 保護`を一続きで示す。Field候補は第二Drawerで`現在値 / 取得値 / 現在のSource / 候補Source`を比較し、明示的に選択した項目だけ反映する。
-- Field reviewは現在値が空なら候補をdefault ON、同値はdisabled、Manualやより高優先度のSourceはOFFかつ保護理由を表示する。候補値をclientから信用せず、反映時にserverで取得・正規化・Source priorityを再検証する。
+- 外部データ取得はBatch / Import / Targeted Resolutionが所有する。通常Detailは取得Consoleではなく、現在値と出典、実際に紐づくSource、既に取得済みの未解決候補を検査するsurfaceである。Wikidata / Wikipedia / APJ DAJ / Getty ULAN / 公式サイトのroutine取得・再取得ActionをDetailへ置かない。
+- Data Reviewの共有visual primitiveはsection spacing、current provenance、linked source list、review queue、feedback、empty stateを所有し、Venue / ArtistのadapterはFieldと候補だけを渡す。表示順は`項目の出典 → 外部データ → 要確認（未解決候補がある場合のみ）`とする。
+- `状態 > 外部データ`は`あり / なし`ではなく、実際に紐づくdistinct source名をcompactなpassive chipとして表示する。ManualとCSVは通常のExternal Source summaryへ含めず、source URLがあるchipは根拠ページへのquiet linkにできる。
+- `データ > 外部データ`はlinked `source_records`だけを表示し、未取得Providerのchecklistを作らない。Source labelはWikidata / Wikipedia / APJ DAJ / Getty ULAN / 公式サイト / Wikimedia Commons / 公式画像 / Trusted APIを共有し、未知Sourceは`data_sources.name`を優先する。
 - `項目の出典`はBasic form順にcurrent provenanceを一項目一行で示す。値がありprovenanceがなければ推測せず`不明`、値自体が空なら`—`とする。Manual保存は変更Fieldだけを`手動`へ更新し、未変更Fieldのcurrent sourceを維持する。Geolonia / 日本郵便Previewを未変更で保存したFieldは、そのprovider hintを維持する。`source_url`があるSourceは実際の根拠ページへLinkする。
-- Venue workflowの非同期Feedbackはshared compact feedbackを使い、巨大なlegacy noticeを追加しない。
-- 座標候補はSource、緯度・経度、必要な一致度・QID・精度、Google Maps linkと`採用 / 非採用`をcompactに示す。Wikidata Entity判断、座標判断、画像判断は独立させる。Data tabでは全候補をinline表示し、第二Drawerへの重複導線を置かない。Basic Editだけが既存第二Drawerを開ける。現行座標がなくeligible候補が1件なら自動選択し、複数ならHumanが1件を選ぶ。採用候補以外は監査用rowを残したまま非採用に収束させる。Basic formが開いたまま採用した場合は、そのVenue専用eventで緯度・経度と座標hintだけを即時同期し、未保存の他Fieldを上書きしない。
+- `要確認`は既に取得済みのunresolved identity / coordinate candidateがある場合だけ表示する。座標候補はSource、緯度・経度、必要な一致度・QID・精度、Google Maps linkと`採用 / 非採用`をcompactに示し、選択behaviorを維持する。候補がない場合に検索CTAを表示しない。
 - Image Candidate cardは取得経路、意味のある探索深度・一致度、rights、license、source linkを候補単位で示す。確定QID由来は偽のscoreとして見せず`確定QID`と表現し、full threshold traceを表示しない。
 
 ### Detail containment
 
 - Detail panel、edit surface、card、relation section/list/row、Tag form/listはDrawer content幅を上限とし、`min-width: 0`と安全なtext wrappingを保つ。通常のRelation名は一件一行で表示し、複数名を`/`で連結した一文へしない。
+- Type選択を持つTag formはDrawer内で`種別 / タグ名`の二列、追加Buttonを次行に配置し、390pxでは一列へstackする。FieldとButtonはDrawer幅を押し広げない。
 - 横Scrollは列幅が必要な`.table-wrap`等の意図的なcontainerだけが所有する。Drawer全体を`overflow-x: hidden`で切り捨てず、長いRelation名、Source URL、tag、form controlを内容幅内で折り返す。
 
 ### Layer order
