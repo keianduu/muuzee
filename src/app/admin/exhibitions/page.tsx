@@ -3,14 +3,14 @@ import Link from "next/link";
 import { AdminListControls } from "@/components/admin/admin-list-controls";
 import { ExhibitionDetailDrawer } from "@/components/admin/exhibition-detail-drawer";
 import { displayStatus } from "@/lib/admin/master-labels";
-import { normalizePublicationStatus, publicationMatches, selectedQuery } from "@/lib/admin/master-list-state";
+import { normalizeExhibitionSchedule, normalizePublicationStatus, publicationMatches, selectedQuery } from "@/lib/admin/master-list-state";
 import { firstRelation, getExhibitions } from "@/lib/admin/queries";
 
 export default async function ExhibitionsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const status = normalizePublicationStatus(typeof params.status === "string" ? params.status : undefined);
   const image = typeof params.image === "string" ? params.image : "";
-  const schedule = typeof params.schedule === "string" ? params.schedule : "current_upcoming";
+  const schedule = normalizeExhibitionSchedule(typeof params.schedule === "string" ? params.schedule : undefined);
   const queryValue = typeof params.q === "string" ? params.q : "";
   const query = queryValue.toLowerCase();
   const selectedId = typeof params.selected === "string" ? params.selected : undefined;
@@ -26,14 +26,10 @@ export default async function ExhibitionsPage({ searchParams }: { searchParams: 
     const occurrence = item.exhibition_occurrences?.[0];
     const isUnknown = !occurrence?.start_date && !occurrence?.end_date;
     const isPast = Boolean(occurrence?.end_date && occurrence.end_date < today);
-    const isUpcoming = Boolean(occurrence?.start_date && occurrence.start_date > today);
-    const isCurrent = !isUnknown && !isPast && !isUpcoming;
     const scheduleMatches = schedule === "all"
       || (schedule === "unknown" ? isUnknown
         : schedule === "past" ? isPast
-          : schedule === "current" ? isCurrent
-            : schedule === "upcoming" ? isUpcoming
-              : !isUnknown && !isPast);
+          : !isUnknown && !isPast);
     return scheduleMatches && publicationMatches(item.publication_status, status) && (!image || (image === "missing" ? !primary : Boolean(primary))) && (!query || item.title.toLowerCase().includes(query));
   });
   return <>

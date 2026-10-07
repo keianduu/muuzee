@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   binaryListValue,
   listFilterQuery,
+  normalizeExhibitionSchedule,
   normalizePublicationStatus,
   publicationTabQuery,
   splitListValue,
@@ -104,7 +105,7 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
   const [artistRelation, setArtistRelation] = useState(() => initialBinary(params.artistRelation));
   const [holdingRelation, setHoldingRelation] = useState(() => initialBinary(params.holdingRelation));
   const [presentation, setPresentation] = useState(params.presentation ?? "");
-  const [schedule, setSchedule] = useState(params.schedule ?? "current_upcoming");
+  const [schedule, setSchedule] = useState(() => normalizeExhibitionSchedule(params.schedule));
 
   useEffect(() => {
     if (open) return;
@@ -116,7 +117,7 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
     setArtistRelation(initialBinary(current.get("artistRelation") ?? undefined));
     setHoldingRelation(initialBinary(current.get("holdingRelation") ?? undefined));
     setPresentation(current.get("presentation") ?? "");
-    setSchedule(current.get("schedule") ?? "current_upcoming");
+    setSchedule(normalizeExhibitionSchedule(current.get("schedule")));
   }, [open, searchParamsKey]);
 
   useEffect(() => {
@@ -227,7 +228,7 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
               <BinaryCheckboxes legend="Holding relation" value={holdingRelation} onChange={setHoldingRelation}/>
               <div className="field"><label htmlFor="admin-filter-presentation">Presentation</label><select id="admin-filter-presentation" value={presentation} onChange={(event) => setPresentation(event.target.value)}><option value="">すべて</option><option value="permanent">Permanent</option><option value="currently_displayed">Currently displayed</option></select></div>
             </>}
-            {entity === "exhibitions" && <div className="field"><label htmlFor="admin-filter-schedule">開催期間</label><select id="admin-filter-schedule" value={schedule} onChange={(event) => setSchedule(event.target.value)}><option value="current_upcoming">開催中・開催予定</option><option value="current">開催中</option><option value="upcoming">開催予定</option><option value="past">終了</option><option value="unknown">会期不明</option><option value="all">すべて</option></select></div>}
+            {entity === "exhibitions" && <div className="field"><label htmlFor="admin-filter-schedule">開催期間</label><select id="admin-filter-schedule" value={schedule} onChange={(event) => setSchedule(normalizeExhibitionSchedule(event.target.value))}><option value="current_upcoming">開催中・開催予定</option><option value="past">終了</option><option value="unknown">会期不明</option><option value="all">すべて</option></select></div>}
           </div>
           <footer className="admin-list-filter-footer"><button className="button secondary" type="button" onClick={reset}>リセット</button><button className="button" type="submit">適用</button></footer>
         </form>

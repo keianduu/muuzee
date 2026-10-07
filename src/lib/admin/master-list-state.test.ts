@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { binaryListValue, detailPanelQuery, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
+import { binaryListValue, detailPanelQuery, EXHIBITION_SCHEDULE_VALUES, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizeExhibitionSchedule, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
 
 describe("master list URL and append state", () => {
   it("appends pages without duplicate records", () => {
@@ -87,6 +87,18 @@ describe("master list URL and append state", () => {
   it("resets Exhibition filters to current/upcoming while preserving publication status", () => {
     expect(listFilterQuery("status=archived&q=art&schedule=past&image=missing&tier=A", "exhibitions"))
       .toBe("status=archived");
+  });
+
+  it("limits Exhibition schedule filters to the preserved canonical values", () => {
+    expect(EXHIBITION_SCHEDULE_VALUES).toEqual(["current_upcoming", "past", "unknown", "all"]);
+    expect(normalizeExhibitionSchedule("current")).toBe("current_upcoming");
+    expect(normalizeExhibitionSchedule("upcoming")).toBe("current_upcoming");
+    expect(listFilterQuery("status=unpublished", "exhibitions", { schedule: normalizeExhibitionSchedule("current") }))
+      .toBe("status=unpublished");
+    expect(listFilterQuery("status=unpublished", "exhibitions", { schedule: normalizeExhibitionSchedule("upcoming") }))
+      .toBe("status=unpublished");
+    expect(listFilterQuery("status=unpublished", "exhibitions", { schedule: "past" }))
+      .toBe("status=unpublished&schedule=past");
   });
 
   it("keeps the Works data-kind view in URL state", () => {

@@ -64,6 +64,8 @@ export function pageQuery(current: string, page: number, pageSize = 50) {
 export type PublicationListStatus = "published" | "unpublished" | "archived";
 export type AdminListEntity = "venues" | "artists" | "works" | "exhibitions";
 export type WorkListView = "adopted" | "candidates";
+export const EXHIBITION_SCHEDULE_VALUES = ["current_upcoming", "past", "unknown", "all"] as const;
+export type ExhibitionSchedule = typeof EXHIBITION_SCHEDULE_VALUES[number];
 
 const LIST_FILTER_KEYS = [
   "q",
@@ -97,6 +99,10 @@ function clearListNavigationState(params: URLSearchParams) {
 export function normalizePublicationStatus(value?: string | null): PublicationListStatus {
   if (value === "published" || value === "archived") return value;
   return "unpublished";
+}
+
+export function normalizeExhibitionSchedule(value?: string | null): ExhibitionSchedule {
+  return EXHIBITION_SCHEDULE_VALUES.find((schedule) => schedule === value) ?? "current_upcoming";
 }
 
 export function publicationMatches(recordStatus: string | null | undefined, selected: PublicationListStatus) {
@@ -137,7 +143,7 @@ export type ListFilterValues = {
   artistRelation?: string;
   holdingRelation?: string;
   presentation?: string;
-  schedule?: string;
+  schedule?: ExhibitionSchedule;
 };
 
 export function listFilterQuery(current: string, entity: AdminListEntity, values: ListFilterValues = {}) {
@@ -162,8 +168,9 @@ export function listFilterQuery(current: string, entity: AdminListEntity, values
     setValue("holdingRelation", values.holdingRelation);
     setValue("presentation", values.presentation);
   }
-  if (entity === "exhibitions" && values.schedule && values.schedule !== "current_upcoming") {
-    params.set("schedule", values.schedule);
+  if (entity === "exhibitions") {
+    const schedule = normalizeExhibitionSchedule(values.schedule);
+    if (schedule !== "current_upcoming") params.set("schedule", schedule);
   }
   return params.toString();
 }
