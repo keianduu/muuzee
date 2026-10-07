@@ -1,13 +1,18 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AdminListControls } from "@/components/admin/admin-list-controls";
 import { ExhibitionDetailDrawer } from "@/components/admin/exhibition-detail-drawer";
 import { displayStatus } from "@/lib/admin/master-labels";
-import { normalizeExhibitionSchedule, normalizePublicationStatus, publicationMatches, selectedQuery } from "@/lib/admin/master-list-state";
+import { canonicalizeExhibitionScheduleQuery, normalizeExhibitionSchedule, normalizePublicationStatus, publicationMatches, selectedQuery } from "@/lib/admin/master-list-state";
 import { firstRelation, getExhibitions } from "@/lib/admin/queries";
 
 export default async function ExhibitionsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
+  const rawQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (typeof value === "string") rawQuery.set(key, value);
+  const canonicalQuery = canonicalizeExhibitionScheduleQuery(rawQuery.toString());
+  if (canonicalQuery !== rawQuery.toString()) redirect(`/admin/exhibitions${canonicalQuery ? `?${canonicalQuery}` : ""}`);
   const status = normalizePublicationStatus(typeof params.status === "string" ? params.status : undefined);
   const image = typeof params.image === "string" ? params.image : "";
   const schedule = normalizeExhibitionSchedule(typeof params.schedule === "string" ? params.schedule : undefined);
@@ -16,8 +21,7 @@ export default async function ExhibitionsPage({ searchParams }: { searchParams: 
   const selectedId = typeof params.selected === "string" ? params.selected : undefined;
   const listParams = Object.fromEntries(Object.entries(params).flatMap(([key, value]) => typeof value === "string" ? [[key, value]] : []));
   listParams.status = status;
-  const currentQuery = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) if (typeof value === "string") currentQuery.set(key, value);
+  const currentQuery = new URLSearchParams(canonicalQuery);
   currentQuery.set("status", status);
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const result = await getExhibitions();

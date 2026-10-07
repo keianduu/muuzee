@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { displayStatus } from "@/lib/admin/master-labels";
-import { selectedQuery } from "@/lib/admin/master-list-state";
+import { canonicalizeExhibitionScheduleQuery, selectedQuery } from "@/lib/admin/master-list-state";
 import { ExhibitionEditor, type ExhibitionEditorProps } from "./exhibition-editor";
 
 export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) {
@@ -16,7 +16,7 @@ export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const close = useCallback(() => {
-    const query = selectedQuery(searchParams.toString(), null);
+    const query = selectedQuery(canonicalizeExhibitionScheduleQuery(searchParams.toString()), null);
     router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
   }, [pathname, router, searchParams]);
 

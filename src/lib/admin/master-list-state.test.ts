@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { binaryListValue, detailPanelQuery, EXHIBITION_SCHEDULE_VALUES, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizeExhibitionSchedule, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
+import { binaryListValue, canonicalizeExhibitionScheduleQuery, detailPanelQuery, EXHIBITION_SCHEDULE_VALUES, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizeExhibitionSchedule, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
 
 describe("master list URL and append state", () => {
   it("appends pages without duplicate records", () => {
@@ -93,12 +93,25 @@ describe("master list URL and append state", () => {
     expect(EXHIBITION_SCHEDULE_VALUES).toEqual(["current_upcoming", "past", "unknown", "all"]);
     expect(normalizeExhibitionSchedule("current")).toBe("current_upcoming");
     expect(normalizeExhibitionSchedule("upcoming")).toBe("current_upcoming");
-    expect(listFilterQuery("status=unpublished", "exhibitions", { schedule: normalizeExhibitionSchedule("current") }))
+    expect(listFilterQuery("status=unpublished&schedule=current", "exhibitions", { schedule: normalizeExhibitionSchedule("current") }))
       .toBe("status=unpublished");
-    expect(listFilterQuery("status=unpublished", "exhibitions", { schedule: normalizeExhibitionSchedule("upcoming") }))
+    expect(listFilterQuery("status=unpublished&schedule=upcoming", "exhibitions", { schedule: normalizeExhibitionSchedule("upcoming") }))
       .toBe("status=unpublished");
     expect(listFilterQuery("status=unpublished", "exhibitions", { schedule: "past" }))
       .toBe("status=unpublished&schedule=past");
+  });
+
+  it.each(["current", "upcoming", "current_upcoming", "invalid"])("removes legacy Exhibition schedule=%s from generated navigation", (schedule) => {
+    const canonical = canonicalizeExhibitionScheduleQuery(`status=unpublished&schedule=${schedule}&q=art`);
+    expect(canonical).toBe("status=unpublished&q=art");
+    expect(selectedQuery(canonical, "exhibition-1")).toBe("status=unpublished&q=art&selected=exhibition-1");
+    expect(publicationTabQuery(canonical, "published")).toBe("status=published&q=art");
+  });
+
+  it.each(["past", "unknown", "all"])("preserves canonical Exhibition schedule=%s during navigation", (schedule) => {
+    const canonical = canonicalizeExhibitionScheduleQuery(`status=unpublished&schedule=${schedule}&selected=exhibition-1`);
+    expect(selectedQuery(canonical, null)).toBe(`status=unpublished&schedule=${schedule}`);
+    expect(publicationTabQuery(canonical, "published")).toBe(`status=published&schedule=${schedule}`);
   });
 
   it("keeps the Works data-kind view in URL state", () => {

@@ -105,6 +105,14 @@ export function normalizeExhibitionSchedule(value?: string | null): ExhibitionSc
   return EXHIBITION_SCHEDULE_VALUES.find((schedule) => schedule === value) ?? "current_upcoming";
 }
 
+export function canonicalizeExhibitionScheduleQuery(current: string) {
+  const params = new URLSearchParams(current);
+  const schedule = normalizeExhibitionSchedule(params.get("schedule"));
+  if (schedule === "current_upcoming") params.delete("schedule");
+  else params.set("schedule", schedule);
+  return params.toString();
+}
+
 export function publicationMatches(recordStatus: string | null | undefined, selected: PublicationListStatus) {
   if (selected === "published") return recordStatus === "published";
   if (selected === "archived") return recordStatus === "archived";

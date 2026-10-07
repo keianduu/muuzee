@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   binaryListValue,
+  canonicalizeExhibitionScheduleQuery,
   listFilterQuery,
   normalizeExhibitionSchedule,
   normalizePublicationStatus,
@@ -51,11 +52,14 @@ function BinaryCheckboxes({ legend, value, onChange }: {
   </fieldset>;
 }
 
-export function AdminPublicationTabs({ status }: { status?: string }) {
+export function AdminPublicationTabs({ entity, status }: { entity: AdminListEntity; status?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selected = normalizePublicationStatus(status);
+  const currentQuery = entity === "exhibitions"
+    ? canonicalizeExhibitionScheduleQuery(searchParams.toString())
+    : searchParams.toString();
 
   return <div className="admin-publication-tabs" role="tablist" aria-label="公開状態">
     {PUBLICATION_TABS.map((tab) => <button
@@ -64,7 +68,7 @@ export function AdminPublicationTabs({ status }: { status?: string }) {
       role="tab"
       aria-selected={selected === tab.value}
       className={selected === tab.value ? "is-active" : undefined}
-      onClick={() => navigate(router, pathname, publicationTabQuery(searchParams.toString(), tab.value))}
+      onClick={() => navigate(router, pathname, publicationTabQuery(currentQuery, tab.value))}
     >{tab.label}</button>)}
   </div>;
 }
@@ -194,7 +198,7 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
   };
 
   return <>
-    <AdminPublicationTabs status={params.status}/>
+    <AdminPublicationTabs entity={entity} status={params.status}/>
     {!detailSelected && <button
       ref={triggerRef}
       className="admin-list-filter-trigger"
