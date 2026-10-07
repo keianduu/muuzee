@@ -12,7 +12,7 @@ import { displayStatus } from "@/lib/admin/master-labels";
 import { MASTER_IMPORTERS } from "@/lib/admin/master-importers";
 import { VENUE_AI_ENRICHMENT_PROMPT } from "@/lib/admin/venue-ai-enrichment-prompt";
 import type { MasterListResult } from "@/lib/admin/master-repository";
-import { mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery } from "@/lib/admin/master-list-state";
+import { mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery, workListViewQuery, type WorkListView } from "@/lib/admin/master-list-state";
 import { VenueCanonicalReview } from "./venue-canonical-review";
 import { effectiveVenueTier, venueImageStatus } from "@/lib/admin/venue-priority";
 import { artistImageStatus, effectiveArtistTier } from "@/lib/admin/artist-priority";
@@ -75,7 +75,7 @@ const headings: Record<MasterEntity, string[]> = {
   works: ["Work（作品）", "Artist（作家）", "Year（制作年）", "Holding Venue（所蔵先）"],
 };
 
-export function MasterList({ entity, result, queryString }: { entity: MasterEntity; result: MasterListResult; queryString: string }) {
+export function MasterList({ entity, result, queryString, workView = "adopted" }: { entity: MasterEntity; result: MasterListResult; queryString: string; workView?: WorkListView }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -109,7 +109,6 @@ export function MasterList({ entity, result, queryString }: { entity: MasterEnti
   const [artistTargetedResult, setArtistTargetedResult] = useState<ArtistTargetedResult | null>(null);
   const [workTargetedResult, setWorkTargetedResult] = useState<WorkTargetedResult | null>(null);
   const [workCandidateSelected, setWorkCandidateSelected] = useState<string[]>([]);
-  const [workView, setWorkView] = useState<"adopted" | "candidates">("adopted");
   const [workCandidatesLoading, setWorkCandidatesLoading] = useState(entity === "works");
   const [workCandidatesError, setWorkCandidatesError] = useState("");
   const displayRows = useMemo(() => rowsFor(entity, rows), [entity, rows]);
@@ -214,7 +213,10 @@ export function MasterList({ entity, result, queryString }: { entity: MasterEnti
   async function sampleImport(limit: number, importerKey = "wikidata-enrichment") {
     if (entity === "works" && importerKey === "targeted-work-candidates") {
       const body = await jsonRequest("/api/admin/works/targeted-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ limit: Math.min(20, limit), saveCandidates: true }) });
-      if (body) { setWorkTargetedResult(body as WorkTargetedResult); setWorkView("candidates"); }
+      if (body) {
+        setWorkTargetedResult(body as WorkTargetedResult);
+        router.push(`${pathname}?${workListViewQuery(searchParams.toString(), "candidates")}`, { scroll: false });
+      }
       return;
     }
     if (entity !== "venues" && entity !== "artists") return;
@@ -316,10 +318,6 @@ export function MasterList({ entity, result, queryString }: { entity: MasterEnti
   </>;
 
   return <>
-    {entity === "works" && <div className="master-view-tabs" role="tablist" aria-label="Works表示切替">
-      <button id="works-adopted-tab" type="button" role="tab" aria-selected={workView === "adopted"} aria-controls="works-adopted-panel" className={workView === "adopted" ? "is-active" : ""} onClick={() => setWorkView("adopted")}>採用済み <span>{result.total}</span></button>
-      <button id="works-candidates-tab" type="button" role="tab" aria-selected={workView === "candidates"} aria-controls="works-candidates-panel" className={workView === "candidates" ? "is-active" : ""} onClick={() => setWorkView("candidates")}>作品候補 <span>{workTargetedResult?.candidateRows.length ?? "—"}</span></button>
-    </div>}
     <div className="master-action-bar">
       <Link className="button" href={`/admin/${entity}/new`}>手動追加</Link>
       <details className="action-menu" id="master-csv-menu"><summary className="button secondary">CSVを入出力</summary><div className="action-popover">

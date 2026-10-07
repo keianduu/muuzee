@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detailPanelQuery, legacyDetailDestination, mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery } from "./master-list-state";
+import { binaryListValue, detailPanelQuery, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
 
 describe("master list URL and append state", () => {
   it("appends pages without duplicate records", () => {
@@ -52,5 +52,47 @@ describe("master list URL and append state", () => {
 
   it("keeps server pagination internal to the API request", () => {
     expect(pageQuery("q=tokyo&tier=A-C&selected=venue-1&panel=image&candidate=candidate-1", 2)).toBe("q=tokyo&tier=A-C&page=2&pageSize=50");
+  });
+
+  it("maps legacy and absent publication states to the unpublished operations queue", () => {
+    expect(normalizePublicationStatus()).toBe("unpublished");
+    expect(normalizePublicationStatus("draft")).toBe("unpublished");
+    expect(normalizePublicationStatus("ready")).toBe("unpublished");
+    expect(publicationMatches("draft", "unpublished")).toBe(true);
+    expect(publicationMatches("ready", "unpublished")).toBe(true);
+    expect(publicationMatches("published", "unpublished")).toBe(false);
+    expect(publicationMatches("archived", "unpublished")).toBe(false);
+  });
+
+  it("switches publication tabs while preserving filters and clearing detail state", () => {
+    expect(publicationTabQuery("q=tokyo&type=museum&status=draft&selected=venue-1&panel=image&page=3", "published"))
+      .toBe("q=tokyo&type=museum&status=published");
+  });
+
+  it("serializes multi-value Venue filters and removes obsolete hidden parameters", () => {
+    const query = listFilterQuery("status=unpublished&tier=A-C&source=wikidata&active=true&selected=venue-1", "venues", {
+      q: " Tokyo ", type: ["museum", "gallery", "museum"], image: "missing", coordinates: "present",
+    });
+    expect(query).toBe("status=unpublished&q=Tokyo&image=missing&type=museum%2Cgallery&coordinates=present");
+    expect(splitListValue("museum,gallery,museum")).toEqual(["museum", "gallery"]);
+  });
+
+  it("treats both or neither binary choices as an unfiltered value", () => {
+    expect(binaryListValue(true, true)).toBeUndefined();
+    expect(binaryListValue(false, false)).toBeUndefined();
+    expect(binaryListValue(true, false)).toBe("present");
+    expect(binaryListValue(false, true)).toBe("missing");
+  });
+
+  it("resets Exhibition filters to current/upcoming while preserving publication status", () => {
+    expect(listFilterQuery("status=archived&q=art&schedule=past&image=missing&tier=A", "exhibitions"))
+      .toBe("status=archived");
+  });
+
+  it("keeps the Works data-kind view in URL state", () => {
+    expect(workListViewQuery("status=unpublished&q=monet&selected=work-1", "candidates"))
+      .toBe("status=unpublished&q=monet&view=candidates");
+    expect(workListViewQuery("status=unpublished&q=monet&view=candidates", "adopted"))
+      .toBe("status=unpublished&q=monet");
   });
 });

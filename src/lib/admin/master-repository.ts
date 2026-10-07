@@ -10,6 +10,7 @@ import { ARTIST_PRIORITY_TIERS, artistQuality, compareArtistQuality, effectiveAr
 import { normalizeIdentity } from "@/lib/work-collection/mapping";
 import { hasWorkTitle } from "@/lib/work-title";
 import { resolveVenue } from "@/lib/venue-resolution/shared";
+import { normalizePublicationStatus, publicationMatches, splitListValue } from "./master-list-state";
 
 export type MasterRecord = Record<string, unknown> & {
   id: string;
@@ -337,12 +338,13 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
       const qualityRows = await allVenueQualityRows();
       const allowedSet = allowed ? new Set(allowed) : null;
       const tiers = tiersForFilter(options.tier);
+      const publicationStatus = normalizePublicationStatus(options.status);
+      const venueTypes = splitListValue(options.type);
       const threshold = options.completeness ? Number(options.completeness) : null;
       const filtered = qualityRows.filter((row) => {
         if (allowedSet && !allowedSet.has(row.id)) return false;
-        if (options.status === "unpublished" && row.publication_status === "published") return false;
-        if (options.status && options.status !== "unpublished" && row.publication_status !== options.status) return false;
-        if (options.type && row.venue_type !== options.type) return false;
+        if (!publicationMatches(row.publication_status, publicationStatus)) return false;
+        if (venueTypes.length && !venueTypes.includes(String(row.venue_type || ""))) return false;
         if (options.active && Boolean(row.is_active) !== (options.active === "true")) return false;
         if (tiers && !tiers.includes(effectiveVenueTier(row)!)) return false;
         if (options.coordinates === "missing" && row.latitude != null && row.longitude != null) return false;
@@ -368,11 +370,11 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
       const qualityRows = await allArtistQualityRows();
       const allowedSet = allowed ? new Set(allowed) : null;
       const tiers = tiersForArtistFilter(options.tier);
+      const publicationStatus = normalizePublicationStatus(options.status);
       const threshold = options.completeness ? Number(options.completeness) : null;
       const filtered = qualityRows.filter((row) => {
         if (allowedSet && !allowedSet.has(row.id)) return false;
-        if (options.status === "unpublished" && row.publication_status === "published") return false;
-        if (options.status && options.status !== "unpublished" && row.publication_status !== options.status) return false;
+        if (!publicationMatches(row.publication_status, publicationStatus)) return false;
         if (tiers && !tiers.includes(effectiveArtistTier(row)!)) return false;
         if (threshold != null && artistQuality(row).completeness.percent >= threshold) return false;
         return true;
@@ -391,8 +393,9 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
     }
     let query = db.from(entity).select(listSelectByEntity[entity], { count: "exact" });
     if (allowed) query = query.in("id", [...allowed]);
-    if (options.status === "unpublished") query = query.neq("publication_status", "published");
-    else if (options.status) query = query.eq("publication_status", options.status);
+    const publicationStatus = normalizePublicationStatus(options.status);
+    if (publicationStatus === "unpublished") query = query.neq("publication_status", "published").neq("publication_status", "archived");
+    else query = query.eq("publication_status", publicationStatus);
     query = query.order(config.titleKey, { ascending: true }).order("id", { ascending: true });
     const shouldFilterCompleteness = Boolean(options.completeness);
     if (!shouldFilterCompleteness) query = query.range((page - 1) * pageSize, page * pageSize - 1);

@@ -28,7 +28,17 @@ Phase Aの代表workflowは`Venue list → Venue Drawer → Image Candidate Draw
 
 ## URL deep link and compatibility
 
-選択状態は`/admin/{entity}?selected={id}`で保持する。Venueの第二階層は`panel=image / wikidata-fields / official-fields / coordinates`を使い、画像候補は`candidate={id}`、公式取得結果は`run={import-run-id}`を追加する。例は`/admin/venues?selected={venue-id}&panel=image&candidate={candidate-id}`。再読み込みと直接共有で同じ階層を復元する。Close時は対象階層のQueryだけを削除し、Search / Filterは保持する。一覧からOpenした場合はBrowser Backで一覧へ、第二DrawerをOpenした場合はBrowser Backで第一Drawerへ一段ずつ戻る。従来の`/admin/{entity}/[id]`は削除せず、List + `selected`へRedirectする。Keyword、Publication、Image、Completeness、Source、Venue Type / Active / Coordinates / Wikidata MatchのFilterを維持する。ArtistはTier All / A / B / C / A+B、Publication All / Published / Unpublished、Image、Nationality missing、Core Quality、Sourceを併用できる。
+選択状態は`/admin/{entity}?selected={id}`で保持する。Venueの第二階層は`panel=image / wikidata-fields / official-fields / coordinates`を使い、画像候補は`candidate={id}`、公式取得結果は`run={import-run-id}`を追加する。例は`/admin/venues?selected={venue-id}&panel=image&candidate={candidate-id}`。再読み込みと直接共有で同じ階層を復元する。Close時は対象階層のQueryだけを削除し、Search / Filterは保持する。一覧からOpenした場合はBrowser Backで一覧へ、第二DrawerをOpenした場合はBrowser Backで第一Drawerへ一段ずつ戻る。従来の`/admin/{entity}/[id]`は削除せず、List + `selected`へRedirectする。
+
+## Shared list Search / Filter (Order 325.6)
+
+Venue / Artist / Works / Exhibitions一覧は、上部のPublication Tabsと右下のFloating Search / Filter CTAを共有する。PublicationのCanonical URLは`status=published | unpublished | archived`。既定は`unpublished`で、DB上の`draft`、`ready`、その他のnon-published / non-archived互換状態を同じ非公開Queueへ束ねる。Human-facing tabへ`draft`や`ready`を露出しない。
+
+Search / Filter Drawerのopen stateは一時UI stateでありURLへ保存しない。適用された値だけをURLへ保存し、Apply時はpageとDetail階層をclear、Reset時は現在のPublication tabを維持してvisible filterと旧hidden filter parameterを除去する。Detail open / close、Browser Back、reload、infinite scrollでも`q / status`とEntity固有filterを維持する。Worksの`採用済み / 作品候補`は`view=candidates`だけを明示する別のdata-kind stateであり、Publication Tabsは採用済み側だけに表示する。
+
+Venueのvisible filterはKeyword、Venue Type複数選択、Image、Coordinatesのみ。ArtistはKeywordとImageのみ。Works採用済みはKeyword、Image、Artist relation、Holding relation、Presentation。ExhibitionsはKeyword、Image、Scheduleを使い、Schedule既定は`current_upcoming`。PublicationはDrawer内のselectへ重複させない。
+
+Utility DrawerはEntity Detail Drawerと別責務だが同時にstackしない。Detailが選択された場合はUtility Drawerを閉じ、Floating CTAも隠す。Utility DrawerはBackdrop close、Escape、focus trap、triggerへのfocus return、body scroll lock、760px以下の全幅fallbackを持つ。TableとNavigationの意図的なcontainer以外にpage-wide horizontal overflowを作らない。
 
 ## Priority Tier and Data Quality
 

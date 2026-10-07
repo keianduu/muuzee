@@ -85,9 +85,10 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 
 ### Search, filters, tabs, and pills
 
-- Search is a 40px pill-shaped input where an existing keyword field is present.
-- Form filters remain 36px standard fields with an 8px radius. Select controls use a consistent local chevron and reserve sufficient right padding.
-- Toolbar/filter actions remain content-sized and align to the control baseline rather than stretching to an input column width.
+- Master list publication state uses the shared horizontal `公開 / 非公開 / アーカイブ` tabs below the page heading. The active tab uses text weight and a quiet bottom rule; these tabs must not be restyled as filter pills.
+- Master list Search / Filter is opened by the shared bottom-right floating CTA. The CTA uses a local 20px search SVG, an accessible text label, and the normal floating elevation. It remains below Drawer layers and yields to future bulk-action placement.
+- Search / Filter fields live in a right utility Drawer, not an always-visible toolbar. Keyword inputs and form filters use the standard 36px field treatment with an 8px radius. Select controls use the shared local chevron and reserve sufficient right padding.
+- The utility Drawer uses a 380–460px desktop width and full viewport width at 760px and below. Its Apply / Reset actions remain fixed to the Drawer footer while the field body scrolls.
 - Context/view tabs use a contained neutral surface with a bordered/elevated active item.
 - Detail tabs use the same contained selection language.
 - Edit sub-tabs own only their control surface and never own the spacing below themselves. The parent edit surface owns a single 20px gap from sub-tabs to the active panel; child margin and parent gap must not stack at the same boundary.
@@ -108,6 +109,7 @@ Status: Canonical v1.1 visual contract. Notion `09 Admin Style Guide` is the app
 - Drawer tabs, controls, cards, and statuses reuse the shared styles above.
 - URL state, Back behavior, top-most Escape close, focus trap, focus return, scroll lock, and narrow full-width fallback are behavioral contracts owned by `docs/admin-ux-v2.md`.
 - Exhibition detail uses the same right-side drawer shell and interaction language as Venue / Artist / Works detail.
+- List Search / Filter uses a separate shared utility Drawer. It must close before a record Detail Drawer opens; utility and entity Detail Drawers do not stack.
 
 ### Detail labels and actions
 

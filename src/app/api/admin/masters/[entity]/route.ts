@@ -20,6 +20,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ enti
       completeness: query.get("completeness") || undefined,
       tier: query.get("tier") || undefined,
       nationality: query.get("nationality") || undefined,
+      artistRelation: query.get("artistRelation") || undefined,
+      holdingRelation: query.get("holdingRelation") || undefined,
+      presentation: query.get("presentation") || undefined,
       page: Number(query.get("page")),
       pageSize: Number(query.get("pageSize")),
     });
