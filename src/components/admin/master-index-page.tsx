@@ -1,4 +1,5 @@
 import { AdminListControls, AdminWorkViewTabs } from "./admin-list-controls";
+import { AdminMasterListActions } from "./admin-master-list-actions";
 import { MasterList } from "./master-list";
 import { listMasters } from "@/lib/admin/master-repository";
 import { MASTER_CONFIGS, type MasterEntity } from "@/lib/admin/master-config";
@@ -24,7 +25,7 @@ export async function MasterIndexPage({ entity, searchParams }: { entity: Master
   if (entity !== "works") for (const key of ["artistRelation", "holdingRelation", "presentation", "view"]) query.delete(key);
   const config = MASTER_CONFIGS[entity];
   return <>
-    <div className="page-head"><div><p className="eyebrow">Master Admin v1</p><h1>{config.label}s</h1><p className="muted">正規マスターデータ · Content全体を公開状態で最終管理します</p></div></div>
+    <div className="page-head"><div><p className="eyebrow">Master Admin v1</p><h1>{config.label}s</h1><p className="muted">正規マスターデータ · Content全体を公開状態で最終管理します</p></div>{(entity !== "works" || workView === "adopted") && <AdminMasterListActions entity={entity}/>}</div>
     {!result.configured && <div className="notice">Supabase環境変数が未設定です。</div>}
     {result.error && <div className="error">{result.error}</div>}
     {entity === "works" && <AdminWorkViewTabs view={workView}/>}

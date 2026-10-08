@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   binaryListValue,
@@ -15,6 +15,7 @@ import {
   type PublicationListStatus,
   type WorkListView,
 } from "@/lib/admin/master-list-state";
+import { AdminListDrawer, announceAdminListDrawer, restoreListDrawerFocus } from "./admin-list-drawer";
 
 const PUBLICATION_TABS: Array<{ value: PublicationListStatus; label: string }> = [
   { value: "published", label: "公開" },
@@ -97,7 +98,6 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const drawerRef = useRef<HTMLElement>(null);
   const qRef = useRef<HTMLInputElement>(null);
   const detailSelected = Boolean(searchParams.get("selected"));
   const searchParamsKey = searchParams.toString();
@@ -128,41 +128,10 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
     if (detailSelected) setOpen(false);
   }, [detailSelected]);
 
-  useEffect(() => {
-    if (!open) return;
-    document.body.classList.add("is-list-filter-drawer-open");
-    window.requestAnimationFrame(() => qRef.current?.focus());
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-        window.requestAnimationFrame(() => triggerRef.current?.focus());
-        return;
-      }
-      if (event.key !== "Tab" || !drawerRef.current) return;
-      const focusable = [...drawerRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')];
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.classList.remove("is-list-filter-drawer-open");
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  const close = (restoreFocus = true) => {
+  const close = useCallback((restoreFocus = true) => {
     setOpen(false);
-    if (restoreFocus) window.requestAnimationFrame(() => triggerRef.current?.focus());
-  };
+    if (restoreFocus) restoreListDrawerFocus(triggerRef);
+  }, []);
 
   const apply = (event: FormEvent) => {
     event.preventDefault();
@@ -206,20 +175,13 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
       aria-label="検索・絞り込み"
       aria-expanded={open}
       aria-controls="admin-list-filter-drawer"
-      onClick={() => setOpen(true)}
+      onClick={() => { announceAdminListDrawer("search"); setOpen(true); }}
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="m16 16 4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
       <span>検索・絞り込み</span>
     </button>}
-    {open && <div className="admin-list-filter-layer">
-      <button className="admin-list-filter-backdrop" type="button" aria-label="検索・絞り込みを閉じる" onClick={() => close()}/>
-      <aside ref={drawerRef} id="admin-list-filter-drawer" className="admin-list-filter-drawer" role="dialog" aria-modal="true" aria-labelledby="admin-list-filter-title">
-        <header className="admin-list-filter-head">
-          <div><p className="eyebrow">LIST UTILITY</p><h2 id="admin-list-filter-title">検索・絞り込み</h2></div>
-          <button className="drawer-close" type="button" aria-label="閉じる" onClick={() => close()}>×</button>
-        </header>
-        <form className="admin-list-filter-form" onSubmit={apply}>
-          <div className="admin-list-filter-body">
+    <AdminListDrawer kind="search" open={open} eyebrow="LIST UTILITY" title="検索・絞り込み" labelledBy="admin-list-filter-drawer" initialFocusRef={qRef} onClose={close} bodyClassName="admin-list-filter-body" footer={<><button className="button secondary" type="button" onClick={reset}>リセット</button><button className="button" type="submit" form="admin-list-filter-form">適用</button></>}>
+        <form id="admin-list-filter-form" className="admin-list-filter-form" onSubmit={apply}>
             <div className="field"><label htmlFor="admin-filter-q">キーワード</label><input ref={qRef} id="admin-filter-q" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="名前・タイトルで検索"/></div>
             {entity === "venues" && <fieldset className="admin-filter-group admin-filter-group-stack">
               <legend>Venue Type（会場種別）</legend>
@@ -233,10 +195,7 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
               <div className="field"><label htmlFor="admin-filter-presentation">Presentation</label><select id="admin-filter-presentation" value={presentation} onChange={(event) => setPresentation(event.target.value)}><option value="">すべて</option><option value="permanent">Permanent</option><option value="currently_displayed">Currently displayed</option></select></div>
             </>}
             {entity === "exhibitions" && <div className="field"><label htmlFor="admin-filter-schedule">開催期間</label><select id="admin-filter-schedule" value={schedule} onChange={(event) => setSchedule(normalizeExhibitionSchedule(event.target.value))}><option value="current_upcoming">開催中・開催予定</option><option value="past">終了</option><option value="unknown">会期不明</option><option value="all">すべて</option></select></div>}
-          </div>
-          <footer className="admin-list-filter-footer"><button className="button secondary" type="button" onClick={reset}>リセット</button><button className="button" type="submit">適用</button></footer>
         </form>
-      </aside>
-    </div>}
+    </AdminListDrawer>
   </>;
 }

@@ -87,7 +87,7 @@ function ImageAvailability({ current }: { current: string }) {
 
 export type MasterEditSection = "all" | "basic" | "image" | "relations";
 
-export function MasterEditor({ entity, record, mode = "edit", view = "all", editSection = "all", embeddedInList = false, onOpenImageCandidate }: { entity: MasterEntity; record?: DetailRecord; mode?: "new" | "edit"; view?: "all" | "status" | "edit" | "data"; editSection?: MasterEditSection; embeddedInList?: boolean; onOpenImageCandidate?: (candidateId: string | null) => void }) {
+export function MasterEditor({ entity, record, mode = "edit", view = "all", editSection = "all", embeddedInList = false, onOpenImageCandidate, onCreated }: { entity: MasterEntity; record?: DetailRecord; mode?: "new" | "edit"; view?: "all" | "status" | "edit" | "data"; editSection?: MasterEditSection; embeddedInList?: boolean; onOpenImageCandidate?: (candidateId: string | null) => void; onCreated?: (id: string) => void }) {
   const router = useRouter(); const config = MASTER_CONFIGS[entity];
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
   async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean } = {}) {
@@ -109,7 +109,10 @@ export function MasterEditor({ entity, record, mode = "edit", view = "all", edit
     const url = mode === "new" ? `/api/admin/masters/${entity}` : `/api/admin/masters/${entity}/${record!.id}`;
     const body = await request(url, { method: mode === "new" ? "POST" : "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
     if (!body) return;
-    if (mode === "new") router.push(`/admin/${entity}/${body.id}`); else if (!embeddedInList) router.refresh();
+    if (mode === "new") {
+      if (onCreated) onCreated(String(body.id));
+      else router.push(`/admin/${entity}/${body.id}`);
+    } else if (!embeddedInList) router.refresh();
   }
   async function publication(action: "publish" | "unpublish") {
     if (!record) return; const body = await request(`/api/admin/masters/${entity}/${record.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }); if (body && !embeddedInList) router.refresh();
