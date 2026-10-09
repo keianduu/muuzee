@@ -33,4 +33,18 @@ describe("Admin floating bulk actions", () => {
     expect(css).toContain("body.is-master-selection-active");
     expect(css).toContain("var(--admin-list-floating-reserve, 0px)");
   });
+
+  it("reconciles every loaded page after bulk publication without collapsing page depth", () => {
+    const list = read("./master-list.tsx");
+    expect(list).toContain("Array.from({ length: pageDepth }");
+    expect(list).toContain("setRows(rebuildLoadedRows(loadedPages))");
+    expect(list).toContain("setPage(pageDepth)");
+    expect(list).toContain("restoreScroll()");
+  });
+
+  it("limits row keyboard activation to the row itself", () => {
+    const list = read("./master-list.tsx");
+    expect(list).toContain("event.target === event.currentTarget");
+    expect(list).toContain("shouldActivateListRowFromKeyboard");
+  });
 });

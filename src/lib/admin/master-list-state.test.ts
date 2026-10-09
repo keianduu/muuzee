@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyBulkPublicationState, binaryListValue, canonicalizeExhibitionScheduleQuery, detailPanelQuery, EXHIBITION_SCHEDULE_VALUES, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizeExhibitionSchedule, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
+import { applyBulkPublicationState, binaryListValue, canonicalizeExhibitionScheduleQuery, detailPanelQuery, EXHIBITION_SCHEDULE_VALUES, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizeExhibitionSchedule, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, rebuildLoadedRows, replaceRowInPlace, selectedQuery, shouldActivateListRowFromKeyboard, splitListValue, workListViewQuery } from "./master-list-state";
 
 describe("master list URL and append state", () => {
   it("appends pages without duplicate records", () => {
@@ -45,6 +45,34 @@ describe("master list URL and append state", () => {
       { id: "c", publication_status: "published" },
     ];
     expect(applyBulkPublicationState(current, ["b"], "unpublish", "published").map((row) => row.id)).toEqual(["a", "c"]);
+  });
+
+  it("rebuilds the loaded window after an early row leaves page one without a boundary gap", () => {
+    const serverRows = Array.from({ length: 60 }, (_, index) => ({ id: String(index + 1) })).filter((row) => row.id !== "10");
+    const reconciledPageOne = rebuildLoadedRows([serverRows.slice(0, 50)]);
+    const nextPage = serverRows.slice(50, 100);
+    const continued = mergeUniqueRows(reconciledPageOne, nextPage);
+
+    expect(reconciledPageOne.at(-1)?.id).toBe("51");
+    expect(nextPage[0]?.id).toBe("52");
+    expect(continued.map((row) => row.id)).toEqual(serverRows.map((row) => row.id));
+    expect(new Set(continued.map((row) => row.id)).size).toBe(continued.length);
+  });
+
+  it("rebuilds multiple loaded pages in server order after multiple rows leave", () => {
+    const serverRows = Array.from({ length: 120 }, (_, index) => ({ id: String(index + 1) })).filter((row) => !["4", "49", "75"].includes(row.id));
+    const loaded = rebuildLoadedRows([serverRows.slice(0, 50), serverRows.slice(50, 100)]);
+
+    expect(loaded).toEqual(serverRows.slice(0, 100));
+    expect(new Set(loaded.map((row) => row.id)).size).toBe(100);
+  });
+
+  it("opens a row from its own Enter or Space key only", () => {
+    expect(shouldActivateListRowFromKeyboard("Enter", true)).toBe(true);
+    expect(shouldActivateListRowFromKeyboard(" ", true)).toBe(true);
+    expect(shouldActivateListRowFromKeyboard("Enter", false)).toBe(false);
+    expect(shouldActivateListRowFromKeyboard(" ", false)).toBe(false);
+    expect(shouldActivateListRowFromKeyboard("Tab", true)).toBe(false);
   });
 
   it("adds and removes selected without losing filters", () => {

@@ -134,6 +134,14 @@ export function applyBulkPublicationState<T extends { id: string; publication_st
   });
 }
 
+export function rebuildLoadedRows<T extends { id: string }>(pages: readonly (readonly T[])[]) {
+  return pages.reduce<T[]>((rows, pageRows) => mergeUniqueRows(rows, [...pageRows]), []);
+}
+
+export function shouldActivateListRowFromKeyboard(key: string, isRowTarget: boolean) {
+  return isRowTarget && (key === "Enter" || key === " ");
+}
+
 export function publicationTabQuery(current: string, status: PublicationListStatus) {
   const params = new URLSearchParams(current);
   clearListNavigationState(params);

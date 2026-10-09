@@ -9,7 +9,7 @@ import { AdminRelationCount } from "./admin-relation-count";
 import { MasterDetailDrawer } from "./master-detail-drawer";
 import { MASTER_CONFIGS, type MasterEntity } from "@/lib/admin/master-config";
 import type { MasterListResult } from "@/lib/admin/master-repository";
-import { applyBulkPublicationState, mergeUniqueRows, normalizePublicationStatus, pageQuery, replaceRowInPlace, selectedQuery, type WorkListView } from "@/lib/admin/master-list-state";
+import { applyBulkPublicationState, mergeUniqueRows, normalizePublicationStatus, pageQuery, rebuildLoadedRows, replaceRowInPlace, selectedQuery, shouldActivateListRowFromKeyboard, type WorkListView } from "@/lib/admin/master-list-state";
 import { MASTER_LIST_COLUMNS, venueCoordinatePresentation } from "@/lib/admin/admin-list-presentation";
 import { hasWorkTitle, workDisplayTitleJa } from "@/lib/work-title";
 import { workCandidateAdoptionReasons } from "@/lib/work-collection/adoption";
@@ -132,9 +132,9 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
   useEffect(() => {
     if (entity === "works" && workView !== "adopted") return;
     const target = sentinel.current;
-    if (!target || !hasMore || loadingMore || loadError) return;
+    if (!target || !hasMore || loadingMore || loadError || busy) return;
     const observer = new IntersectionObserver(async ([entry]) => {
-      if (!entry.isIntersecting || loadingMore) return;
+      if (!entry.isIntersecting || loadingMore || busy) return;
       setLoadingMore(true); setLoadError("");
       try {
         const nextPage = page + 1;
@@ -148,7 +148,7 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
     }, { rootMargin: "320px 0px" });
     observer.observe(target);
     return () => observer.disconnect();
-  }, [entity, hasMore, loadingMore, loadError, page, queryString, retryKey, workView]);
+  }, [entity, hasMore, loadingMore, loadError, page, queryString, retryKey, workView, busy]);
 
   function openDrawer(id: string) {
     router.push(`${pathname}?${selectedQuery(searchParams.toString(), id)}`, { scroll: false });
@@ -170,12 +170,30 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
     if (!window.confirm(`${selected.length}件を${label}にしますか？`)) return;
     setBusy(true); setMessage("");
     try {
+      const pageDepth = page;
+      const scrollTop = window.scrollY;
+      const restoreScroll = () => requestAnimationFrame(() => window.scrollTo({ top: scrollTop, behavior: "auto" }));
       const response = await fetch(`/api/admin/masters/${entity}/bulk-publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected, action }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "一括更新に失敗しました。");
       const activeStatus = normalizePublicationStatus(searchParams.get("status"));
       setRows((current) => applyBulkPublicationState(current, selected, action, activeStatus));
       setSelected([]);
+      restoreScroll();
+      try {
+        const loadedPages = await Promise.all(Array.from({ length: pageDepth }, async (_, index) => {
+          const listResponse = await fetch(`/api/admin/masters/${entity}?${pageQuery(queryString, index + 1)}`, { cache: "no-store" });
+          const listBody = await listResponse.json() as MasterListResult;
+          if (!listResponse.ok || listBody.error) throw new Error(listBody.error || "一覧の再取得に失敗しました。");
+          return listBody.rows;
+        }));
+        setRows(rebuildLoadedRows(loadedPages));
+        setPage(pageDepth);
+        setLoadError("");
+        restoreScroll();
+      } catch (error) {
+        setLoadError(error instanceof Error ? `一括更新は完了しました。${error.message}` : "一括更新は完了しました。一覧の再取得に失敗しました。");
+      }
       setMessage(body.message || `${body.count ?? selected.length}件を${label}にしました。`);
       router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "一括更新に失敗しました。"); }
@@ -195,7 +213,7 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
   const masterTable = <>
     <div className="list-summary"><strong>{result.total}</strong>件{result.allTotal !== result.total ? `（全${result.allTotal}件中）` : ""} · 表示中 {rows.length}件</div>
     <div className="table-wrap"><table className={`admin-master-table admin-master-table--${entity}`}><thead><tr><th><input aria-label="表示中の項目をすべて選択" type="checkbox" checked={Boolean(displayRows.length) && displayRows.every(({ row }) => selected.includes(row.id))} onChange={(event) => setSelected(event.target.checked ? displayRows.map(({ row }) => row.id) : [])}/></th><th>画像</th>{headings[entity].map((heading) => <th key={heading}>{heading}</th>)}<th>更新</th></tr></thead><tbody>
-      {displayRows.map(({ row, cells }) => <tr className="master-row" tabIndex={0} role="button" aria-label={`${String(row[config.titleKey] || row.id)}の詳細を開く`} key={row.id} onClick={() => openDrawer(row.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(row.id); } }}><td><input aria-label={`Select ${String(row[config.titleKey] || row.id)}`} type="checkbox" checked={selected.includes(row.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))}/></td><td>{row.signedImageUrl ? <img className="thumb" src={row.signedImageUrl} alt=""/> : <span className="thumb"/>}</td>{(cells as ReactNode[]).map((cell, index) => <td key={`${row.id}-${headings[entity][index]}`}>{index === 0 ? <strong>{cell}</strong> : cell}</td>)}<td>{new Date(row.updated_at).toLocaleString("ja-JP")}</td></tr>)}
+      {displayRows.map(({ row, cells }) => <tr className="master-row" tabIndex={0} role="button" aria-label={`${String(row[config.titleKey] || row.id)}の詳細を開く`} key={row.id} onClick={() => openDrawer(row.id)} onKeyDown={(event) => { if (shouldActivateListRowFromKeyboard(event.key, event.target === event.currentTarget)) { event.preventDefault(); openDrawer(row.id); } }}><td><input aria-label={`Select ${String(row[config.titleKey] || row.id)}`} type="checkbox" checked={selected.includes(row.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))}/></td><td>{row.signedImageUrl ? <img className="thumb" src={row.signedImageUrl} alt=""/> : <span className="thumb"/>}</td>{(cells as ReactNode[]).map((cell, index) => <td key={`${row.id}-${headings[entity][index]}`}>{index === 0 ? <strong>{cell}</strong> : cell}</td>)}<td>{new Date(row.updated_at).toLocaleString("ja-JP")}</td></tr>)}
       {!displayRows.length && <tr><td colSpan={headings[entity].length + 3} className="empty-state">条件に合う{config.label}はありません。絞り込みを変更するか、新規追加 / CSVから追加できます。</td></tr>}
     </tbody></table></div>
     <div ref={sentinel} className="infinite-scroll-status" aria-live="polite">{loadingMore ? "追加読み込み中..." : loadError ? <><span>{loadError}</span><button className="button secondary" onClick={() => { setLoadError(""); setRetryKey((value) => value + 1); }}>再試行</button></> : hasMore ? "下へスクロールすると次の50件を読み込みます" : `全${result.total}件を表示しました`}</div>
