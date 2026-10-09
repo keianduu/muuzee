@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isAdminNavigationItemActive } from "@/lib/admin/admin-navigation-state";
 
 type NavigationItem = {
   href: string;
@@ -10,7 +11,7 @@ type NavigationItem = {
   exact?: boolean;
 };
 
-type AdminIconName = "dashboard" | "exhibition" | "venue" | "artist" | "work" | "users" | "import" | "source";
+type AdminIconName = "dashboard" | "exhibition" | "venue" | "artist" | "work" | "users" | "summary" | "import" | "source";
 
 const primaryItems: NavigationItem[] = [
   { href: "/admin", label: "Dashboard", icon: "dashboard", exact: true },
@@ -21,7 +22,8 @@ const primaryItems: NavigationItem[] = [
 ];
 
 const dataItems: NavigationItem[] = [
-  { href: "/admin/imports", label: "取り込み実行", icon: "import" },
+  { href: "/admin/imports/summary", label: "データ取得サマリ", icon: "summary" },
+  { href: "/admin/imports", label: "取り込み実行", icon: "import", exact: true },
   { href: "/admin/sources", label: "外部Source設定", icon: "source" },
 ];
 
@@ -33,6 +35,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     artist: <><circle cx="12" cy="8" r="3"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></>,
     work: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m6 17 4-4 3 3 2-2 3 3"/></>,
     users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
+    summary: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></>,
     import: <><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></>,
     source: <><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12v7c0 1.66 3.58 3 8 3s8-1.34 8-3v-7"/></>,
   };
@@ -42,7 +45,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
 
 function AdminNavigationLink({ href, label, icon, exact }: NavigationItem) {
   const pathname = usePathname();
-  const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const active = isAdminNavigationItemActive(pathname, { href, exact });
 
   return <Link className={`admin-nav-link${active ? " is-active" : ""}`} href={href} prefetch={false} aria-current={active ? "page" : undefined}><span className="admin-nav-link-main"><AdminIcon name={icon}/><span>{label}</span></span></Link>;
 }

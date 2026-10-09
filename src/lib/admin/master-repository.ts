@@ -320,6 +320,13 @@ function artistDashboardFor(rows: MasterRecord[], tierFilter?: string): ArtistQu
   };
 }
 
+export async function getMasterQualityDashboard(entity: "venues" | "artists") {
+  if (!hasSupabaseAdminEnvironment()) return null;
+  return entity === "venues"
+    ? dashboardFor(await allVenueQualityRows())
+    : artistDashboardFor(await allArtistQualityRows());
+}
+
 export async function listMasters(entity: MasterEntity, options: MasterListOptions = {}): Promise<MasterListResult> {
   const pageSize = [20, 50, 100].includes(Number(options.pageSize)) ? Number(options.pageSize) : 20;
   const page = Math.max(1, Number(options.page) || 1);
