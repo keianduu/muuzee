@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { binaryListValue, canonicalizeExhibitionScheduleQuery, detailPanelQuery, EXHIBITION_SCHEDULE_VALUES, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizeExhibitionSchedule, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
+import { applyBulkPublicationState, binaryListValue, canonicalizeExhibitionScheduleQuery, detailPanelQuery, EXHIBITION_SCHEDULE_VALUES, legacyDetailDestination, listFilterQuery, mergeUniqueRows, normalizeExhibitionSchedule, normalizePublicationStatus, pageQuery, publicationMatches, publicationTabQuery, replaceRowInPlace, selectedQuery, splitListValue, workListViewQuery } from "./master-list-state";
 
 describe("master list URL and append state", () => {
   it("appends pages without duplicate records", () => {
@@ -16,6 +16,35 @@ describe("master list URL and append state", () => {
   it.each(["manual upload", "manual delete", "candidate selection"])("preserves A/B/C order after %s updates B", () => {
     const current = [{ id: "a", revision: 0 }, { id: "b", revision: 0 }, { id: "c", revision: 0 }];
     expect(replaceRowInPlace(current, { id: "b", revision: 1 }).map((row) => row.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("removes published selections from the unpublished tab without reordering unaffected rows", () => {
+    const current = [
+      { id: "a", publication_status: "draft", title: "A" },
+      { id: "b", publication_status: "draft", title: "B" },
+      { id: "c", publication_status: "draft", title: "C" },
+    ];
+    expect(applyBulkPublicationState(current, ["b"], "publish", "unpublished")).toEqual([current[0], current[2]]);
+  });
+
+  it("updates selected rows in place when they still belong to the active publication tab", () => {
+    const current = [
+      { id: "a", publication_status: "published", title: "A" },
+      { id: "b", publication_status: "draft", title: "B" },
+      { id: "c", publication_status: "published", title: "C" },
+    ];
+    expect(applyBulkPublicationState(current, ["b"], "publish", "published")).toEqual([
+      current[0], { ...current[1], publication_status: "published" }, current[2],
+    ]);
+  });
+
+  it("removes unpublished selections from the published tab", () => {
+    const current = [
+      { id: "a", publication_status: "published" },
+      { id: "b", publication_status: "published" },
+      { id: "c", publication_status: "published" },
+    ];
+    expect(applyBulkPublicationState(current, ["b"], "unpublish", "published").map((row) => row.id)).toEqual(["a", "c"]);
   });
 
   it("adds and removes selected without losing filters", () => {

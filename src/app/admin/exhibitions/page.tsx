@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminListControls } from "@/components/admin/admin-list-controls";
+import { AdminRelationCount } from "@/components/admin/admin-relation-count";
 import { ExhibitionDetailDrawer } from "@/components/admin/exhibition-detail-drawer";
-import { displayStatus } from "@/lib/admin/master-labels";
 import { canonicalizeExhibitionScheduleQuery, normalizeExhibitionSchedule, normalizePublicationStatus, publicationMatches, selectedQuery } from "@/lib/admin/master-list-state";
 import { firstRelation, getExhibitions } from "@/lib/admin/queries";
 
@@ -40,17 +40,16 @@ export default async function ExhibitionsPage({ searchParams }: { searchParams: 
     <div className="page-head"><div><p className="eyebrow">Editorial queue</p><h1>Exhibitions</h1></div></div>
     {!result.configured && <div className="notice">Supabase環境変数が未設定です。</div>}{result.error && result.configured && <div className="error">{result.error}</div>}
     <AdminListControls entity="exhibitions" params={{ ...listParams, q: queryValue, image, schedule }}/>
-    <div className="table-wrap"><table><thead><tr><th>Thumbnail</th><th>Title</th><th>Venue / dates</th><th>Venue match</th><th>Artists</th><th>Source / sync</th><th>Image</th><th>Publication</th><th>Updated</th></tr></thead><tbody>
+    <div className="table-wrap"><table className="admin-exhibition-table"><thead><tr><th>画像</th><th>展示会</th><th>会場 / 会期</th><th>会場照合</th><th>関連</th><th>画像状態</th><th>更新</th></tr></thead><tbody>
       {rows.map((item) => { const occurrence = item.exhibition_occurrences?.[0]; const venue = firstRelation(occurrence?.venues); const venueMention = item.exhibition_venue_mentions?.[0]; const source = item.source_records?.[0]; const primary = item.media_assets?.find((asset) => asset.is_primary); const candidate = source?.source_image_candidates?.find((entry) => entry.is_active); const thumbnail = primary?.signedUrl || candidate?.thumbnail_url || candidate?.image_url; return <tr key={item.id}>
         <td>{thumbnail ? <img className="thumb" alt="" src={thumbnail} /> : <span className="thumb" />}</td>
         <td><Link href={`/admin/exhibitions?${selectedQuery(currentQuery.toString(), item.id)}`} scroll={false}><strong>{item.title}</strong></Link></td>
         <td>{venue?.name || "-"}<br/><span className="muted">{occurrence?.start_date || "?"} – {occurrence?.end_date || "?"}</span></td>
         <td><span className={`status ${venueMention?.resolution_status || (venue ? "resolved" : "pending")}`}>{venueMention?.resolution_status || (venue ? "resolved" : "pending")}</span></td>
-        <td>{item.exhibition_artists?.filter((relation) => relation.relation_status !== "stale").length || 0}{item.exhibition_artist_mentions?.some((mention) => mention.resolution_status === "ambiguous" || mention.resolution_status === "pending") ? <><br/><small>unresolved mention</small></> : null}</td>
-        <td>{source ? <span>{firstRelation(source.data_sources)?.name || "Source"}<br/><small>{source.external_id}<br/>{source.last_seen_at ? `seen ${new Date(source.last_seen_at).toLocaleString("ja-JP")}` : "legacy import"}</small></span> : "-"}</td>
-        <td><span className={`status ${primary?.rights_status || ""}`}>{primary ? primary.rights_status : candidate ? "API candidate" : "missing"}</span></td><td><span className={`status ${item.publication_status}`}>{displayStatus(item.publication_status)}</span></td><td>{new Date(item.updated_at).toLocaleString("ja-JP")}</td>
+        <td><AdminRelationCount items={[{ kind: "artists", count: item.exhibition_artists?.filter((relation) => relation.relation_status !== "stale").length || 0 }]}/>{item.exhibition_artist_mentions?.some((mention) => mention.resolution_status === "ambiguous" || mention.resolution_status === "pending") ? <><br/><small className="muted">未解決候補あり</small></> : null}</td>
+        <td><span className={`status ${primary?.rights_status || ""}`}>{primary ? primary.rights_status : candidate ? "API candidate" : "missing"}</span></td><td>{new Date(item.updated_at).toLocaleString("ja-JP")}</td>
       </tr>; })}
-      {!rows.length && <tr><td colSpan={9} className="muted">条件に合う展覧会はありません。</td></tr>}
+      {!rows.length && <tr><td colSpan={7} className="empty-state">条件に合う展覧会はありません。</td></tr>}
     </tbody></table></div>
     <ExhibitionDetailDrawer selectedId={selectedId}/>
   </>;

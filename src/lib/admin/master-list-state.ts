@@ -119,6 +119,21 @@ export function publicationMatches(recordStatus: string | null | undefined, sele
   return recordStatus !== "published" && recordStatus !== "archived";
 }
 
+export function applyBulkPublicationState<T extends { id: string; publication_status: string }>(
+  rows: T[],
+  selectedIds: string[],
+  action: "publish" | "unpublish",
+  activeStatus: PublicationListStatus,
+) {
+  const selected = new Set(selectedIds);
+  const publicationStatus = action === "publish" ? "published" : "draft";
+  return rows.flatMap((row) => {
+    if (!selected.has(row.id)) return [row];
+    const updated = { ...row, publication_status: publicationStatus };
+    return publicationMatches(publicationStatus, activeStatus) ? [updated] : [];
+  });
+}
+
 export function publicationTabQuery(current: string, status: PublicationListStatus) {
   const params = new URLSearchParams(current);
   clearListNavigationState(params);

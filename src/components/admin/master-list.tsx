@@ -3,14 +3,14 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AdminFloatingBulkActions } from "./admin-floating-bulk-actions";
+import { AdminRelationCount } from "./admin-relation-count";
 import { MasterDetailDrawer } from "./master-detail-drawer";
 import { MASTER_CONFIGS, type MasterEntity } from "@/lib/admin/master-config";
-import { displayStatus } from "@/lib/admin/master-labels";
 import type { MasterListResult } from "@/lib/admin/master-repository";
-import { mergeUniqueRows, pageQuery, replaceRowInPlace, selectedQuery, type WorkListView } from "@/lib/admin/master-list-state";
-import { effectiveVenueTier, venueImageStatus } from "@/lib/admin/venue-priority";
-import { artistImageStatus, effectiveArtistTier } from "@/lib/admin/artist-priority";
+import { applyBulkPublicationState, mergeUniqueRows, normalizePublicationStatus, pageQuery, replaceRowInPlace, selectedQuery, type WorkListView } from "@/lib/admin/master-list-state";
+import { MASTER_LIST_COLUMNS, venueCoordinatePresentation } from "@/lib/admin/admin-list-presentation";
 import { hasWorkTitle, workDisplayTitleJa } from "@/lib/work-title";
 import { workCandidateAdoptionReasons } from "@/lib/work-collection/adoption";
 
@@ -28,27 +28,27 @@ function relationLabel(value: unknown, relation: string, key: string) {
 }
 
 function rowsFor(entity: MasterEntity, rows: ListRow[]) {
-  if (entity === "venues") return rows.map((row) => ({
-    row,
-    // Source and match state are kept visible after an API import so a reviewer
-    // can immediately isolate new Wikidata records and possible duplicates.
-    cells: [String(row.name || "未設定"), String(row.venue_type || "未設定"), String(row.address || "未設定"),
-      row.latitude != null && row.longitude != null ? `${row.latitude}, ${row.longitude}` : "未設定",
-      [...new Set(((row.source_records || []) as Array<{ data_sources?: { key?: string } | Array<{ key?: string }> }>).flatMap((source) => {
-        const values = Array.isArray(source.data_sources) ? source.data_sources : source.data_sources ? [source.data_sources] : [];
-        return values.map((value) => value.key).filter(Boolean);
-      }))].join(" / ") || "未設定",
-      ((row.source_records || []) as Array<{ data_sources?: { key?: string } | Array<{ key?: string }> }>).some((source) => (Array.isArray(source.data_sources) ? source.data_sources : source.data_sources ? [source.data_sources] : []).some((item) => item.key === "wikidata"))
-        ? "Linked"
-        : ((row.venue_external_match_candidates || []) as Array<{ status?: string }>).filter((item) => item.status === "candidate").length > 1
-          ? `Source selection (${((row.venue_external_match_candidates || []) as Array<{ status?: string }>).filter((item) => item.status === "candidate").length})`
-          : "No source link",
-      `${((row.exhibition_occurrences || []) as unknown[]).length} exhibitions / ${((row.collection_holdings || []) as unknown[]).length} works`],
-  }));
+  if (entity === "venues") return rows.map((row) => {
+    const coordinates = venueCoordinatePresentation(row.latitude, row.longitude);
+    return {
+      row,
+      cells: [String(row.name || "未設定"), String(row.venue_type || "未設定"),
+        coordinates
+          ? <a key="coordinates" className="admin-coordinate-link" href={coordinates.href} target="_blank" rel="noreferrer" aria-label={`${String(row.name || "会場")}をGoogle Mapsで開く`} onClick={(event) => event.stopPropagation()}>{coordinates.label} <span aria-hidden="true">↗</span></a>
+          : "—",
+        <AdminRelationCount key="relations" items={[
+          { kind: "exhibitions", count: ((row.exhibition_occurrences || []) as unknown[]).length },
+          { kind: "works", count: ((row.collection_holdings || []) as unknown[]).length },
+        ]}/>],
+    };
+  });
   if (entity === "artists") return rows.map((row) => ({
     row,
     cells: [String(row.name || "未設定"), String(row.name_en || "未設定"), String(row.nationality_country_code || "未設定"), [row.birth_year || row.birth_date || "?", row.death_year || row.death_date || "?"].join(" – "),
-      `${((row.exhibition_artists || []) as unknown[]).length} exhibitions / ${((row.work_artists || []) as unknown[]).length} works`],
+      <AdminRelationCount key="relations" items={[
+        { kind: "exhibitions", count: ((row.exhibition_artists || []) as unknown[]).length },
+        { kind: "works", count: ((row.work_artists || []) as unknown[]).length },
+      ]}/>],
   }));
   return rows.map((row) => ({
     row,
@@ -56,10 +56,10 @@ function rowsFor(entity: MasterEntity, rows: ListRow[]) {
   }));
 }
 
-const headings: Record<MasterEntity, string[]> = {
-  venues: ["Venue（会場）", "Type（種別）", "Address（住所）", "Coordinates（座標）", "Source（出典）", "Wikidata（照合）", "Relations（関連）"],
-  artists: ["Artist（作家）", "Name EN（英語名）", "Nationality（国籍）", "Birth / Death（生没年）", "Relations（関連）"],
-  works: ["Work（作品）", "Artist（作家）", "Year（制作年）", "Holding Venue（所蔵先）"],
+const headings: Record<MasterEntity, readonly string[]> = {
+  venues: MASTER_LIST_COLUMNS.venues.slice(0, -1),
+  artists: MASTER_LIST_COLUMNS.artists.slice(0, -1),
+  works: MASTER_LIST_COLUMNS.works.slice(0, -1),
 };
 
 export function MasterList({ entity, result, queryString, workView = "adopted" }: { entity: MasterEntity; result: MasterListResult; queryString: string; workView?: WorkListView }) {
@@ -84,8 +84,19 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
   const [workCandidatesError, setWorkCandidatesError] = useState("");
   const displayRows = useMemo(() => rowsFor(entity, rows), [entity, rows]);
   const hasMore = rows.length < result.total;
+  const bulkAvailable = entity !== "works" || workView === "adopted";
 
-  useEffect(() => { setRows(latestInitialRows.current); setPage(1); setLoadError(""); }, [queryString]);
+  useEffect(() => { setRows(latestInitialRows.current); setPage(1); setLoadError(""); setSelected([]); }, [queryString]);
+
+  useEffect(() => {
+    setSelected((current) => current.filter((id) => rows.some((row) => row.id === id)));
+  }, [rows]);
+
+  useEffect(() => {
+    const active = bulkAvailable && selected.length > 0;
+    document.body.classList.toggle("is-master-selection-active", active);
+    return () => document.body.classList.remove("is-master-selection-active");
+  }, [bulkAvailable, selected.length]);
 
   useEffect(() => {
     if (entity !== "works") return;
@@ -155,9 +166,20 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
 
   async function bulk(action: "publish" | "unpublish") {
     if (!selected.length) { setMessage("対象を選択してください。"); return; }
-    if (!window.confirm(`${selected.length}件を${action}しますか？`)) return;
-    await jsonRequest(`/api/admin/masters/${entity}/bulk-publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected, action }) });
-    setSelected([]);
+    const label = action === "publish" ? "公開" : "非公開";
+    if (!window.confirm(`${selected.length}件を${label}にしますか？`)) return;
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch(`/api/admin/masters/${entity}/bulk-publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected, action }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "一括更新に失敗しました。");
+      const activeStatus = normalizePublicationStatus(searchParams.get("status"));
+      setRows((current) => applyBulkPublicationState(current, selected, action, activeStatus));
+      setSelected([]);
+      setMessage(body.message || `${body.count ?? selected.length}件を${label}にしました。`);
+      router.refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "一括更新に失敗しました。"); }
+    finally { setBusy(false); }
   }
 
   async function adoptWorkCandidates(candidateIds: string[]) {
@@ -172,15 +194,15 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
 
   const masterTable = <>
     <div className="list-summary"><strong>{result.total}</strong>件{result.allTotal !== result.total ? `（全${result.allTotal}件中）` : ""} · 表示中 {rows.length}件</div>
-    <div className="table-wrap"><table><thead><tr><th><input aria-label="表示中の項目をすべて選択" type="checkbox" checked={Boolean(displayRows.length) && displayRows.every(({ row }) => selected.includes(row.id))} onChange={(event) => setSelected(event.target.checked ? displayRows.map(({ row }) => row.id) : [])}/></th><th>Image（画像）</th>{(entity === "venues" || entity === "artists") && <><th>Tier</th><th>Image Status</th></>}{headings[entity].map((heading) => <th key={heading}>{heading}</th>)}<th>{entity === "artists" ? "Core Quality" : "Completeness（充足率）"}</th><th>Publication（公開状態）</th><th>Updated（更新日時）</th></tr></thead><tbody>
-      {displayRows.map(({ row, cells }) => <tr className="master-row" tabIndex={0} role="button" aria-label={`${String(row[config.titleKey] || row.id)}の詳細を開く`} key={row.id} onClick={() => openDrawer(row.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(row.id); } }}><td><input aria-label={`Select ${String(row[config.titleKey] || row.id)}`} type="checkbox" checked={selected.includes(row.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))}/></td><td>{row.signedImageUrl ? <img className="thumb" src={row.signedImageUrl} alt=""/> : <span className="thumb"/>}</td>{entity === "venues" && <><td>{effectiveVenueTier(row) ? <span className={`tier-badge tier-${effectiveVenueTier(row)!.toLowerCase()}`}>{effectiveVenueTier(row)}</span> : <span className="tier-badge">未分類</span>}</td><td><small>{venueImageStatus(row)}</small></td></>}{entity === "artists" && <><td>{effectiveArtistTier(row) ? <span className={`tier-badge tier-${effectiveArtistTier(row)!.toLowerCase()}`}>{effectiveArtistTier(row)}</span> : <span className="tier-badge">未分類</span>}</td><td><small>{artistImageStatus(row)}</small></td></>}{cells.map((cell, index) => <td key={`${row.id}-${headings[entity][index]}`}>{index === 0 ? <strong>{cell}</strong> : cell}</td>)}<td><div className="completeness"><span style={{ width: `${row.completeness.percent}%` }}/></div><small>{row.completeness.met}/{row.completeness.total} · {row.completeness.percent}%</small></td><td><span className={`status ${row.publication_status}`}>{displayStatus(row.publication_status)}</span></td><td>{new Date(row.updated_at).toLocaleString("ja-JP")}</td></tr>)}
-      {!displayRows.length && <tr><td colSpan={headings[entity].length + ((entity === "venues" || entity === "artists") ? 8 : 6)} className="empty-state">条件に合う{config.label}はありません。絞り込みを変更するか、新規追加 / CSVから追加できます。</td></tr>}
+    <div className="table-wrap"><table className={`admin-master-table admin-master-table--${entity}`}><thead><tr><th><input aria-label="表示中の項目をすべて選択" type="checkbox" checked={Boolean(displayRows.length) && displayRows.every(({ row }) => selected.includes(row.id))} onChange={(event) => setSelected(event.target.checked ? displayRows.map(({ row }) => row.id) : [])}/></th><th>画像</th>{headings[entity].map((heading) => <th key={heading}>{heading}</th>)}<th>更新</th></tr></thead><tbody>
+      {displayRows.map(({ row, cells }) => <tr className="master-row" tabIndex={0} role="button" aria-label={`${String(row[config.titleKey] || row.id)}の詳細を開く`} key={row.id} onClick={() => openDrawer(row.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(row.id); } }}><td><input aria-label={`Select ${String(row[config.titleKey] || row.id)}`} type="checkbox" checked={selected.includes(row.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))}/></td><td>{row.signedImageUrl ? <img className="thumb" src={row.signedImageUrl} alt=""/> : <span className="thumb"/>}</td>{(cells as ReactNode[]).map((cell, index) => <td key={`${row.id}-${headings[entity][index]}`}>{index === 0 ? <strong>{cell}</strong> : cell}</td>)}<td>{new Date(row.updated_at).toLocaleString("ja-JP")}</td></tr>)}
+      {!displayRows.length && <tr><td colSpan={headings[entity].length + 3} className="empty-state">条件に合う{config.label}はありません。絞り込みを変更するか、新規追加 / CSVから追加できます。</td></tr>}
     </tbody></table></div>
     <div ref={sentinel} className="infinite-scroll-status" aria-live="polite">{loadingMore ? "追加読み込み中..." : loadError ? <><span>{loadError}</span><button className="button secondary" onClick={() => { setLoadError(""); setRetryKey((value) => value + 1); }}>再試行</button></> : hasMore ? "下へスクロールすると次の50件を読み込みます" : `全${result.total}件を表示しました`}</div>
   </>;
 
   return <>
-    {(entity !== "works" || workView === "adopted") && <div className="master-action-bar"><button className="button secondary" disabled={busy || !selected.length} onClick={() => bulk("publish")}>選択した項目を公開</button><button className="button secondary" disabled={busy || !selected.length} onClick={() => bulk("unpublish")}>選択した項目を非公開</button></div>}
+    {bulkAvailable && <AdminFloatingBulkActions selectedCount={selected.length} busy={busy} onPublish={() => bulk("publish")} onUnpublish={() => bulk("unpublish")} onClear={() => setSelected([])}/>}
 
     {entity === "venues" && result.qualityDashboard?.kind === "venue" && <section className="card venue-quality-dashboard"><div className="section-head"><div><p className="eyebrow">Data Quality</p><h2>Venue Priority Tier</h2></div><p><strong>{result.qualityDashboard.selected.label}</strong> {result.qualityDashboard.selected.count}件 · Average Completeness {result.qualityDashboard.selected.averageCompleteness}%</p></div><div className="quality-tier-grid">{result.qualityDashboard.tiers.map((item) => <div className="quality-tier" key={item.tier}><span className={`tier-badge tier-${item.tier.toLowerCase()}`}>{item.tier}</span><strong>{item.count}件</strong><span>平均 {item.averageCompleteness}%</span><span>Target {item.target}%</span><span>達成 {item.met} / 未達 {item.unmet}</span></div>)}</div><h3>A〜C Workload</h3><div className="preview-counts"><span className="status">Total {result.qualityDashboard.priorityTotal}</span><span className="status rejected">Target未達 {result.qualityDashboard.priorityTargetUnmet}</span><span className="status">Multiple QID {result.qualityDashboard.multipleQidCandidates}</span>{Object.entries(result.qualityDashboard.missing).map(([key, value]) => <span className="status" key={key}>{key} Missing: {value}</span>)}</div><h3>A〜C Image</h3><div className="preview-counts">{Object.entries(result.qualityDashboard.images).map(([key, value]) => <span className="status" key={key}>{key}: {value}</span>)}</div><details><summary>次に整備すべきVenue</summary><ol className="quality-queue">{result.qualityDashboard.queue.map((item) => <li key={item.id}><button type="button" onClick={() => openDrawer(item.id)}><span className={`tier-badge tier-${item.tier.toLowerCase()}`}>{item.tier}</span> <strong>{item.name}</strong> · {item.completeness}% · Missing: {item.missing.join(" / ")}</button></li>)}</ol></details></section>}
     {entity === "artists" && result.qualityDashboard?.kind === "artist" && <section className="card venue-quality-dashboard"><div className="section-head"><div><p className="eyebrow">Data Quality</p><h2>Artist Priority Tier</h2></div><p><strong>{result.qualityDashboard.selected.label}</strong> {result.qualityDashboard.selected.count}件 · Average Core Quality {result.qualityDashboard.selected.averageCompleteness}%</p></div><div className="quality-tier-grid">{result.qualityDashboard.tiers.map((item) => <div className="quality-tier" key={item.tier}><span className={`tier-badge tier-${item.tier.toLowerCase()}`}>{item.tier}</span><strong>{item.count}件</strong><span>平均 {item.averageCompleteness}%</span><span>4/4 {item.complete}</span><span>未達 {item.incomplete}</span></div>)}</div><h3>Missing Core Fields</h3><div className="preview-counts">{Object.entries(result.qualityDashboard.missing).map(([key, value]) => <span className="status" key={key}>{key} Missing: {value}</span>)}</div></section>}
