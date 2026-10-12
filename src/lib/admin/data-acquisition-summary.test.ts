@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildOverviewMetrics, countDistinctOwners, countUnresolvedMentions, normalizeDataAcquisitionEntity, operationBelongsToEntity } from "./data-acquisition-summary";
 
@@ -21,6 +22,12 @@ describe("data acquisition summary boundary", () => {
     ])).toBe(3);
   });
 
+  it("limits both Exhibition mention ledgers to active rows", () => {
+    const source = readFileSync(new URL("./data-acquisition-summary.ts", import.meta.url), "utf8");
+    expect(source).toMatch(/from\("exhibition_venue_mentions"\)\.select\("resolution_status"\)\.eq\("is_active", true\)/);
+    expect(source).toMatch(/from\("exhibition_artist_mentions"\)\.select\("resolution_status"\)\.eq\("is_active", true\)/);
+  });
+
   it("builds common real metrics and exact supported list deep links", () => {
     const metrics = buildOverviewMetrics("artists", [
       { id: "published", publication_status: "published" },
@@ -40,6 +47,7 @@ describe("data acquisition summary boundary", () => {
     expect(operationBelongsToEntity("venues", "wikidata_venue_import")).toBe(true);
     expect(operationBelongsToEntity("artists", "wikidata_artist_import")).toBe(true);
     expect(operationBelongsToEntity("exhibitions", "exhibition_daily_sync")).toBe(true);
+    expect(operationBelongsToEntity("exhibitions", "exhibition_import")).toBe(false);
     expect(operationBelongsToEntity("venues", "targeted_master_resolution")).toBe(false);
     expect(operationBelongsToEntity("works", "targeted_master_resolution")).toBe(false);
   });

@@ -56,7 +56,7 @@ const ENTITY_CONFIG: Record<DataAcquisitionEntity, { ownerKey: string }> = {
 };
 
 const RUN_OPERATIONS: Record<DataAcquisitionEntity, readonly string[]> = {
-  exhibitions: ["exhibition_import", "exhibition_daily_sync"],
+  exhibitions: ["exhibition_daily_sync"],
   venues: ["wikidata_venue_import", "wikidata_venue_targeted_import", "venue_enrichment", "official_venue_crawl"],
   artists: ["wikidata_artist_import", "wikidata_artist_targeted_import"],
   works: [],
@@ -172,7 +172,7 @@ async function entityQualityMetrics(entity: DataAcquisitionEntity, masters: Mast
       return { data: result.data, error: result.error };
     }),
     readAll<{ resolution_status: string | null }>(async (from, to) => {
-      const result = await db.from("exhibition_artist_mentions").select("resolution_status").range(from, to);
+      const result = await db.from("exhibition_artist_mentions").select("resolution_status").eq("is_active", true).range(from, to);
       return { data: result.data, error: result.error };
     }),
   ]);
