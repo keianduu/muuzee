@@ -113,7 +113,7 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
       try {
         const detail = event instanceof CustomEvent ? event.detail as { entity?: MasterEntity; id?: string; preserveListOrder?: boolean } : null;
         if (detail?.preserveListOrder && detail.entity === entity && detail.id) {
-          const response = await fetch(`/api/admin/masters/${entity}/${detail.id}`, { cache: "no-store" });
+          const response = await fetch(`/api/admin/masters/${entity}/${detail.id}/list-row`, { cache: "no-store" });
           const body = await response.json() as ListRow & { error?: string };
           if (!response.ok || body.error) throw new Error(body.error || "一覧の更新に失敗しました。");
           setRows((current) => replaceRowInPlace(current, body));

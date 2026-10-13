@@ -90,14 +90,14 @@ export type MasterEditSection = "all" | "basic" | "image" | "relations";
 export function MasterEditor({ entity, record, mode = "edit", view = "all", editSection = "all", embeddedInList = false, onOpenImageCandidate, onCreated }: { entity: MasterEntity; record?: DetailRecord; mode?: "new" | "edit"; view?: "all" | "status" | "edit" | "data"; editSection?: MasterEditSection; embeddedInList?: boolean; onOpenImageCandidate?: (candidateId: string | null) => void; onCreated?: (id: string) => void }) {
   const router = useRouter(); const config = MASTER_CONFIGS[entity];
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
-  async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean } = {}) {
+  async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean; invalidateData?: boolean } = {}) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch(url, init); const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Request failed");
       setMessage(body.message || "完了しました。");
       window.dispatchEvent(new CustomEvent("muuzee:master-updated", {
-        detail: { entity, id: record?.id, preserveListOrder: Boolean(options.preserveListOrder) },
+        detail: { entity, id: record?.id, preserveListOrder: Boolean(options.preserveListOrder), invalidateData: options.invalidateData !== false },
       }));
       return body;
     }
@@ -122,12 +122,12 @@ export function MasterEditor({ entity, record, mode = "edit", view = "all", edit
     const body = await request(`/api/admin/masters/${entity}/${record.id}`, { method: "DELETE" }); if (body) router.push(`/admin/${entity}`);
   }
   async function upload(form: FormData) {
-    if (!record) return; const body = await request(`/api/admin/masters/${entity}/${record.id}/media`, { method: "POST", body: form }, { preserveListOrder: true });
+    if (!record) return; const body = await request(`/api/admin/masters/${entity}/${record.id}/media`, { method: "POST", body: form }, { preserveListOrder: true, invalidateData: false });
     if (body?.asset) dispatchAdminMediaMutation({ entity, ownerId: record.id, asset: body.asset as MediaAssetRow });
     if (body && !embeddedInList) router.refresh();
   }
   async function removeMedia(id: string) {
-    if (!record || !window.confirm("画像を削除しますか？")) return; const body = await request(`/api/admin/masters/${entity}/${record.id}/media/${id}`, { method: "DELETE" }, { preserveListOrder: true });
+    if (!record || !window.confirm("画像を削除しますか？")) return; const body = await request(`/api/admin/masters/${entity}/${record.id}/media/${id}`, { method: "DELETE" }, { preserveListOrder: true, invalidateData: false });
     if (body?.removedAssetId) dispatchAdminMediaMutation({ entity, ownerId: record.id, removedAssetId: String(body.removedAssetId) });
     if (body && !embeddedInList) router.refresh();
   }

@@ -4,12 +4,25 @@ import { NextResponse } from "next/server";
 import { assertHttpUrl, nullableText, validUuid } from "@/lib/admin/http";
 import { assertCandidateImageUrl, downloadCandidateImage } from "@/lib/admin/candidate-image";
 import { isMasterEntity, MASTER_CONFIGS } from "@/lib/admin/master-config";
+import { getMasterMedia } from "@/lib/admin/master-repository";
 import { signedMediaAsset } from "@/lib/admin/media-asset-response";
 import { shouldSetManualMediaPrimary } from "@/lib/admin/media-asset-state";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_BYTES = 20 * 1024 * 1024;
+
+export async function GET(_: Request, { params }: { params: Promise<{ entity: string; id: string }> }) {
+  try {
+    const { entity, id } = await params;
+    if (!isMasterEntity(entity) || !validUuid(id)) throw new Error("Invalid master");
+    const result = await getMasterMedia(entity, id);
+    if (!result.data) return NextResponse.json({ error: result.error || "画像が見つかりません。" }, { status: 404 });
+    return NextResponse.json(result.data);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "画像の取得に失敗しました。" }, { status: 400 });
+  }
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ entity: string; id: string }> }) {
   let uploadedPath: string | null = null;

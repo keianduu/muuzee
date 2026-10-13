@@ -37,14 +37,14 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     const query = venueEditTabQuery(searchParams.toString(), tab);
     router.replace(`${pathname}?${query}`, { scroll: false });
   }
-  async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean } = {}) {
+  async function request(url: string, init: RequestInit, options: { preserveListOrder?: boolean; invalidateData?: boolean } = {}) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch(url, init); const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Request failed");
       setMessage(body.message || "完了しました。");
       if (showBasicForm) router.refresh();
-      window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity: "venues", id: venue.id, preserveListOrder: Boolean(options.preserveListOrder) } }));
+      window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity: "venues", id: venue.id, preserveListOrder: Boolean(options.preserveListOrder), invalidateData: options.invalidateData !== false } }));
       return body as Record<string, unknown>;
     } catch (error) { setMessage(error instanceof Error ? error.message : "Request failed"); return null; }
     finally { setBusy(false); }
@@ -60,12 +60,12 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     if (body?.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, asset: body.asset as MediaAssetRow });
   }
   async function upload(form: FormData) {
-    const body = await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: form }, { preserveListOrder: true });
+    const body = await request(`/api/admin/venues/${venue.id}/media`, { method: "POST", body: form }, { preserveListOrder: true, invalidateData: false });
     if (body?.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, asset: body.asset as MediaAssetRow });
   }
   async function remove(asset: MediaAssetRow) {
     if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return;
-    const body = await request(`/api/admin/venues/${venue.id}/media/${asset.id}`, { method: "DELETE" }, { preserveListOrder: true });
+    const body = await request(`/api/admin/venues/${venue.id}/media/${asset.id}`, { method: "DELETE" }, { preserveListOrder: true, invalidateData: false });
     if (body?.removedAssetId) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, removedAssetId: String(body.removedAssetId) });
   }
 

@@ -29,7 +29,8 @@ describe("Artist shared detail architecture", () => {
     const drawer = readFileSync(new URL("./master-detail-drawer.tsx", import.meta.url), "utf8");
     expect(drawer).toContain('["venues", "artists"].includes(entity)');
     expect(drawer).toContain("entity === \"venues\" && [\"wikidata-fields\", \"official-fields\", \"coordinates\"]");
-    expect(drawer).toContain("<MasterImageCandidatePicker entity={entity} ownerId={currentRecord.id}");
+    expect(drawer).toContain("<MasterImageCandidatePicker entity={entity} ownerId={hydratedRecord.id}");
+    expect(drawer).toContain('requestDeferred(["data"])');
   });
 
   it("keeps external acquisition out of Artist and Venue detail while retaining review candidates", () => {

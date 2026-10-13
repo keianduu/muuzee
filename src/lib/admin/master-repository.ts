@@ -69,16 +69,22 @@ export type ArtistQualityDashboard = {
   missing: Record<"name" | "nameEn" | "nationality" | "primaryImage", number>;
 };
 
-const selectByEntity: Record<MasterEntity, string> = {
-  venues: "*, media_assets(*), venue_field_sources(*), venue_coordinate_candidates(*), official_venue_crawl_results(*), venue_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_venue_id_fkey(*, data_sources(name,key), source_image_candidates(*)), venue_external_match_candidates(*), exhibition_occurrences(id,start_date,end_date,exhibition_id,relation_status,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,exhibitions(id,title,publication_status)), collection_holdings(id,work_id,holding_type,source,source_url,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,works(id,title,title_ja,title_en,title_original,original_language))",
-  artists: "*, media_assets(*), artist_field_sources(*), artist_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_artist_id_fkey(*, data_sources(name,key), source_image_candidates(*)), artist_external_match_candidates(*), exhibition_artists(id,exhibition_id,role,exhibitions(id,title,publication_status)), work_artists(id,work_id,role,works(id,title,title_ja,title_en,title_original,original_language,publication_status))",
-  works: "*, media_assets(*), work_field_sources(*), work_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_work_id_fkey(*, data_sources(name,key), source_image_candidates(*)), work_artists(id,artist_id,role,source,source_url,source_record_id,verified_at,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,artists(id,name)), collection_holdings(id,venue_id,holding_type,inventory_number,source,source_url,source_record_id,verified_at,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,venues(id,name)), work_presentations(id,venue_id,presentation_type,status,start_date,end_date,source,source_url,venues(id,name))",
+export const MASTER_DETAIL_CORE_SELECTS: Record<MasterEntity, string> = {
+  venues: "*, media_assets(id,is_primary,rights_status), venue_field_sources(field_name,source,source_url,is_current), venue_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_venue_id_fkey(id,external_id,source_url,data_sources(name,key),source_image_candidates(id,is_active,review_status,rights_status,discovery_source)), exhibition_occurrences(id,start_date,end_date,exhibition_id,relation_status,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,exhibitions(id,title,publication_status)), collection_holdings(id,work_id,holding_type,source,source_url,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,works(id,title,title_ja,title_en,title_original,original_language))",
+  artists: "*, media_assets(id,is_primary,rights_status), artist_field_sources(field_name,source,source_url,is_current), artist_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_artist_id_fkey(id,external_id,source_url,data_sources(name,key),source_image_candidates(id,is_active,review_status,rights_status,discovery_source)), exhibition_artists(id,exhibition_id,role,exhibitions(id,title,publication_status)), work_artists(id,work_id,role,works(id,title,title_ja,title_en,title_original,original_language,publication_status))",
+  works: "*, media_assets(id,is_primary,rights_status), work_field_sources(field_name,source,source_url,is_current), work_tags(tag_id,tags(id,type,name,slug)), source_records!source_records_work_id_fkey(id,external_id,source_url,data_sources(name,key),source_image_candidates(id,is_active,review_status,rights_status,discovery_source)), work_artists(id,artist_id,role,source,source_url,source_record_id,verified_at,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,artists(id,name)), collection_holdings(id,venue_id,holding_type,inventory_number,source,source_url,source_record_id,verified_at,visibility_status,visibility_overridden,hidden_reason,visibility_updated_at,venues(id,name)), work_presentations(id,venue_id,presentation_type,status,start_date,end_date,source,source_url,venues(id,name))",
 };
 
-const listSelectByEntity: Record<MasterEntity, string> = {
-  venues: "*, media_assets(*), source_records!source_records_venue_id_fkey(id,external_id,data_sources(name,key),source_image_candidates(*)), venue_external_match_candidates(id,status,provider,external_id), exhibition_occurrences(id), collection_holdings(id)",
-  artists: "*, media_assets(*), source_records!source_records_artist_id_fkey(id,external_id,raw_payload,data_sources(name,key),source_image_candidates(*)), artist_external_match_candidates(id,status,provider,external_id), exhibition_artists(id), work_artists(id)",
-  works: "*, media_assets(*), work_artists(id,artist_id,artists(id,name)), collection_holdings(id,venue_id,venues(id,name)), work_presentations(id,venue_id,presentation_type,status,venues(id,name))",
+export const MASTER_DETAIL_DATA_SELECTS: Record<MasterEntity, string> = {
+  venues: "id, venue_field_sources(*), venue_coordinate_candidates(*), source_records!source_records_venue_id_fkey(*, data_sources(name,key), source_image_candidates(*)), venue_external_match_candidates(*)",
+  artists: "id, artist_field_sources(*), source_records!source_records_artist_id_fkey(*, data_sources(name,key), source_image_candidates(*)), artist_external_match_candidates(*)",
+  works: "id, work_field_sources(*), source_records!source_records_work_id_fkey(*, data_sources(name,key), source_image_candidates(*))",
+};
+
+export const MASTER_LIST_SELECTS: Record<MasterEntity, string> = {
+  venues: "*, media_assets(id,is_primary,rights_status,storage_path), source_records!source_records_venue_id_fkey(id,data_sources(key),source_image_candidates(id,is_active,review_status,rights_status)), venue_external_match_candidates(id,status), exhibition_occurrences(id), collection_holdings(id)",
+  artists: "*, media_assets(id,is_primary,rights_status,storage_path), source_records!source_records_artist_id_fkey(id,source_image_candidates(id,is_active,review_status,rights_status)), artist_external_match_candidates(id,status), exhibition_artists(id), work_artists(id)",
+  works: "*, media_assets(id,is_primary,rights_status,storage_path), work_artists(id,artist_id,artists(id,name)), collection_holdings(id,venue_id,venues(id,name)), work_presentations(id,venue_id,presentation_type,status,venues(id,name))",
 };
 
 function asRecords(value: unknown) { return (value || []) as MasterRecord[]; }
@@ -90,15 +96,20 @@ function escapePostgrest(value: string) {
 
 type SignedMasterRecord = MasterRecord & { media_assets: Array<Record<string, unknown>>; signedImageUrl: string | null };
 
-async function signPrimaryImages(rows: MasterRecord[]): Promise<SignedMasterRecord[]> {
+async function signMediaAssets(assets: Array<Record<string, unknown>>, primaryOnly: boolean) {
   const db = createSupabaseAdminClient();
+  return Promise.all(assets.map(async (asset) => {
+    if (primaryOnly && !asset.is_primary) return asset;
+    if (typeof asset.storage_path !== "string") return asset;
+    const { data } = await db.storage.from("exhibition-images").createSignedUrl(asset.storage_path, 3600);
+    return { ...asset, signedUrl: typeof data?.signedUrl === "string" ? data.signedUrl : null };
+  }));
+}
+
+async function signPrimaryImages(rows: MasterRecord[]): Promise<SignedMasterRecord[]> {
   return Promise.all(rows.map(async (row) => {
     const assets = (row.media_assets || []) as Array<Record<string, unknown>>;
-    const signedAssets = await Promise.all(assets.map(async (asset) => {
-      if (typeof asset.storage_path !== "string") return asset;
-      const { data } = await db.storage.from("exhibition-images").createSignedUrl(asset.storage_path, 3600);
-      return { ...asset, signedUrl: typeof data?.signedUrl === "string" ? data.signedUrl : null };
-    }));
+    const signedAssets = await signMediaAssets(assets, true);
     const primary = signedAssets.find((asset) => asset.is_primary);
     return { ...row, media_assets: signedAssets, signedImageUrl: typeof primary?.signedUrl === "string" ? primary.signedUrl : null };
   }));
@@ -365,7 +376,7 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
       const pageIds = filtered.slice((page - 1) * pageSize, page * pageSize).map((row) => row.id);
       let rows: MasterListResult["rows"] = [];
       if (pageIds.length) {
-        const { data, error } = await db.from("venues").select(listSelectByEntity.venues).in("id", pageIds);
+        const { data, error } = await db.from("venues").select(MASTER_LIST_SELECTS.venues).in("id", pageIds);
         if (error) throw error;
         const order = new Map(pageIds.map((id, index) => [id, index]));
         const signedRows = await signPrimaryImages(asRecords(data).sort((a, b) => order.get(a.id)! - order.get(b.id)!));
@@ -390,7 +401,7 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
       const pageIds = filtered.slice((page - 1) * pageSize, page * pageSize).map((row) => row.id);
       let rows: MasterListResult["rows"] = [];
       if (pageIds.length) {
-        const { data, error } = await db.from("artists").select(listSelectByEntity.artists).in("id", pageIds);
+        const { data, error } = await db.from("artists").select(MASTER_LIST_SELECTS.artists).in("id", pageIds);
         if (error) throw error;
         const order = new Map(pageIds.map((id, index) => [id, index]));
         const signedRows = await signPrimaryImages(asRecords(data).sort((a, b) => order.get(a.id)! - order.get(b.id)!));
@@ -398,7 +409,7 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
       }
       return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null, qualityDashboard: artistDashboardFor(qualityRows, options.tier) };
     }
-    let query = db.from(entity).select(listSelectByEntity[entity], { count: "exact" });
+    let query = db.from(entity).select(MASTER_LIST_SELECTS[entity], { count: "exact" });
     if (allowed) query = query.in("id", [...allowed]);
     const publicationStatus = normalizePublicationStatus(options.status);
     if (publicationStatus === "unpublished") query = query.neq("publication_status", "published").neq("publication_status", "archived");
@@ -427,11 +438,42 @@ export async function getMaster(entity: MasterEntity, id: string) {
   if (!hasSupabaseAdminEnvironment()) return { data: null, error: "Supabase環境変数が未設定です。", configured: false };
   try {
     const db = createSupabaseAdminClient();
-    const { data, error } = await db.from(entity).select(selectByEntity[entity]).eq("id", id).single();
+    const { data, error } = await db.from(entity).select(MASTER_DETAIL_CORE_SELECTS[entity]).eq("id", id).single();
+    if (error) throw error;
+    const row = asRecord(data);
+    return { data: { ...row, completeness: calculateCompleteness(entity, row), signedImageUrl: null }, error: null, configured: true };
+  } catch (error) { return { data: null, error: error instanceof Error ? error.message : "Masterの取得に失敗しました。", configured: true }; }
+}
+
+export async function getMasterData(entity: MasterEntity, id: string) {
+  if (!hasSupabaseAdminEnvironment()) return { data: null, error: "Supabase環境変数が未設定です。", configured: false };
+  try {
+    const db = createSupabaseAdminClient();
+    const { data, error } = await db.from(entity).select(MASTER_DETAIL_DATA_SELECTS[entity]).eq("id", id).single();
+    if (error) throw error;
+    return { data: asRecord(data), error: null, configured: true };
+  } catch (error) { return { data: null, error: error instanceof Error ? error.message : "Data診断の取得に失敗しました。", configured: true }; }
+}
+
+export async function getMasterMedia(entity: MasterEntity, id: string) {
+  if (!hasSupabaseAdminEnvironment()) return { data: null, error: "Supabase環境変数が未設定です。", configured: false };
+  try {
+    const db = createSupabaseAdminClient();
+    const { data, error } = await db.from("media_assets").select("*").eq(MASTER_CONFIGS[entity].ownerKey, id).order("is_primary", { ascending: false }).order("created_at", { ascending: false });
+    if (error) throw error;
+    return { data: { id, media_assets: await signMediaAssets((data || []) as Array<Record<string, unknown>>, false) }, error: null, configured: true };
+  } catch (error) { return { data: null, error: error instanceof Error ? error.message : "画像の取得に失敗しました。", configured: true }; }
+}
+
+export async function getMasterListRow(entity: MasterEntity, id: string) {
+  if (!hasSupabaseAdminEnvironment()) return { data: null, error: "Supabase環境変数が未設定です。", configured: false };
+  try {
+    const db = createSupabaseAdminClient();
+    const { data, error } = await db.from(entity).select(MASTER_LIST_SELECTS[entity]).eq("id", id).single();
     if (error) throw error;
     const [row] = await signPrimaryImages([asRecord(data)]);
     return { data: { ...row, completeness: calculateCompleteness(entity, row) }, error: null, configured: true };
-  } catch (error) { return { data: null, error: error instanceof Error ? error.message : "Masterの取得に失敗しました。", configured: true }; }
+  } catch (error) { return { data: null, error: error instanceof Error ? error.message : "一覧行の取得に失敗しました。", configured: true }; }
 }
 
 async function uniqueSlug(entity: MasterEntity, label: string) {
