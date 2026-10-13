@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AdminSourcePolicy, SourceAssertionPolicy } from "@/lib/admin/source-policy";
+import { formatAdminDateTime } from "@/lib/admin/admin-date-time";
 
 const LABELS: Record<SourceAssertionPolicy["assertion_type"], string> = {
   work_artist: "Work Artist",
@@ -53,7 +54,7 @@ export function SourcePolicyTable({ sources }: { sources: AdminSourcePolicy[] })
     {message && <div className={message.includes("failed") || message.includes("Invalid") ? "error" : "notice"}>{message}</div>}
     {rows.map((source) => <section className="card source-policy-card" key={source.id}>
       <div className="detail-status"><div><h2>{source.name}</h2><p className="muted">{source.key}</p></div><div className="preview-counts"><span className={`status ${source.enabled ? "approved" : ""}`}>{source.enabled ? "Enabled" : "Disabled"}</span><span className={`status ${source.configured ? "approved" : "rejected"}`}>{source.configured ? "Configured" : "Not configured"}</span></div></div>
-      <p className="muted">Scope: {source.entityScope.join(" / ") || "未設定"} · Last sync: {source.lastSyncAt ? new Date(source.lastSyncAt).toLocaleString("ja-JP") : "—"} · Result: {source.lastResult || "—"}{source.lastError ? ` · Error: ${source.lastError}` : ""}</p>
+      <p className="muted">Scope: {source.entityScope.join(" / ") || "未設定"} · Last sync: {formatAdminDateTime(source.lastSyncAt)} · Result: {source.lastResult || "—"}{source.lastError ? ` · Error: ${source.lastError}` : ""}</p>
       <div className="table-wrap"><table className="source-policy-table"><thead><tr><th>Assertion</th><th>Enabled</th><th>Auto Apply</th><th>Default visibility</th><th>Review Required</th></tr></thead><tbody>
         {source.policies.map((policy) => {
           const key = `${source.id}:${policy.assertion_type}`;
