@@ -14,6 +14,7 @@ import { detailPanelQuery, selectedQuery, type DetailPanel } from "@/lib/admin/m
 import type { SourceImageCandidateRow, VenueCoordinateCandidateRow } from "@/lib/admin/types";
 import { workDisplayTitleJa } from "@/lib/work-title";
 import type { DeferredMasterScope } from "@/lib/admin/master-detail-loading";
+import { ADMIN_MEDIA_UPDATED_EVENT, applyMediaMutationToLoadedCache, type AdminMediaMutation } from "@/lib/admin/media-asset-state";
 
 type DeferredPayload = Record<string, unknown> & { id: string };
 type DeferredStatus = "idle" | "loading" | "ready" | "error";
@@ -149,6 +150,22 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
   useEffect(() => {
     if (requestedPanel === "image" || requestedPanel === "coordinates") requestDeferred(["data"]);
   }, [requestDeferred, requestedPanel]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const syncLoadedMedia = (event: Event) => {
+      const mutation = (event as CustomEvent<AdminMediaMutation>).detail;
+      if (!mutation) return;
+      const currentMedia = deferredRef.current.media;
+      const updatedMedia = applyMediaMutationToLoadedCache(currentMedia, entity, selectedId, mutation);
+      if (updatedMedia === currentMedia) return;
+      const next = { ...deferredRef.current, media: updatedMedia };
+      deferredRef.current = next;
+      setDeferred(next);
+    };
+    window.addEventListener(ADMIN_MEDIA_UPDATED_EVENT, syncLoadedMedia);
+    return () => window.removeEventListener(ADMIN_MEDIA_UPDATED_EVENT, syncLoadedMedia);
+  }, [entity, selectedId]);
 
   useEffect(() => {
     if (!selectedId) return;
