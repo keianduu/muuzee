@@ -277,6 +277,18 @@ async function allArtistQualityRows() {
   return rows;
 }
 
+async function allArtistListOrderRows() {
+  const db = createSupabaseAdminClient();
+  const rows: MasterRecord[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db.from("artists").select("id,name,name_en,nationality_country_code,publication_status,auto_priority_tier,manual_priority_tier,effective_priority_tier,media_assets(id,is_primary,rights_status)").range(offset, offset + 999);
+    if (error) throw error;
+    rows.push(...asRecords(data));
+    if ((data || []).length < 1000) break;
+  }
+  return rows;
+}
+
 function average(values: number[]) {
   return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
 }
@@ -396,27 +408,13 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
       }
       return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null };
     }
-    if (entity === "artists" && !options.tier && !options.completeness) {
-      let query = db.from("artists").select(MASTER_LIST_SELECTS.artists, { count: "exact" });
-      if (allowed) query = query.in("id", [...allowed]);
-      const publicationStatus = normalizePublicationStatus(options.status);
-      if (publicationStatus === "unpublished") query = query.neq("publication_status", "published").neq("publication_status", "archived");
-      else query = query.eq("publication_status", publicationStatus);
-      query = query.order("name", { ascending: true }).order("id", { ascending: true }).range((page - 1) * pageSize, page * pageSize - 1);
-      const { data, error, count } = await query;
-      if (error) throw error;
-      const signedRows = await signPrimaryImages(asRecords(data));
-      const rows = signedRows.map((row) => ({ ...row, completeness: calculateCompleteness("artists", row) }));
-      const total = count || 0;
-      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null };
-    }
     if (entity === "artists") {
-      const qualityRows = await allArtistQualityRows();
+      const orderRows = await allArtistListOrderRows();
       const allowedSet = allowed ? new Set(allowed) : null;
       const tiers = tiersForArtistFilter(options.tier);
       const publicationStatus = normalizePublicationStatus(options.status);
       const threshold = options.completeness ? Number(options.completeness) : null;
-      const filtered = qualityRows.filter((row) => {
+      const filtered = orderRows.filter((row) => {
         if (allowedSet && !allowedSet.has(row.id)) return false;
         if (!publicationMatches(row.publication_status, publicationStatus)) return false;
         if (tiers && !tiers.includes(effectiveArtistTier(row)!)) return false;
@@ -433,7 +431,7 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
         const signedRows = await signPrimaryImages(asRecords(data).sort((a, b) => order.get(a.id)! - order.get(b.id)!));
         rows = signedRows.map((row) => ({ ...row, completeness: calculateCompleteness("artists", row) }));
       }
-      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null, qualityDashboard: artistDashboardFor(qualityRows, options.tier) };
+      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null };
     }
     let query = db.from(entity).select(MASTER_LIST_SELECTS[entity], { count: "exact" });
     if (allowed) query = query.in("id", [...allowed]);

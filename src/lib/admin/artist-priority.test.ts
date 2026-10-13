@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { artistImageStatus, artistQuality, compareArtistQuality, effectiveArtistTier, tiersForArtistFilter } from "./artist-priority";
 
-const artist = (id: string, tier: string | null, fields: Record<string, unknown> = {}) => ({
+const artist = (id: string, tier: string | null, fields: Record<string, unknown> = {}): Record<string, unknown> & { id: string; publication_status?: string } => ({
   id,
   name: id,
   name_en: null,
@@ -38,6 +38,33 @@ describe("artist priority and four-field core quality", () => {
       artist("B", "B"),
     ].sort(compareArtistQuality);
     expect(rows.map((row) => row.id)).toEqual(["A incomplete", "A complete", "B", "C"]);
+  });
+
+  it("uses name and ID only as final tie-breakers", () => {
+    const rows = [
+      artist("id-z", "A", { name: "Beta" }),
+      artist("id-b", "A", { name: "Alpha" }),
+      artist("id-a", "A", { name: "Alpha" }),
+    ].sort(compareArtistQuality);
+    expect(rows.map((row) => row.id)).toEqual(["id-a", "id-b", "id-z"]);
+  });
+
+  it("preserves canonical priority order within published and unpublished subsets", () => {
+    const rows = [
+      artist("published-b", "B", { name: "A", publication_status: "published" }),
+      artist("published-a-complete", "A", { name: "A", publication_status: "published", name_en: "A", nationality_country_code: "JP", media_assets: [{ is_primary: true }] }),
+      artist("published-a-incomplete", "A", { name: "Z", publication_status: "published" }),
+      artist("unpublished-z", "A", { name: "Z", publication_status: "draft" }),
+      artist("unpublished-b", "A", { name: "A", publication_status: "draft" }),
+      artist("unpublished-a", "A", { name: "A", publication_status: "draft" }),
+    ];
+    const ordered = (published: boolean) => rows
+      .filter((row) => (row.publication_status === "published") === published)
+      .sort(compareArtistQuality)
+      .map((row) => row.id);
+
+    expect(ordered(true)).toEqual(["published-a-incomplete", "published-a-complete", "published-b"]);
+    expect(ordered(false)).toEqual(["unpublished-a", "unpublished-b", "unpublished-z"]);
   });
 
   it("uses the same image-status labels as Venue", () => {

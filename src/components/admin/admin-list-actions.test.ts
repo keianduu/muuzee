@@ -83,19 +83,28 @@ describe("Admin list action architecture", () => {
   it("keeps navigation prefetch bounded and exposes immediate pending feedback", () => {
     const navigation = read("./admin-navigation.tsx");
     const controls = read("./admin-list-controls.tsx");
+    const styles = read("../../app/globals.css");
 
     expect(navigation).toContain("prefetch={false}");
     expect(navigation).toContain("is-pending");
     expect(navigation).toContain("aria-busy={pending || undefined}");
+    expect(styles).toContain(".admin-nav-link.is-pending .admin-nav-icon { visibility: hidden; }");
+    expect(styles).toContain("animation: admin-nav-pending-spin .7s linear infinite");
     expect(controls).toContain("setPendingStatus(tab.value)");
     expect(controls).toContain("aria-busy={pendingStatus === tab.value || undefined}");
   });
 
-  it("uses bounded canonical name order for the normal Artist list", () => {
+  it("keeps canonical Artist priority order without loading Quality Summary-only payload", () => {
     const repository = read("../../lib/admin/master-repository.ts");
+    const listOrderRows = repository.slice(repository.indexOf("async function allArtistListOrderRows"), repository.indexOf("function average"));
 
-    expect(repository).toContain('entity === "artists" && !options.tier && !options.completeness');
-    expect(repository).toContain('.order("name", { ascending: true }).order("id", { ascending: true }).range(');
+    expect(listOrderRows).toContain("media_assets(id,is_primary,rights_status)");
+    expect(listOrderRows).not.toContain("source_records");
+    expect(listOrderRows).not.toContain("source_image_candidates");
+    expect(listOrderRows).not.toContain("artist_external_match_candidates");
+    expect(repository).toContain("const orderRows = await allArtistListOrderRows()");
+    expect(repository).toContain("}).sort(compareArtistQuality)");
+    expect(repository).not.toContain("qualityDashboard: artistDashboardFor(");
   });
 
   it("keeps Venue list ordering without loading Quality Summary-only payload", () => {

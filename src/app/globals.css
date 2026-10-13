@@ -69,6 +69,11 @@ button { cursor: pointer; }
 .admin-nav-link:hover:not(.is-disabled) { background: var(--surface-hover); color: var(--ink-950); }
 .admin-nav-link.is-active { background: var(--surface-hover); color: var(--ink-950); font-weight: 600; box-shadow: none; }
 .admin-nav-link.is-pending { background: var(--surface-hover); color: var(--ink-950); cursor: progress; }
+.admin-nav-link.is-pending .admin-nav-icon { visibility: hidden; }
+.admin-nav-link.is-pending .admin-nav-link-main { position: relative; }
+.admin-nav-link.is-pending .admin-nav-link-main::before { content: ""; position: absolute; left: 1px; top: 50%; width: 12px; height: 12px; margin-top: -7px; border: 2px solid var(--ink-300); border-top-color: var(--ink-800); border-radius: 50%; animation: admin-nav-pending-spin .7s linear infinite; }
+@keyframes admin-nav-pending-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .admin-nav-link.is-pending .admin-nav-link-main::before { animation: none; border-style: dotted; } }
 .admin-nav-link.is-disabled { color: var(--ink-400); cursor: not-allowed; }
 .admin-nav-link small { padding: 2px 6px; border-radius: 999px; background: var(--surface-hover); color: var(--ink-500); font-size: 10px; font-weight: 700; }
 .admin-sidebar-environment { margin: auto 10px 0; color: #8a867e; font-size: 10px; font-weight: 750; letter-spacing: .1em; }
