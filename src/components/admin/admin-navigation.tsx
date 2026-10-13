@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { isAdminNavigationItemActive } from "@/lib/admin/admin-navigation-state";
 
 type NavigationItem = {
@@ -46,8 +47,20 @@ function AdminIcon({ name }: { name: AdminIconName }) {
 function AdminNavigationLink({ href, label, icon, exact }: NavigationItem) {
   const pathname = usePathname();
   const active = isAdminNavigationItemActive(pathname, { href, exact });
+  const [pending, setPending] = useState(false);
 
-  return <Link className={`admin-nav-link${active ? " is-active" : ""}`} href={href} prefetch={false} aria-current={active ? "page" : undefined}><span className="admin-nav-link-main"><AdminIcon name={icon}/><span>{label}</span></span></Link>;
+  useEffect(() => { setPending(false); }, [pathname]);
+
+  return <Link
+    className={`admin-nav-link${active ? " is-active" : ""}${pending ? " is-pending" : ""}`}
+    href={href}
+    prefetch={false}
+    aria-current={active ? "page" : undefined}
+    aria-busy={pending || undefined}
+    onClick={(event) => {
+      if (!active && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) setPending(true);
+    }}
+  ><span className="admin-nav-link-main"><AdminIcon name={icon}/><span>{label}</span></span></Link>;
 }
 
 export function AdminNavigation() {

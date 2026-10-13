@@ -67,4 +67,45 @@ describe("Admin list action architecture", () => {
     expect(list).toContain("<MasterDetailDrawer");
     expect(detail).toContain("secondary");
   });
+
+  it("opens and closes Master Detail locally while keeping canonical URL history", () => {
+    const list = read("./master-list.tsx");
+    const detail = read("./master-detail-drawer.tsx");
+
+    expect(list).toContain("setActiveSelectedId(id)");
+    expect(list).toContain('window.history.pushState(null, "", `${pathname}?${selectedQuery(searchParams.toString(), id)}`)');
+    expect(list).toContain("selectedId={activeSelectedId}");
+    expect(detail).toContain("onRequestClose?.()");
+    expect(detail).toContain('window.history.replaceState(null, "", `${pathname}${query ? `?${query}` : ""}`)');
+    expect(detail).toContain("router.back()");
+  });
+
+  it("keeps navigation prefetch bounded and exposes immediate pending feedback", () => {
+    const navigation = read("./admin-navigation.tsx");
+    const controls = read("./admin-list-controls.tsx");
+
+    expect(navigation).toContain("prefetch={false}");
+    expect(navigation).toContain("is-pending");
+    expect(navigation).toContain("aria-busy={pending || undefined}");
+    expect(controls).toContain("setPendingStatus(tab.value)");
+    expect(controls).toContain("aria-busy={pendingStatus === tab.value || undefined}");
+  });
+
+  it("uses bounded canonical name order for the normal Artist list", () => {
+    const repository = read("../../lib/admin/master-repository.ts");
+
+    expect(repository).toContain('entity === "artists" && !options.tier && !options.completeness');
+    expect(repository).toContain('.order("name", { ascending: true }).order("id", { ascending: true }).range(');
+  });
+
+  it("keeps Venue list ordering without loading Quality Summary-only payload", () => {
+    const repository = read("../../lib/admin/master-repository.ts");
+    const listOrderRows = repository.slice(repository.indexOf("async function allVenueListOrderRows"), repository.indexOf("async function allArtistQualityRows"));
+
+    expect(listOrderRows).toContain("media_assets(id,is_primary,rights_status)");
+    expect(listOrderRows).not.toContain("source_records");
+    expect(listOrderRows).not.toContain("venue_external_match_candidates");
+    expect(repository).toContain("const qualityRows = await allVenueListOrderRows()");
+    expect(repository).not.toContain("qualityDashboard: dashboardFor(qualityRows, options.tier)");
+  });
 });

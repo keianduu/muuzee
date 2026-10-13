@@ -253,6 +253,18 @@ async function allVenueQualityRows() {
   return rows;
 }
 
+async function allVenueListOrderRows() {
+  const db = createSupabaseAdminClient();
+  const rows: MasterRecord[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await db.from("venues").select("id,name,venue_type,is_active,publication_status,auto_priority_tier,manual_priority_tier,effective_priority_tier,address,latitude,longitude,description,opening_hours_text,closed_days_text,access_text,media_assets(id,is_primary,rights_status)").is("merged_into_venue_id", null).range(offset, offset + 999);
+    if (error) throw error;
+    rows.push(...asRecords(data));
+    if ((data || []).length < 1000) break;
+  }
+  return rows;
+}
+
 async function allArtistQualityRows() {
   const db = createSupabaseAdminClient();
   const rows: MasterRecord[] = [];
@@ -353,7 +365,7 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
     const allowed = await filteredIdsByRelation(entity, options);
     if (allowed && allowed.length === 0) return fallback;
     if (entity === "venues") {
-      const qualityRows = await allVenueQualityRows();
+      const qualityRows = await allVenueListOrderRows();
       const allowedSet = allowed ? new Set(allowed) : null;
       const tiers = tiersForFilter(options.tier);
       const publicationStatus = normalizePublicationStatus(options.status);
@@ -382,7 +394,21 @@ export async function listMasters(entity: MasterEntity, options: MasterListOptio
         const signedRows = await signPrimaryImages(asRecords(data).sort((a, b) => order.get(a.id)! - order.get(b.id)!));
         rows = signedRows.map((row) => ({ ...row, completeness: calculateCompleteness("venues", row) }));
       }
-      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null, qualityDashboard: dashboardFor(qualityRows, options.tier) };
+      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null };
+    }
+    if (entity === "artists" && !options.tier && !options.completeness) {
+      let query = db.from("artists").select(MASTER_LIST_SELECTS.artists, { count: "exact" });
+      if (allowed) query = query.in("id", [...allowed]);
+      const publicationStatus = normalizePublicationStatus(options.status);
+      if (publicationStatus === "unpublished") query = query.neq("publication_status", "published").neq("publication_status", "archived");
+      else query = query.eq("publication_status", publicationStatus);
+      query = query.order("name", { ascending: true }).order("id", { ascending: true }).range((page - 1) * pageSize, page * pageSize - 1);
+      const { data, error, count } = await query;
+      if (error) throw error;
+      const signedRows = await signPrimaryImages(asRecords(data));
+      const rows = signedRows.map((row) => ({ ...row, completeness: calculateCompleteness("artists", row) }));
+      const total = count || 0;
+      return { rows, total, allTotal: allTotal || 0, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), configured: true, error: null };
     }
     if (entity === "artists") {
       const qualityRows = await allArtistQualityRows();

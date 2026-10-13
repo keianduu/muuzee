@@ -58,18 +58,27 @@ export function AdminPublicationTabs({ entity, status }: { entity: AdminListEnti
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selected = normalizePublicationStatus(status);
+  const [pendingStatus, setPendingStatus] = useState<PublicationListStatus | null>(null);
+  const displayedStatus = pendingStatus ?? selected;
   const currentQuery = entity === "exhibitions"
     ? canonicalizeExhibitionScheduleQuery(searchParams.toString())
     : searchParams.toString();
+
+  useEffect(() => { setPendingStatus(null); }, [selected]);
 
   return <div className="admin-publication-tabs" role="tablist" aria-label="公開状態">
     {PUBLICATION_TABS.map((tab) => <button
       key={tab.value}
       type="button"
       role="tab"
-      aria-selected={selected === tab.value}
-      className={selected === tab.value ? "is-active" : undefined}
-      onClick={() => navigate(router, pathname, publicationTabQuery(currentQuery, tab.value))}
+      aria-selected={displayedStatus === tab.value}
+      aria-busy={pendingStatus === tab.value || undefined}
+      className={`${displayedStatus === tab.value ? "is-active" : ""}${pendingStatus === tab.value ? " is-pending" : ""}`.trim() || undefined}
+      onClick={() => {
+        if (selected === tab.value) return;
+        setPendingStatus(tab.value);
+        navigate(router, pathname, publicationTabQuery(currentQuery, tab.value));
+      }}
     >{tab.label}</button>)}
   </div>;
 }

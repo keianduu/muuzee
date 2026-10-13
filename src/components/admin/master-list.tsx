@@ -67,6 +67,7 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const routeSelectedId = searchParams.get("selected") || undefined;
   const config = MASTER_CONFIGS[entity];
   const [rows, setRows] = useState(result.rows);
   const [page, setPage] = useState(1);
@@ -77,6 +78,7 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
   const latestInitialRows = useRef(result.rows);
   latestInitialRows.current = result.rows;
   const [selected, setSelected] = useState<string[]>([]);
+  const [activeSelectedId, setActiveSelectedId] = useState<string | undefined>(routeSelectedId);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [workTargetedResult, setWorkTargetedResult] = useState<WorkTargetedResult | null>(null);
@@ -88,6 +90,8 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
   const bulkAvailable = entity !== "works" || workView === "adopted";
 
   useEffect(() => { setRows(latestInitialRows.current); setPage(1); setLoadError(""); setSelected([]); }, [queryString]);
+
+  useEffect(() => { setActiveSelectedId(routeSelectedId); }, [routeSelectedId]);
 
   useEffect(() => {
     setSelected((current) => current.filter((id) => rows.some((row) => row.id === id)));
@@ -152,7 +156,8 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
   }, [entity, hasMore, loadingMore, loadError, page, queryString, retryKey, workView, busy]);
 
   function openDrawer(id: string) {
-    router.push(`${pathname}?${selectedQuery(searchParams.toString(), id)}`, { scroll: false });
+    setActiveSelectedId(id);
+    window.history.pushState(null, "", `${pathname}?${selectedQuery(searchParams.toString(), id)}`);
   }
 
   async function jsonRequest(url: string, init: RequestInit) {
@@ -227,6 +232,6 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
 
     {message && <div className={message.includes("失敗") || message.includes("Invalid") || message.includes("不足") ? "error" : "notice"}>{message}</div>}
     {entity === "works" ? workView === "adopted" && <section id="works-adopted-panel" role="tabpanel" aria-labelledby="works-adopted-tab">{masterTable}</section> : masterTable}
-    <MasterDetailDrawer entity={entity} selectedId={searchParams.get("selected") || undefined}/>
+    <MasterDetailDrawer entity={entity} selectedId={activeSelectedId} onRequestClose={() => setActiveSelectedId(undefined)}/>
   </>;
 }

@@ -19,7 +19,7 @@ import { ADMIN_MEDIA_UPDATED_EVENT, applyMediaMutationToLoadedCache, type AdminM
 type DeferredPayload = Record<string, unknown> & { id: string };
 type DeferredStatus = "idle" | "loading" | "ready" | "error";
 
-export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntity; selectedId?: string }) {
+export function MasterDetailDrawer({ entity, selectedId, onRequestClose }: { entity: MasterEntity; selectedId?: string; onRequestClose?: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -46,8 +46,9 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
 
   const close = useCallback(() => {
     const query = selectedQuery(searchParams.toString(), null);
-    router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    onRequestClose?.();
+    window.history.replaceState(null, "", `${pathname}${query ? `?${query}` : ""}`);
+  }, [onRequestClose, pathname, searchParams]);
 
   const closeSecondary = useCallback(() => {
     if (openedSecondary.current) {
@@ -56,22 +57,22 @@ export function MasterDetailDrawer({ entity, selectedId }: { entity: MasterEntit
       return;
     }
     const query = detailPanelQuery(searchParams.toString(), null);
-    router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
+    window.history.replaceState(null, "", `${pathname}${query ? `?${query}` : ""}`);
   }, [pathname, router, searchParams]);
 
   const openImageCandidate = useCallback((candidateId: string | null) => {
     openedSecondary.current = true;
     secondaryReturnTarget.current = "image";
     const query = detailPanelQuery(searchParams.toString(), "image", { candidateId });
-    router.push(`${pathname}?${query}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    window.history.pushState(null, "", `${pathname}?${query}`);
+  }, [pathname, searchParams]);
 
   const openReviewPanel = useCallback((panel: DetailPanel, options: { candidateId?: string | null; runId?: string | null; targetUrl?: string | null } = {}) => {
     openedSecondary.current = true;
     secondaryReturnTarget.current = panel;
     const query = detailPanelQuery(searchParams.toString(), panel, options);
-    router.push(`${pathname}?${query}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    window.history.pushState(null, "", `${pathname}?${query}`);
+  }, [pathname, searchParams]);
 
   const requestDeferred = useCallback((scopes: DeferredMasterScope[]) => {
     if (!selectedId) return;
