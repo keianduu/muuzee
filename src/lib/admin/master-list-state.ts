@@ -64,8 +64,14 @@ export function pageQuery(current: string, page: number, pageSize = 50) {
 export type PublicationListStatus = "published" | "unpublished" | "archived";
 export type AdminListEntity = "venues" | "artists" | "works" | "exhibitions";
 export type WorkListView = "adopted" | "candidates";
+export type AdminMasterDetailOpenRequest = { entity: AdminListEntity; id: string };
+export const ADMIN_MASTER_DETAIL_OPEN_EVENT = "muuzee:admin-master-detail-open";
 export const EXHIBITION_SCHEDULE_VALUES = ["current_upcoming", "past", "unknown", "all"] as const;
 export type ExhibitionSchedule = typeof EXHIBITION_SCHEDULE_VALUES[number];
+
+export function requestAdminMasterDetailOpen(request: AdminMasterDetailOpenRequest) {
+  window.dispatchEvent(new CustomEvent(ADMIN_MASTER_DETAIL_OPEN_EVENT, { detail: request }));
+}
 
 const LIST_FILTER_KEYS = [
   "q",

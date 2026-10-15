@@ -15,15 +15,22 @@ describe("Admin list action architecture", () => {
     expect(actions).not.toContain("/new\`");
   });
 
-  it("creates through the existing editor and preserves list query state", () => {
+  it("creates through the existing editor and requests the canonical local Detail controller", () => {
     const actions = read("./admin-master-list-actions.tsx");
     const editor = read("./master-editor.tsx");
+    const list = read("./master-list.tsx");
+    const listState = read("../../lib/admin/master-list-state.ts");
     const route = read("../../app/api/admin/masters/[entity]/route.ts");
     const repository = read("../../lib/admin/master-repository.ts");
 
     expect(actions).toContain('<MasterEditor entity={entity} mode="new" embeddedInList onCreated={onCreated}/>');
-    expect(actions).toContain("selectedQuery(searchParams.toString(), id)");
-    expect(actions).toContain("scroll: false");
+    expect(actions).toContain("requestAdminMasterDetailOpen({ entity, id })");
+    expect(actions).toContain("newTriggerRef.current?.focus({ preventScroll: true })");
+    expect(actions).not.toContain("router.push(`${pathname}?${query}`");
+    expect(actions).not.toContain("selectedQuery(searchParams.toString(), id)");
+    expect(listState).toContain('ADMIN_MASTER_DETAIL_OPEN_EVENT = "muuzee:admin-master-detail-open"');
+    expect(list).toContain("window.addEventListener(ADMIN_MASTER_DETAIL_OPEN_EVENT, openRequestedDetail)");
+    expect(list).toContain("openDrawer(detail.id)");
     expect(editor).toContain("if (onCreated) onCreated(String(body.id))");
     expect(editor).toContain('method: mode === "new" ? "POST" : "PATCH"');
     expect(route).toContain('createMaster(entity, await request.json(), "manual")');
@@ -74,6 +81,7 @@ describe("Admin list action architecture", () => {
 
     expect(list).toContain("setActiveSelectedId(id)");
     expect(list).toContain('window.history.pushState(null, "", `${pathname}?${selectedQuery(searchParams.toString(), id)}`)');
+    expect(list).toContain("onClick={() => openDrawer(row.id)}");
     expect(list).toContain("selectedId={activeSelectedId}");
     expect(detail).toContain("onRequestClose?.()");
     expect(detail).toContain('window.history.replaceState(null, "", `${pathname}${query ? `?${query}` : ""}`)');

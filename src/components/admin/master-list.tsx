@@ -3,13 +3,13 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AdminFloatingBulkActions } from "./admin-floating-bulk-actions";
 import { AdminRelationCount } from "./admin-relation-count";
 import { MasterDetailDrawer } from "./master-detail-drawer";
 import { MASTER_CONFIGS, type MasterEntity } from "@/lib/admin/master-config";
 import type { MasterListResult } from "@/lib/admin/master-repository";
-import { applyBulkPublicationState, mergeUniqueRows, normalizePublicationStatus, pageQuery, rebuildLoadedRows, replaceRowInPlace, selectedQuery, shouldActivateListRowFromKeyboard, type WorkListView } from "@/lib/admin/master-list-state";
+import { ADMIN_MASTER_DETAIL_OPEN_EVENT, applyBulkPublicationState, mergeUniqueRows, normalizePublicationStatus, pageQuery, rebuildLoadedRows, replaceRowInPlace, selectedQuery, shouldActivateListRowFromKeyboard, type AdminMasterDetailOpenRequest, type WorkListView } from "@/lib/admin/master-list-state";
 import { MASTER_LIST_COLUMNS, venueCoordinatePresentation } from "@/lib/admin/admin-list-presentation";
 import { formatAdminDateTime } from "@/lib/admin/admin-date-time";
 import { hasWorkTitle, workDisplayTitleJa } from "@/lib/work-title";
@@ -93,6 +93,21 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
 
   useEffect(() => { setActiveSelectedId(routeSelectedId); }, [routeSelectedId]);
 
+  const openDrawer = useCallback((id: string) => {
+    setActiveSelectedId(id);
+    window.history.pushState(null, "", `${pathname}?${selectedQuery(searchParams.toString(), id)}`);
+  }, [pathname, searchParams]);
+
+  useEffect(() => {
+    const openRequestedDetail = (event: Event) => {
+      const detail = (event as CustomEvent<AdminMasterDetailOpenRequest>).detail;
+      if (!detail?.id || detail.entity !== entity) return;
+      openDrawer(detail.id);
+    };
+    window.addEventListener(ADMIN_MASTER_DETAIL_OPEN_EVENT, openRequestedDetail);
+    return () => window.removeEventListener(ADMIN_MASTER_DETAIL_OPEN_EVENT, openRequestedDetail);
+  }, [entity, openDrawer]);
+
   useEffect(() => {
     setSelected((current) => current.filter((id) => rows.some((row) => row.id === id)));
   }, [rows]);
@@ -154,11 +169,6 @@ export function MasterList({ entity, result, queryString, workView = "adopted" }
     observer.observe(target);
     return () => observer.disconnect();
   }, [entity, hasMore, loadingMore, loadError, page, queryString, retryKey, workView, busy]);
-
-  function openDrawer(id: string) {
-    setActiveSelectedId(id);
-    window.history.pushState(null, "", `${pathname}?${selectedQuery(searchParams.toString(), id)}`);
-  }
 
   async function jsonRequest(url: string, init: RequestInit) {
     setBusy(true); setMessage("");

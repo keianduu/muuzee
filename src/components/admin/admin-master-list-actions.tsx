@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { CsvPreviewRow } from "@/lib/admin/master-csv";
 import { MASTER_CONFIGS, type MasterEntity } from "@/lib/admin/master-config";
-import { selectedQuery } from "@/lib/admin/master-list-state";
+import { requestAdminMasterDetailOpen } from "@/lib/admin/master-list-state";
 import { AdminListDrawer, announceAdminListDrawer, restoreListDrawerFocus, type AdminListDrawerKind } from "./admin-list-drawer";
 import { MasterEditor } from "./master-editor";
 
@@ -17,7 +17,6 @@ function CsvIcon() {
 
 export function AdminMasterListActions({ entity }: { entity: MasterEntity }) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const config = MASTER_CONFIGS[entity];
   const [active, setActive] = useState<ListAction | null>(null);
@@ -78,9 +77,9 @@ export function AdminMasterListActions({ entity }: { entity: MasterEntity }) {
   }
 
   const onCreated = (id: string) => {
+    newTriggerRef.current?.focus({ preventScroll: true });
     setActive(null);
-    const query = selectedQuery(searchParams.toString(), id);
-    router.push(`${pathname}?${query}`, { scroll: false });
+    requestAdminMasterDetailOpen({ entity, id });
   };
 
   return <>
