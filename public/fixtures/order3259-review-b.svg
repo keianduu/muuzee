@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title desc">
+  <title id="title">Order 325.9 synthetic review image B</title>
+  <desc id="desc">Blue grey geometric QA fixture.</desc>
+  <rect width="640" height="480" fill="#e2eaed"/>
+  <path d="M0 96h640v288H0z" fill="#476074"/>
+  <path d="M80 72h160v336H80zm320 0h160v336H400z" fill="#ffffff" opacity=".88"/>
+  <circle cx="320" cy="240" r="88" fill="#b96f55"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title desc">
+  <title id="title">Order 325.9 synthetic review image C</title>
+  <desc id="desc">Sage green geometric QA fixture.</desc>
+  <rect width="640" height="480" fill="#e8eee6"/>
+  <g fill="#627965">
+    <circle cx="144" cy="144" r="96"/>
+    <circle cx="496" cy="144" r="96"/>
+    <circle cx="144" cy="368" r="96"/>
+    <circle cx="496" cy="368" r="96"/>
+  </g>
+  <rect x="248" y="96" width="144" height="288" rx="72" fill="#ffffff"/>
+</svg>

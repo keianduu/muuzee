@@ -10,6 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:seed:smoke": "node scripts/apply-stg-smoke-seed.mjs",
+    "db:seed:admin-review:local": "node --env-file=.env.local scripts/apply-stg-admin-review-seed.mjs --local",
+    "db:cleanup:admin-review:local": "node --env-file=.env.local scripts/apply-stg-admin-review-seed.mjs --local --cleanup",
     "db:seed:admin-image-candidate-local": "node --env-file=.env.local scripts/seed-admin-image-candidate-fixture.mjs",
     "db:cleanup:admin-image-candidate-local": "node --env-file=.env.local scripts/seed-admin-image-candidate-fixture.mjs --cleanup",
     "db:seed:admin-wikidata-review-local": "node --env-file=.env.local scripts/seed-admin-wikidata-review-fixture.mjs",
