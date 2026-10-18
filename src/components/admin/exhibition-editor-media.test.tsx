@@ -1,28 +1,69 @@
-import * as React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
-import type { ExhibitionRow, MediaAssetRow } from "@/lib/admin/types";
-import { ExhibitionEditor } from "./exhibition-editor";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import type { ExhibitionRow } from "@/lib/admin/types";
+import { exhibitionArtistItems, unresolvedArtistItems, unresolvedVenueItems } from "./exhibition-relations";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.stubGlobal("React", React);
-
-const asset = { id: "asset-1", exhibition_id: "exhibition-1", venue_id: null, artist_id: null, work_id: null, kind: "image", storage_path: "asset.jpg", original_filename: "registered.jpg", source_type: "other", source_url: null, credit: null, usage_note: null, reported_license: null, reported_license_url: null, reported_author: null, reported_usage_terms: null, rights_status: "needs_review", rights_checked_at: null, valid_until: null, is_primary: true, created_at: "2026-10-04T00:00:00Z", signedUrl: "https://signed.example/asset.jpg" } satisfies MediaAssetRow;
-
-function exhibition(mediaAssets: MediaAssetRow[]) {
-  return { id: "exhibition-1", title: "Fixture Exhibition", publication_status: "draft", media_assets: mediaAssets, source_records: [] } as unknown as ExhibitionRow;
+function read(path: string) {
+  return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
-describe("Exhibition media acquisition visibility", () => {
-  it("keeps the research prompt but hides candidate and registration UI after registration", () => {
-    const empty = renderToStaticMarkup(<ExhibitionEditor exhibition={exhibition([])} occurrence={null} venue={null} prompt="research prompt" requirements={[]} canPublish={false} embeddedInList/>);
-    expect(empty).toContain("画像・利用条件を登録");
-    expect(empty).toContain("画像候補");
+describe("Exhibition shared detail architecture", () => {
+  it("uses the shared status, edit, data, image, and relation components", () => {
+    const editor = read("./exhibition-editor.tsx");
+    const status = read("./exhibition-status.tsx");
+    const dataReview = read("./exhibition-data-review.tsx");
+    expect(editor).toContain('{ id: "status", label: "状態" }');
+    expect(editor).toContain('{ id: "edit", label: "編集" }');
+    expect(editor).toContain('{ id: "data", label: "データ" }');
+    expect(editor).toContain('{ id: "basic", label: "基本情報" }');
+    expect(editor).toContain('{ id: "image", label: "画像登録" }');
+    expect(editor).toContain('{ id: "relations", label: "関連情報" }');
+    expect(editor).toContain("<ExhibitionStatus");
+    expect(editor).toContain("<AdminImageManager");
+    expect(editor).toContain("<ExhibitionRelations");
+    expect(editor).toContain("<ExhibitionDataReview");
+    expect(status).toContain("<PublicationToggle");
+    expect(dataReview).toContain("<AdminDataReview");
+    expect(`${editor}${dataReview}`).not.toContain("raw_payload");
+  });
 
-    const registered = renderToStaticMarkup(<ExhibitionEditor exhibition={exhibition([asset])} occurrence={null} venue={null} prompt="research prompt" requirements={[]} canPublish={false} embeddedInList/>);
-    expect(registered).toContain("registered.jpg");
-    expect(registered).toContain("画像を探す");
-    expect(registered).not.toContain("画像・利用条件を登録");
-    expect(registered).not.toContain("画像候補");
+  it("opens Exhibition image candidates in the shared secondary drawer", () => {
+    const drawer = read("./exhibition-detail-drawer.tsx");
+    const page = read("../../app/admin/exhibitions/page.tsx");
+    expect(drawer).toContain('searchParams.get("panel") === "image"');
+    expect(drawer).toContain('<MasterImageCandidatePicker entity="exhibitions"');
+    expect(drawer).toContain("if (secondaryRequested) closeSecondary()");
+    expect(drawer).toContain('data-secondary-return-anchor="image"');
+    expect(drawer).toContain("aria-hidden={secondaryRequested || undefined}");
+    expect(page).toContain("data-exhibition-detail-trigger={item.id}");
+    expect(drawer).toContain("element.dataset.exhibitionDetailTrigger === selectedId");
+  });
+
+  it("keeps only active canonical relations and unresolved active mentions", () => {
+    const exhibition = {
+      exhibition_artists: [
+        { id: "relation-1", role: "featured", relation_status: "active", artists: { id: "artist-1", name: "Active Artist" } },
+        { id: "relation-2", relation_status: "stale", artists: { id: "artist-2", name: "Stale Artist" } },
+      ],
+      exhibition_artist_mentions: [
+        { id: "mention-1", source_artist_name: "Pending Artist", is_active: true, resolution_status: "pending" },
+        { id: "mention-2", source_artist_name: "Historical Artist", is_active: false, resolution_status: "pending" },
+        { id: "mention-3", source_artist_name: "Resolved Artist", is_active: true, resolution_status: "resolved" },
+      ],
+      exhibition_venue_mentions: [
+        { id: "venue-1", source_venue_name: "Pending Venue", is_active: true, resolution_status: "pending" },
+        { id: "venue-2", source_venue_name: "Resolved Venue", is_active: true, resolution_status: "resolved" },
+      ],
+    } as ExhibitionRow;
+    expect(exhibitionArtistItems(exhibition)).toEqual([{ id: "relation-1", label: "Active Artist", meta: "featured" }]);
+    expect(unresolvedArtistItems(exhibition).map((item) => item.label)).toEqual(["Pending Artist"]);
+    expect(unresolvedVenueItems(exhibition).map((item) => item.label)).toEqual(["Pending Venue"]);
+  });
+
+  it("loads relation labels for the shared Exhibition review surfaces", () => {
+    const queries = read("../../lib/admin/queries.ts");
+    expect(queries).toContain("artists(id,name)");
+    expect(queries).toContain("source_artist_name");
+    expect(queries).toContain("source_venue_name");
   });
 });

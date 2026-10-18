@@ -14,7 +14,15 @@ import { AdminFeedback } from "./admin-feedback";
 import { AdminPanelButton } from "./admin-panel-button";
 import { EMPTY_MEDIA_ASSETS, useImmediateMediaAssets } from "./use-immediate-media-assets";
 
-export function AdminImageManager({ entity, ownerId, subjectLabel, initialAssets, busy, candidates, onUpload, onRemove, onOpenImageCandidate, onSetPrimary }: {
+const DEFAULT_SOURCE_TYPE_OPTIONS = [
+  { value: "official_press", label: "Official press" },
+  { value: "open_collection", label: "Open collection" },
+  { value: "wikimedia", label: "Wikimedia" },
+  { value: "direct", label: "Direct permission" },
+  { value: "other", label: "Other" },
+] as const;
+
+export function AdminImageManager({ entity, ownerId, subjectLabel, initialAssets, busy, candidates, onUpload, onRemove, onOpenImageCandidate, onSetPrimary, sourceTypeOptions = DEFAULT_SOURCE_TYPE_OPTIONS, defaultSourceType = "other" }: {
   entity: AdminMediaEntity;
   ownerId: string;
   subjectLabel: string;
@@ -25,6 +33,8 @@ export function AdminImageManager({ entity, ownerId, subjectLabel, initialAssets
   onRemove: (asset: MediaAssetRow) => void;
   onOpenImageCandidate?: (candidateId: string | null) => void;
   onSetPrimary: (candidate: SourceImageCandidateRow) => void;
+  sourceTypeOptions?: ReadonlyArray<{ value: string; label: string }>;
+  defaultSourceType?: string;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -59,7 +69,7 @@ export function AdminImageManager({ entity, ownerId, subjectLabel, initialAssets
       {showPreview && <div className="admin-image-preview" aria-live="polite"><img src={previewUrl} alt="登録前プレビュー" onLoad={() => { setPreviewError(""); setPreviewFailed(false); }} onError={() => { setPreviewFailed(true); setPreviewError("画像をPreviewできません。URL側でhotlinkが制限されている可能性があります。"); }}/></div>}
       <AdminFeedback variant="error" message={previewError}/>
       <div className="admin-image-source-grid"><div className="field"><AdminFieldLabel htmlFor={`${entity}-image-file`} label="画像ファイル" fieldKey="file"/><input id={`${entity}-image-file`} name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => { setFile(event.target.files?.[0] || null); setPreviewError(""); setPreviewFailed(false); }}/></div><div className="admin-image-or" aria-hidden="true">または</div><div className="field"><AdminFieldLabel htmlFor={`${entity}-image-url`} label="画像URL" fieldKey="image_url"/><input id={`${entity}-image-url`} name="image_url" type="url" placeholder="https://…" value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setPreviewError(""); setPreviewFailed(false); }}/><small className="muted">ファイルを選択した場合はファイルを優先します。</small></div></div>
-      <div className="admin-image-metadata"><div className="field"><AdminFieldLabel label="出典種別" fieldKey="source_type"/><select name="source_type" required defaultValue="other"><option value="official_press">Official press</option><option value="open_collection">Open collection</option><option value="wikimedia">Wikimedia</option><option value="direct">Direct permission</option><option value="other">Other</option></select></div><div className="field"><AdminFieldLabel label="利用可否" fieldKey="rights_status"/><select name="rights_status" required defaultValue="needs_review"><option value="rejected">明確に不可</option><option value="needs_review">記載なし・不明</option><option value="approved">明確に利用可能</option></select></div><div className="field"><AdminFieldLabel label="データ元URL（任意）" fieldKey="source_url"/><input name="source_url" type="url"/><small className="muted">画像URLではなく、可能なら出典ページを入力します。</small></div><div className="field"><AdminFieldLabel label="クレジット（任意）" fieldKey="credit"/><input name="credit"/></div><div className="field"><AdminFieldLabel label="利用期限" fieldKey="valid_until"/><input name="valid_until" type="date"/></div><div className="field"><AdminFieldLabel label="利用条件メモ（任意）" fieldKey="usage_note"/><textarea name="usage_note"/></div></div>
+      <div className="admin-image-metadata"><div className="field"><AdminFieldLabel label="出典種別" fieldKey="source_type"/><select name="source_type" required defaultValue={defaultSourceType}>{sourceTypeOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></div><div className="field"><AdminFieldLabel label="利用可否" fieldKey="rights_status"/><select name="rights_status" required defaultValue="needs_review"><option value="rejected">明確に不可</option><option value="needs_review">記載なし・不明</option><option value="approved">明確に利用可能</option></select></div><div className="field"><AdminFieldLabel label="データ元URL（任意）" fieldKey="source_url"/><input name="source_url" type="url"/><small className="muted">画像URLではなく、可能なら出典ページを入力します。</small></div><div className="field"><AdminFieldLabel label="クレジット（任意）" fieldKey="credit"/><input name="credit"/></div><div className="field"><AdminFieldLabel label="利用期限" fieldKey="valid_until"/><input name="valid_until" type="date"/></div><div className="field"><AdminFieldLabel label="利用条件メモ（任意）" fieldKey="usage_note"/><textarea name="usage_note"/></div></div>
       <div className="actions"><button className="button" disabled={busy}>登録</button></div>
     </form>}
   </div>;

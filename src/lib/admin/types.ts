@@ -141,7 +141,19 @@ export type OccurrenceRow = {
   venues?: VenueRow | VenueRow[] | null;
 };
 
-export type ExhibitionRelationDiagnostic = { id: string; match_status?: string; resolution_status?: string; last_seen_at?: string | null; relation_status?: string };
+export type ExhibitionRelationDiagnostic = {
+  id: string;
+  artist_id?: string | null;
+  role?: string | null;
+  source_artist_name?: string | null;
+  source_venue_name?: string | null;
+  match_status?: string;
+  resolution_status?: string;
+  last_seen_at?: string | null;
+  relation_status?: string;
+  is_active?: boolean;
+  artists?: { id: string; name: string } | Array<{ id: string; name: string }> | null;
+};
 
 export type MediaAssetRow = {
   id: string;

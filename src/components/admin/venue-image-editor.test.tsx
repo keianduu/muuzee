@@ -82,10 +82,11 @@ describe("VenueImageEditor", () => {
   });
 
   it("keeps manual upload primary ownership server-side across all editors", () => {
-    for (const file of ["./admin-image-manager.tsx", "./exhibition-editor.tsx"]) {
-      const source = readFileSync(new URL(file, import.meta.url), "utf8");
-      expect(source).not.toContain('name="is_primary"');
-      expect(source).toContain("useImmediateMediaAssets");
-    }
+    const manager = readFileSync(new URL("./admin-image-manager.tsx", import.meta.url), "utf8");
+    const exhibition = readFileSync(new URL("./exhibition-editor.tsx", import.meta.url), "utf8");
+    expect(manager).not.toContain('name="is_primary"');
+    expect(manager).toContain("useImmediateMediaAssets");
+    expect(exhibition).not.toContain('name="is_primary"');
+    expect(exhibition).toContain("<AdminImageManager");
   });
 });

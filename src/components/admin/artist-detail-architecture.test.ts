@@ -22,7 +22,7 @@ describe("Artist shared detail architecture", () => {
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
     expect(repository).toContain("artist_external_match_candidates(*)");
     expect(css).toMatch(/\.admin-edit-tabs\s*\{[^}]*margin:\s*0;/);
-    expect(css).toMatch(/\.artist-edit-surface, \.venue-edit-surface\s*\{[^}]*gap:\s*20px;/);
+    expect(css).toMatch(/\.artist-edit-surface, \.venue-edit-surface, \.exhibition-edit-surface\s*\{[^}]*gap:\s*20px;/);
   });
 
   it("opens the shared candidate drawer for Artist while keeping Venue-only review panels scoped", () => {
