@@ -1,9 +1,13 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   APPROVED_STG_PROJECT_REF,
+  applyFixtureSafely,
+  classifyFixtureState,
   createSyntheticPng,
   FIXTURE_COUNTS,
+  FIXTURE_DB_COUNTS,
+  FIXTURE_STATE,
   FIXTURE_UUID_PREFIX,
   fixtureMediaObjects,
   fixtureUuid,
@@ -14,6 +18,16 @@ import {
 
 const seed = readFileSync(new URL("../supabase/seeds/stg_admin_review.sql", import.meta.url), "utf8");
 const cleanup = readFileSync(new URL("../supabase/seeds/stg_admin_review_cleanup.sql", import.meta.url), "utf8");
+const stateQuery = readFileSync(new URL("../supabase/seeds/stg_admin_review_state.sql", import.meta.url), "utf8");
+
+function fixtureState(classification, overrides = {}) {
+  return {
+    classification,
+    dbCounts: Object.fromEntries(Object.keys(FIXTURE_DB_COUNTS).map((key) => [key, classification === FIXTURE_STATE.COMPLETE ? FIXTURE_DB_COUNTS[key] : 0])),
+    storagePaths: classification === FIXTURE_STATE.COMPLETE ? fixtureMediaObjects().map((object) => object.storagePath) : [],
+    ...overrides,
+  };
+}
 
 describe("STG Admin Review Fixture safety", () => {
   it("requires an explicit single target", () => {
@@ -55,6 +69,84 @@ describe("STG Admin Review Fixture safety", () => {
     expect(media.every((object) => object.ownerId.startsWith(FIXTURE_UUID_PREFIX) && object.storagePath.startsWith("stg-admin-review/"))).toBe(true);
   });
 
+  it("accepts only exact CLEAN or COMPLETE fixture states", () => {
+    const completeCounts = fixtureState(FIXTURE_STATE.COMPLETE).dbCounts;
+    const expectedPaths = fixtureMediaObjects().map((object) => object.storagePath);
+    expect(classifyFixtureState({ dbCounts: fixtureState(FIXTURE_STATE.CLEAN).dbCounts, storagePaths: [] })).toBe(FIXTURE_STATE.CLEAN);
+    expect(classifyFixtureState({ dbCounts: completeCounts, storagePaths: expectedPaths })).toBe(FIXTURE_STATE.COMPLETE);
+    expect(classifyFixtureState({ dbCounts: { ...completeCounts, venues: 55 }, storagePaths: expectedPaths })).toBe(FIXTURE_STATE.PARTIAL);
+    expect(classifyFixtureState({ dbCounts: completeCounts, storagePaths: expectedPaths.slice(1) })).toBe(FIXTURE_STATE.PARTIAL);
+    expect(classifyFixtureState({ dbCounts: completeCounts, storagePaths: [...expectedPaths, "stg-admin-review/unexpected.png"] })).toBe(FIXTURE_STATE.PARTIAL);
+  });
+
+  it("compensates Storage after a failed CLEAN apply and verifies CLEAN state", async () => {
+    const calls = [];
+    await expect(applyFixtureSafely({
+      initialState: fixtureState(FIXTURE_STATE.CLEAN),
+      upload: async () => calls.push("upload"),
+      seed: async () => {
+        calls.push("seed");
+        throw new Error("forced SQL failure");
+      },
+      remove: async () => calls.push("remove"),
+      inspect: async () => {
+        calls.push("inspect");
+        return fixtureState(FIXTURE_STATE.CLEAN);
+      },
+    })).rejects.toThrow("forced SQL failure");
+    expect(calls).toEqual(["upload", "seed", "remove", "inspect"]);
+  });
+
+  it("compensates deterministic paths after a partial CLEAN upload failure", async () => {
+    const calls = [];
+    const seed = vi.fn();
+    await expect(applyFixtureSafely({
+      initialState: fixtureState(FIXTURE_STATE.CLEAN),
+      upload: async () => {
+        calls.push("upload");
+        throw new Error("forced upload failure");
+      },
+      seed,
+      remove: async () => calls.push("remove"),
+      inspect: async () => {
+        calls.push("inspect");
+        return fixtureState(FIXTURE_STATE.CLEAN);
+      },
+    })).rejects.toThrow("forced upload failure");
+    expect(seed).not.toHaveBeenCalled();
+    expect(calls).toEqual(["upload", "remove", "inspect"]);
+  });
+
+  it("does not remove a pre-existing COMPLETE fixture after a failed reapply", async () => {
+    const calls = [];
+    await expect(applyFixtureSafely({
+      initialState: fixtureState(FIXTURE_STATE.COMPLETE),
+      upload: async () => calls.push("upload"),
+      seed: async () => {
+        calls.push("seed");
+        throw new Error("forced reapply failure");
+      },
+      remove: async () => calls.push("remove"),
+      inspect: async () => {
+        calls.push("inspect");
+        return fixtureState(FIXTURE_STATE.COMPLETE);
+      },
+    })).rejects.toThrow("forced reapply failure");
+    expect(calls).toEqual(["upload", "seed", "inspect"]);
+  });
+
+  it("rejects PARTIAL apply before upload", async () => {
+    const upload = vi.fn();
+    await expect(applyFixtureSafely({
+      initialState: fixtureState(FIXTURE_STATE.PARTIAL),
+      upload,
+      seed: vi.fn(),
+      remove: vi.fn(),
+      inspect: vi.fn(),
+    })).rejects.toThrow("explicit cleanup is required");
+    expect(upload).not.toHaveBeenCalled();
+  });
+
   it("generates valid deterministic PNG fixture bytes without an external image dependency", () => {
     const first = createSyntheticPng(0);
     expect(first.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
@@ -77,6 +169,26 @@ describe("STG Admin Review Fixture safety", () => {
     expect(seed).toContain("Order 325.9 Cluster A missing");
     expect(seed).toContain("Order 325.9 Cluster D missing");
     expect(cleanup).toContain("32590000-0000-4325-8325-");
+    for (const table of [
+      "data_sources",
+      "venues",
+      "artists",
+      "works",
+      "exhibitions",
+      "source_records",
+      "source_image_candidates",
+      "media_assets",
+      "exhibition_occurrences",
+      "exhibition_artists",
+      "exhibition_venue_mentions",
+      "exhibition_artist_mentions",
+      "work_artists",
+      "collection_holdings",
+      "work_presentations",
+    ]) {
+      expect(cleanup).toContain(`public.${table}`);
+      expect(stateQuery).toContain(`public.${table}`);
+    }
     expect(cleanup).not.toMatch(/truncate/i);
     expect(cleanup).not.toMatch(/where\s+(name|title)\s+like/i);
   });

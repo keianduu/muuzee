@@ -24,13 +24,23 @@ export const FIXTURE_COUNTS = Object.freeze({
   collectionHoldings: 57,
   workPresentations: 12,
 });
+export const FIXTURE_DB_COUNTS = Object.freeze({
+  dataSources: 1,
+  dataSourceExact: 1,
+  ...FIXTURE_COUNTS,
+});
 
 const LOCAL_DB_CONTAINER = "supabase_db_muuzee";
 const MEDIA_BUCKET = "exhibition-images";
+const MEDIA_PREFIX = "stg-admin-review";
+const STORAGE_LIST_LIMIT = 100;
+const STORAGE_MAX_ENTRIES = 100;
 const seedPath = fileURLToPath(new URL("../supabase/seeds/stg_admin_review.sql", import.meta.url));
 const cleanupPath = fileURLToPath(new URL("../supabase/seeds/stg_admin_review_cleanup.sql", import.meta.url));
+const statePath = fileURLToPath(new URL("../supabase/seeds/stg_admin_review_state.sql", import.meta.url));
 const seedSql = readFileSync(seedPath, "utf8");
 const cleanupSql = readFileSync(cleanupPath, "utf8");
+const stateSql = readFileSync(statePath, "utf8");
 
 const MEDIA_MATRIX = Object.freeze([
   ...[1, 2, 3, 4, 5, 6].map((index) => ["venue", index]),
@@ -64,6 +74,27 @@ export function fixtureMediaObjects() {
     storagePath: `stg-admin-review/${ownerType}s/${fixtureUuid(ownerType, index)}/primary.png`,
     variant: order % 4,
   }));
+}
+
+export const FIXTURE_STATE = Object.freeze({
+  CLEAN: "CLEAN",
+  COMPLETE: "COMPLETE",
+  PARTIAL: "PARTIAL",
+});
+
+export function classifyFixtureState({ dbCounts, storagePaths }) {
+  const expectedStoragePaths = fixtureMediaObjects().map((object) => object.storagePath).sort();
+  const actualStoragePaths = [...storagePaths].sort();
+  const dbEntries = Object.entries(FIXTURE_DB_COUNTS);
+  const dbIsClean = dbEntries.every(([key]) => dbCounts[key] === 0);
+  const dbIsComplete = dbEntries.every(([key, expected]) => dbCounts[key] === expected);
+  const storageIsClean = actualStoragePaths.length === 0;
+  const storageIsComplete = actualStoragePaths.length === expectedStoragePaths.length
+    && actualStoragePaths.every((path, index) => path === expectedStoragePaths[index]);
+
+  if (dbIsClean && storageIsClean) return FIXTURE_STATE.CLEAN;
+  if (dbIsComplete && storageIsComplete) return FIXTURE_STATE.COMPLETE;
+  return FIXTURE_STATE.PARTIAL;
 }
 
 export function parseFixtureArguments(argv) {
@@ -168,6 +199,13 @@ function run(command, args, options = {}) {
   if (result.status !== 0) throw new Error(`${command} exited with status ${result.status ?? 1}.`);
 }
 
+function runCapture(command, args, options = {}) {
+  const result = spawnSync(command, args, { encoding: "utf8", stdio: ["pipe", "pipe", "inherit"], ...options });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`${command} exited with status ${result.status ?? 1}.`);
+  return result.stdout.trim();
+}
+
 function postgresEnvironment(database) {
   const environment = {
     ...process.env,
@@ -182,7 +220,7 @@ function postgresEnvironment(database) {
   return environment;
 }
 
-async function uploadFixtureMedia(db) {
+export async function uploadFixtureMedia(db) {
   for (const object of fixtureMediaObjects()) {
     const { error } = await db.storage.from(MEDIA_BUCKET).upload(object.storagePath, createSyntheticPng(object.variant), {
       contentType: "image/png",
@@ -193,10 +231,41 @@ async function uploadFixtureMedia(db) {
   }
 }
 
-async function removeFixtureMedia(db) {
+export async function removeFixtureMedia(db) {
   const paths = fixtureMediaObjects().map((object) => object.storagePath);
   const { error } = await db.storage.from(MEDIA_BUCKET).remove(paths);
   if (error) throw new Error(`Remove fixture Storage objects: ${error.message}`);
+}
+
+export async function listFixtureStoragePaths(db) {
+  const paths = [];
+  let inspectedEntries = 0;
+
+  async function visit(prefix, depth) {
+    invariant(depth <= 4, `Fixture Storage path exceeds the bounded depth: ${prefix}`);
+    let offset = 0;
+    while (true) {
+      const { data, error } = await db.storage.from(MEDIA_BUCKET).list(prefix, {
+        limit: STORAGE_LIST_LIMIT,
+        offset,
+        sortBy: { column: "name", order: "asc" },
+      });
+      if (error) throw new Error(`List fixture Storage path ${prefix}: ${error.message}`);
+      const entries = data ?? [];
+      inspectedEntries += entries.length;
+      invariant(inspectedEntries <= STORAGE_MAX_ENTRIES, `Fixture Storage inspection exceeded ${STORAGE_MAX_ENTRIES} entries.`);
+      for (const entry of entries) {
+        const path = `${prefix}/${entry.name}`;
+        if (entry.id) paths.push(path);
+        else await visit(path, depth + 1);
+      }
+      if (entries.length < STORAGE_LIST_LIMIT) break;
+      offset += entries.length;
+    }
+  }
+
+  await visit(MEDIA_PREFIX, 0);
+  return paths.sort();
 }
 
 function applySql({ target, sql, fixtureBaseUrl, database }) {
@@ -206,6 +275,74 @@ function applySql({ target, sql, fixtureBaseUrl, database }) {
     return;
   }
   run("psql", [...variables], { input: sql, env: postgresEnvironment(database) });
+}
+
+function queryFixtureDbCounts({ target, database }) {
+  let output;
+  if (target === "local") {
+    output = runCapture("docker", ["exec", "-i", LOCAL_DB_CONTAINER, "psql", "-tA", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres"], { input: stateSql });
+  } else {
+    output = runCapture("psql", ["-tA", "-v", "ON_ERROR_STOP=1"], { input: stateSql, env: postgresEnvironment(database) });
+  }
+  const jsonLine = output.split("\n").map((line) => line.trim()).filter(Boolean).at(-1);
+  invariant(Boolean(jsonLine), "Fixture DB state query returned no result.");
+  const counts = JSON.parse(jsonLine);
+  for (const key of Object.keys(FIXTURE_DB_COUNTS)) {
+    invariant(Number.isInteger(counts[key]), `Fixture DB state is missing integer count: ${key}.`);
+  }
+  return counts;
+}
+
+export async function inspectFixtureState({ target, database, db }) {
+  const dbCounts = queryFixtureDbCounts({ target, database });
+  const storagePaths = await listFixtureStoragePaths(db);
+  return {
+    classification: classifyFixtureState({ dbCounts, storagePaths }),
+    dbCounts,
+    storagePaths,
+  };
+}
+
+function stateSummary(state) {
+  return {
+    classification: state.classification,
+    dbCounts: state.dbCounts,
+    storageObjectCount: state.storagePaths.length,
+  };
+}
+
+export async function applyFixtureSafely({ initialState, upload, seed, remove, inspect }) {
+  invariant(
+    initialState.classification === FIXTURE_STATE.CLEAN || initialState.classification === FIXTURE_STATE.COMPLETE,
+    `Fixture state is ${initialState.classification}; explicit cleanup is required before apply.`,
+  );
+
+  try {
+    await upload();
+    await seed();
+  } catch (error) {
+    if (initialState.classification === FIXTURE_STATE.CLEAN) {
+      try {
+        await remove();
+        const restoredState = await inspect();
+        invariant(restoredState.classification === FIXTURE_STATE.CLEAN, `CLEAN apply compensation left fixture state ${restoredState.classification}.`);
+      } catch (compensationError) {
+        throw new AggregateError([error, compensationError], "Fixture apply failed and CLEAN-state compensation did not complete.");
+      }
+    } else {
+      try {
+        const preservedState = await inspect();
+        invariant(preservedState.classification === FIXTURE_STATE.COMPLETE, `Failed COMPLETE reapply left fixture state ${preservedState.classification}.`);
+      } catch (verificationError) {
+        throw new AggregateError([error, verificationError], "Fixture reapply failed and the pre-existing COMPLETE state could not be verified.");
+      }
+    }
+    throw error;
+  }
+
+  const finalState = await inspect();
+  invariant(finalState.classification === FIXTURE_STATE.COMPLETE, `Fixture apply ended in ${finalState.classification} state.`);
+  return finalState;
 }
 
 async function main() {
@@ -231,13 +368,33 @@ async function main() {
     fixtureBaseUrl = APPROVED_STG_APP_ORIGIN;
   }
 
+  const forceSqlFailure = process.env.MUUZEE_ADMIN_REVIEW_FORCE_SQL_FAILURE === "1";
+  invariant(
+    !forceSqlFailure || (options.target === "local" && process.env.NODE_ENV === "test"),
+    "Forced SQL failure is restricted to explicit LOCAL test runs.",
+  );
+
   const db = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const inspect = () => inspectFixtureState({ target: options.target, database, db });
+  const initialState = await inspect();
+  console.log(JSON.stringify({ action: "preflight", target: options.target.toUpperCase(), ...stateSummary(initialState) }, null, 2));
+
   if (options.cleanup) {
     applySql({ target: options.target, sql: cleanupSql, fixtureBaseUrl, database });
     await removeFixtureMedia(db);
+    const finalState = await inspect();
+    invariant(finalState.classification === FIXTURE_STATE.CLEAN, `Fixture cleanup ended in ${finalState.classification} state.`);
   } else {
-    await uploadFixtureMedia(db);
-    applySql({ target: options.target, sql: seedSql, fixtureBaseUrl, database });
+    await applyFixtureSafely({
+      initialState,
+      upload: () => uploadFixtureMedia(db),
+      seed: () => {
+        if (forceSqlFailure) throw new Error("Forced Order 325.9 LOCAL SQL failure.");
+        applySql({ target: options.target, sql: seedSql, fixtureBaseUrl, database });
+      },
+      remove: () => removeFixtureMedia(db),
+      inspect,
+    });
   }
 
   console.log(JSON.stringify({
