@@ -27,6 +27,13 @@ describe("Exhibition shared detail architecture", () => {
     expect(`${editor}${dataReview}`).not.toContain("raw_payload");
   });
 
+  it("uses the canonical one-column Drawer form layout for Exhibition basic fields", () => {
+    const basicEditor = read("./exhibition-basic-editor.tsx");
+    const styles = read("../../app/globals.css");
+    expect(basicEditor).toContain('className="card exhibition-basic-form"');
+    expect(styles).toContain(".artist-basic-form .form-grid, .exhibition-basic-form .form-grid { grid-template-columns: minmax(0,1fr); }");
+  });
+
   it("opens Exhibition image candidates in the shared secondary drawer", () => {
     const drawer = read("./exhibition-detail-drawer.tsx");
     const page = read("../../app/admin/exhibitions/page.tsx");

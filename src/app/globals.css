@@ -326,7 +326,7 @@ a.data-acquisition-metric:hover { border-color: var(--ink-300); background: var(
 .admin-edit-tabs { display: flex; width: fit-content; max-width: 100%; gap: 4px; margin: 0; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-hover); }
 .admin-edit-tabs button { min-height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--admin-radius-control); background: transparent; color: var(--ink-600); font-size: 13px; font-weight: 650; }
 .admin-edit-tabs button.is-active { border-color: var(--line); background: var(--surface-strong); color: var(--ink-950); box-shadow: var(--admin-shadow-1); }
-.artist-basic-form .form-grid { grid-template-columns: minmax(0,1fr); }
+.artist-basic-form .form-grid, .exhibition-basic-form .form-grid { grid-template-columns: minmax(0,1fr); }
 .artist-edit-surface, .venue-edit-surface, .exhibition-edit-surface { width: 100%; min-width: 0; max-width: 100%; display: grid; gap: 20px; }
 .artist-edit-surface > [role="tabpanel"], .venue-edit-surface > [role="tabpanel"], .exhibition-edit-surface > [role="tabpanel"] { min-width: 0; max-width: 100%; }
 .venue-basic-fields, .admin-image-metadata { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; }
