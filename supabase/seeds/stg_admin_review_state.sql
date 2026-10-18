@@ -62,6 +62,16 @@ select json_build_object(
        or artist_id in (select id from fixture_artists)
        or work_id in (select id from fixture_works)
   ),
+  'approvedMediaAssets', (
+    select count(*) from public.media_assets
+    where id in (select id from fixture_media)
+      and rights_status = 'approved'
+      and rights_checked_at is not null
+  ),
+  'candidateRightsStates', (
+    select count(distinct rights_status) from public.source_image_candidates
+    where id in (select id from fixture_image_candidates)
+  ),
   'occurrences', (
     select count(*) from public.exhibition_occurrences
     where exhibition_id in (select id from fixture_exhibitions)

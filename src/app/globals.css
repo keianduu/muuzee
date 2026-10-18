@@ -167,6 +167,8 @@ th { background: var(--surface); color: var(--ink-600); font-size: 12px; font-we
 .requirements li.met { background: #dce9e1; color: #27503e; }
 .requirements li.required-missing { background: #f0dddd; color: #782d2d; }
 .requirements li.optional-missing { background: var(--surface-hover); color: var(--ink-600); }
+.requirements .requirement-action { appearance: none; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.requirements .requirement-action:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; }
 .media-card img { width: 100%; height: 240px; object-fit: contain; border-radius: 8px; background: #eee; }
 .license-summary { display: grid; grid-template-columns: minmax(120px,.8fr) minmax(140px,1.2fr); gap: 0; margin: 14px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; }
@@ -421,6 +423,8 @@ a.admin-source-chip:hover { border-color: var(--ink-400); color: var(--ink-950);
 .admin-image-or { position: relative; display: flex; align-items: center; gap: 10px; color: var(--ink-500); font-size: 12px; }
 .admin-image-or::before, .admin-image-or::after { content: ""; height: 1px; flex: 1; background: var(--line); }
 .admin-image-metadata { margin-top: 18px; }
+.admin-rights-confirmation { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 10px; align-items: start; margin-top: 18px; padding: 12px; border: 1px solid var(--line); border-radius: var(--admin-radius-control); background: var(--surface-strong); color: var(--ink-800); }
+.admin-rights-confirmation input { margin-top: 2px; accent-color: var(--ink-950); }
 .venue-primary-check { width: fit-content; display: inline-flex; align-items: center; gap: 8px; color: var(--ink-800); font-size: 13px; font-weight: 650; }
 .master-row { cursor: pointer; transition: background-color 180ms ease; }
 .master-row:hover, .master-row:focus-visible { background: var(--surface); outline: none; }

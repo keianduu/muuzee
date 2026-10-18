@@ -13,7 +13,21 @@ export type AutoPrimaryDecision =
 export function isPrimaryCandidateUsable(candidate: PrimaryImageCandidate) {
   return candidate.is_active !== false
     && candidate.review_status !== "rejected"
-    && candidate.rights_status !== "rejected";
+    && candidate.rights_status === "approved";
+}
+
+export function canRegisterPrimaryCandidate(candidate: PrimaryImageCandidate, approveRights = false) {
+  if (candidate.is_active === false || candidate.review_status === "rejected" || candidate.rights_status === "rejected") return false;
+  return candidate.rights_status === "approved" || (candidate.rights_status === "needs_review" && approveRights);
+}
+
+export function isLegacyMediaRightsApprovable(rightsStatus: string | null | undefined) {
+  return rightsStatus === "needs_review";
+}
+
+export function assertManualImageRightsConfirmed(value: FormDataEntryValue | null) {
+  if (value !== "true") throw new Error("利用条件の確認が必要です。");
+  return "approved" as const;
 }
 
 export function chooseAutoPrimaryCandidate(input: {
@@ -47,6 +61,6 @@ export function mediaAssetMetadataFromCandidate(candidate: Record<string, unknow
     reported_license_url: candidate.license_url,
     reported_author: candidate.author,
     reported_usage_terms: candidate.usage_terms,
-    rights_status: candidate.rights_status || "needs_review",
+    rights_status: "approved",
   };
 }

@@ -31,6 +31,7 @@ describe("VenueImageEditor", () => {
         candidates={[]}
         onUpload={vi.fn()}
         onRemove={vi.fn()}
+        onApproveRights={vi.fn()}
         onSetPrimary={vi.fn()}
       />,
     );
@@ -46,8 +47,8 @@ describe("VenueImageEditor", () => {
   });
 
   it("uses one image selection entry point and removes competing candidate actions", () => {
-    const markup = renderToStaticMarkup(<VenueImageEditor venue={venue} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onOpenImageCandidate={vi.fn()} onSetPrimary={vi.fn()}/>);
-    expect(markup).toContain("選択できる候補 2件");
+    const markup = renderToStaticMarkup(<VenueImageEditor venue={venue} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onApproveRights={vi.fn()} onOpenImageCandidate={vi.fn()} onSetPrimary={vi.fn()}/>);
+    expect(markup).toContain("確認できる候補 2件");
     expect(markup).toContain("画像候補を選択");
     expect(markup).toContain("admin-panel-button");
     expect(markup).toContain("<svg");
@@ -58,14 +59,14 @@ describe("VenueImageEditor", () => {
   });
 
   it("keeps inline candidate actions for consumers without a secondary drawer", () => {
-    const markup = renderToStaticMarkup(<VenueImageEditor venue={venue} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onSetPrimary={vi.fn()}/>);
+    const markup = renderToStaticMarkup(<VenueImageEditor venue={venue} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onApproveRights={vi.fn()} onSetPrimary={vi.fn()}/>);
     expect(markup.match(/この画像を設定/g)).toHaveLength(2);
     expect(markup).not.toContain("画像候補を選択");
   });
 
   it("shows only registered images once an asset exists", () => {
     const withAsset = { ...venue, media_assets: [{ id: "asset-1", is_primary: true, signedUrl: "https://example.com/asset.jpg", original_filename: "asset.jpg", rights_status: "approved" }] } as unknown as VenueRow;
-    const markup = renderToStaticMarkup(<VenueImageEditor venue={withAsset} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onOpenImageCandidate={vi.fn()} onSetPrimary={vi.fn()}/>);
+    const markup = renderToStaticMarkup(<VenueImageEditor venue={withAsset} busy={false} candidates={[candidate("a"), candidate("b")]} onUpload={vi.fn()} onRemove={vi.fn()} onApproveRights={vi.fn()} onOpenImageCandidate={vi.fn()} onSetPrimary={vi.fn()}/>);
     expect(markup).toContain("asset.jpg");
     expect(markup).not.toContain('data-admin-image-section="candidates"');
     expect(markup).not.toContain('data-admin-image-section="registration"');

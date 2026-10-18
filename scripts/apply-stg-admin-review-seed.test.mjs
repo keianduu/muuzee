@@ -168,6 +168,10 @@ describe("STG Admin Review Fixture safety", () => {
     expect(seed.match(/unpublished count mismatch/g)).toHaveLength(4);
     expect(seed).toContain("Order 325.9 Cluster A missing");
     expect(seed).toContain("Order 325.9 Cluster D missing");
+    expect(seed).toContain("Order 325.9 approved Media count mismatch");
+    expect(seed).toContain("Order 325.9 Candidate Rights matrix mismatch");
+    expect(stateQuery).toContain("approvedMediaAssets");
+    expect(stateQuery).toContain("candidateRightsStates");
     expect(cleanup).toContain("32590000-0000-4325-8325-");
     for (const table of [
       "data_sources",

@@ -42,7 +42,7 @@ function imageSelectionDb(ownerKey = "venue_id") {
 }
 
 describe("shared Venue / Artist primary image policy", () => {
-  const candidate = (id: string, source: string, extra = {}) => ({ id, discovery_source: source, is_active: true, rights_status: "needs_review", ...extra });
+  const candidate = (id: string, source: string, extra = {}) => ({ id, discovery_source: source, is_active: true, rights_status: "approved", ...extra });
 
   it("protects an existing primary", () => {
     expect(chooseAutoPrimaryCandidate({ primaryCount: 1, candidates: [candidate("p18", "wikidata_p18")] }).reason).toBe("primary_exists");
@@ -63,30 +63,30 @@ describe("shared Venue / Artist primary image policy", () => {
     expect(chooseAutoPrimaryCandidate({ primaryCount: 0, candidates: [candidate("one", "wikipedia_article"), candidate("p18", "wikidata_p18"), candidate("two", "commons_category")] })).toMatchObject({ candidateId: null, reason: "multiple_candidates" });
   });
 
-  it("preserves candidate rights and attribution metadata without approving rights", () => {
+  it("creates only Rights-approved Registered Image metadata", () => {
     const metadata = mediaAssetMetadataFromCandidate({ provider: "wikimedia_commons", source_url: "https://commons.test/file", credit: "Credit", usage_terms: "Attribution", license_short_name: "CC BY 4.0", license_url: "https://license.test", author: "Author", rights_status: "needs_review" });
-    expect(metadata).toEqual({ source_type: "wikimedia", source_url: "https://commons.test/file", credit: "Credit", usage_note: "Attribution", reported_license: "CC BY 4.0", reported_license_url: "https://license.test", reported_author: "Author", reported_usage_terms: "Attribution", rights_status: "needs_review" });
+    expect(metadata).toEqual({ source_type: "wikimedia", source_url: "https://commons.test/file", credit: "Credit", usage_note: "Attribution", reported_license: "CC BY 4.0", reported_license_url: "https://license.test", reported_author: "Author", reported_usage_terms: "Attribution", rights_status: "approved" });
   });
 
-  it("explicit selection replaces Primary, excludes other candidates, and preserves every rights status", async () => {
+  it("requires explicit approval before a needs-review candidate can become Registered", async () => {
     const { db, state } = imageSelectionDb();
-    const beforeRights = state.candidates.map(({ id, rights_status }) => [id, rights_status]);
-    await setMasterPrimaryFromCandidate("venues", "venue-1", "candidate-b", { replaceExisting: true }, db);
+    await expect(setMasterPrimaryFromCandidate("venues", "venue-1", "candidate-b", { replaceExisting: true }, db)).rejects.toThrow("明示的な承認");
+    await setMasterPrimaryFromCandidate("venues", "venue-1", "candidate-b", { replaceExisting: true, approveRights: true }, db);
     expect(state.media.filter((asset) => asset.is_primary)).toEqual([expect.objectContaining({ id: "asset-b" })]);
     expect(state.candidates.map(({ id, review_status, is_active }) => [id, review_status, is_active])).toEqual([
       ["candidate-a", "rejected", false], ["candidate-b", "accepted", true], ["candidate-c", "rejected", false],
     ]);
-    expect(state.candidates.map(({ id, rights_status }) => [id, rights_status])).toEqual(beforeRights);
+    expect(state.candidates.find(({ id }) => id === "candidate-b")).toMatchObject({ rights_status: "approved" });
+    expect(state.media.find(({ id }) => id === "asset-b")).toMatchObject({ rights_status: "approved" });
   });
 
-  it("auto-selects and persists the exactly-one usable candidate when no Primary exists", async () => {
+  it("does not auto-select a needs-review candidate", async () => {
     const { db, state } = imageSelectionDb();
     state.candidates.splice(0, state.candidates.length, state.candidates[1]);
     state.media[0].is_primary = false;
     const result = await autoSetPreferredMasterCandidatePrimary("venues", "venue-1", db);
-    expect(result).toMatchObject({ changed: true, reason: "primary_set", assetId: "asset-b" });
-    expect(state.media.filter((asset) => asset.is_primary)).toEqual([expect.objectContaining({ id: "asset-b" })]);
-    expect(state.candidates[0]).toMatchObject({ id: "candidate-b", review_status: "accepted", is_active: true, rights_status: "needs_review" });
+    expect(result).toMatchObject({ changed: false, reason: "no_candidates" });
+    expect(state.media.filter((asset) => asset.is_primary)).toEqual([]);
   });
 
   it.each([
@@ -96,13 +96,13 @@ describe("shared Venue / Artist primary image policy", () => {
     ["exhibitions", "exhibition_id"],
   ] as const)("persists the exact-one policy through the %s owner boundary", async (entity, ownerKey) => {
     const { db, state } = imageSelectionDb(ownerKey);
-    state.candidates.splice(0, state.candidates.length, state.candidates[1]);
+    state.candidates.splice(0, state.candidates.length, state.candidates[0]);
     state.media.forEach((asset) => { asset.is_primary = false; });
 
     const result = await autoSetPreferredMasterCandidatePrimary(entity as ImageOwnerEntity, "venue-1", db);
 
-    expect(result).toMatchObject({ changed: true, reason: "primary_set", assetId: "asset-b" });
-    expect(state.media.filter((asset) => asset.is_primary)).toEqual([expect.objectContaining({ id: "asset-b", [ownerKey]: "venue-1" })]);
-    expect(state.candidates[0]).toMatchObject({ review_status: "accepted", is_active: true, rights_status: "needs_review" });
+    expect(result).toMatchObject({ changed: true, reason: "primary_set", assetId: "asset-a" });
+    expect(state.media.filter((asset) => asset.is_primary)).toEqual([expect.objectContaining({ id: "asset-a", [ownerKey]: "venue-1", rights_status: "approved" })]);
+    expect(state.candidates[0]).toMatchObject({ review_status: "accepted", is_active: true, rights_status: "approved" });
   });
 });

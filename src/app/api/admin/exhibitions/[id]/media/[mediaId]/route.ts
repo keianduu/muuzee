@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { validUuid } from "@/lib/admin/http";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { signedMediaAsset } from "@/lib/admin/media-asset-response";
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; mediaId: string }> }) {
+  try { const { id, mediaId } = await params; if (!validUuid(id) || !validUuid(mediaId)) throw new Error("Invalid ID"); const body = await request.json() as { action?: string }; if (body.action !== "approve_rights") throw new Error("Unsupported action"); const db = createSupabaseAdminClient(); const { data, error } = await db.from("media_assets").update({ rights_status: "approved", rights_checked_at: new Date().toISOString() }).eq("id", mediaId).eq("exhibition_id", id).eq("rights_status", "needs_review").select("id").maybeSingle(); if (error) throw error; if (!data) throw new Error("Rights確認待ちの登録画像ではありません。"); revalidatePath("/admin"); revalidatePath("/admin/exhibitions"); revalidatePath(`/admin/exhibitions/${id}`); return NextResponse.json({ message: "Rightsを確認済みにしました。", asset: await signedMediaAsset(db, mediaId) }); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Rights approval failed" }, { status: 400 }); }
+}
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; mediaId: string }> }) {
   try { const { id, mediaId } = await params; if (!validUuid(id) || !validUuid(mediaId)) throw new Error("Invalid ID"); const db = createSupabaseAdminClient(); const { data, error } = await db.from("media_assets").select("storage_path").eq("id", mediaId).eq("exhibition_id", id).single(); if (error) throw error; const { error: storageError } = await db.storage.from("exhibition-images").remove([data.storage_path]); if (storageError) throw storageError; const { error: deleteError } = await db.from("media_assets").delete().eq("id", mediaId).eq("exhibition_id", id); if (deleteError) throw deleteError; revalidatePath("/admin"); revalidatePath("/admin/exhibitions"); revalidatePath(`/admin/exhibitions/${id}`); return NextResponse.json({ message: "画像を削除しました。", removedAssetId: mediaId }); }

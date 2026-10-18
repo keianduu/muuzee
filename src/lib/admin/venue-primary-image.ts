@@ -1,7 +1,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { autoSetPreferredMasterCandidatePrimary, masterAutoPrimaryMaintenance, setMasterPrimaryFromCandidate } from "./master-primary-image";
 
-export async function setVenuePrimaryFromCandidate(venueId: string, candidateId: string, options: { replaceExisting?: boolean } = {}) {
+export async function setVenuePrimaryFromCandidate(venueId: string, candidateId: string, options: { replaceExisting?: boolean; approveRights?: boolean } = {}) {
   const db = createSupabaseAdminClient();
   const result = await setMasterPrimaryFromCandidate("venues", venueId, candidateId, options);
   if (result.changed) {

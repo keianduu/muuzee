@@ -5,7 +5,7 @@ import { AdminExternalSourceSummary } from "./admin-data-review";
 import { AdminFieldLabel } from "./admin-field-label";
 import { PublicationToggle } from "./publication-toggle";
 
-export function ExhibitionStatus({ exhibition, occurrence, venue, requirements, canPublish, busy, onPublicationChange }: {
+export function ExhibitionStatus({ exhibition, occurrence, venue, requirements, canPublish, busy, onPublicationChange, onRequirementSelect }: {
   exhibition: ExhibitionRow;
   occurrence: OccurrenceRow | null;
   venue: VenueRow | null;
@@ -13,6 +13,7 @@ export function ExhibitionStatus({ exhibition, occurrence, venue, requirements, 
   canPublish: boolean;
   busy: boolean;
   onPublicationChange: (next: boolean) => void;
+  onRequirementSelect: (key: PublicationRequirement["key"]) => void;
 }) {
   const published = exhibition.publication_status === "published";
   const requirementMessageId = `publication-requirements-${exhibition.id}`;
@@ -35,7 +36,7 @@ export function ExhibitionStatus({ exhibition, occurrence, venue, requirements, 
         <div><dt>Venue relation</dt><dd>{venue ? venue.name : unresolvedVenue ? `未解決 ${unresolvedVenue}件` : "なし"}</dd></div>
         <div><dt>Artist relation</dt><dd>{artistRelations}件{unresolvedArtists ? ` / 未解決 ${unresolvedArtists}件` : ""}</dd></div>
       </dl>
-      <ul className="requirements">{requirements.map((item) => <li key={item.key} className={item.met ? "met" : "required-missing"}>{item.met ? "✓ " : ""}{item.label}</li>)}</ul>
+      <ul className="requirements">{requirements.map((item) => <li key={item.key} className={item.met ? "met" : "required-missing"}>{item.met ? <>✓ {item.label}</> : <button type="button" className="requirement-action" onClick={() => onRequirementSelect(item.key)}>{item.label}<span aria-hidden="true"> →</span></button>}</li>)}</ul>
     </section>
   </>;
 }

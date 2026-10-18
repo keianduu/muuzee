@@ -30,9 +30,12 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, onSetP
   candidate: SourceImageCandidateRow;
   subjectLabel: string;
   busy: boolean;
-  onSetPrimary: () => void;
+  onSetPrimary: (approveRights: boolean) => void;
 }) {
-  const disabled = busy || candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active;
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
+  const rejected = candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active;
+  const needsConfirmation = candidate.rights_status === "needs_review";
+  const disabled = busy || rejected || (needsConfirmation && !rightsConfirmed);
   const match = candidateMatchSummary(candidate);
   return <article className="card media-card">
     {candidate.thumbnail_url || candidate.image_url ? <img src={candidate.thumbnail_url || candidate.image_url} alt={`${subjectLabel} image candidate`}/> : <div className="thumb"/>}
@@ -43,8 +46,9 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, onSetP
     {(candidate.candidate_match_confidence != null || candidate.candidate_match_threshold != null) && <p className="muted"><strong>照合:</strong> {match.match}<br/><strong>探索深度:</strong> {match.depth}</p>}
     <LicenseSummary candidate={candidate}/>
     <p className="muted"><strong>Author:</strong> {candidate.author || "記載なし"}<br/><strong>Credit:</strong> {candidate.credit || "記載なし"}<br/><strong>Usage terms:</strong> {candidate.usage_terms || "記載なし"}{candidate.source_url && <><br/><a className="candidate-source-link" href={candidate.source_url} target="_blank" rel="noreferrer">データ元 ↗</a></>}</p>
-    <div className="actions"><button type="button" className="button" disabled={disabled} onClick={onSetPrimary}>この画像を設定</button></div>
-    {candidate.rights_status === "rejected" && <p className="muted">明確に利用不可と記録された候補は設定できません。</p>}
+    {needsConfirmation && !rejected && <label className="admin-rights-confirmation"><input type="checkbox" checked={rightsConfirmed} onChange={(event) => setRightsConfirmed(event.target.checked)}/><span>利用条件を確認し、この画像を利用可能と判断しました</span></label>}
+    <div className="actions"><button type="button" className="button" disabled={disabled} onClick={() => onSetPrimary(needsConfirmation)}>この画像を設定</button></div>
+    {rejected && <p className="muted">利用不可と記録された候補はRegistered Imageへ登録できません。</p>}
   </article>;
 }
 
@@ -57,10 +61,10 @@ export function MasterImageCandidatePicker({ entity, ownerId, candidates, subjec
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  async function select(candidate: SourceImageCandidateRow) {
+  async function select(candidate: SourceImageCandidateRow, approveRights: boolean) {
     setBusy(true); setMessage("");
     try {
-      const response = await fetch(`/api/admin/masters/${entity}/${ownerId}/image-candidates/${candidate.id}/set-primary`, { method: "POST" });
+      const response = await fetch(`/api/admin/masters/${entity}/${ownerId}/image-candidates/${candidate.id}/set-primary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approveRights }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "候補画像の設定に失敗しました。");
       if (body.asset) dispatchAdminMediaMutation({ entity, ownerId, asset: body.asset });
@@ -70,5 +74,5 @@ export function MasterImageCandidatePicker({ entity, ownerId, candidates, subjec
       setMessage(error instanceof Error ? error.message : "候補画像の設定に失敗しました。");
     } finally { setBusy(false); }
   }
-  return <div className="candidate-picker"><p className="candidate-picker-count">選択できる候補 {candidates.length}件</p><div className="media-grid">{candidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={subjectLabel} busy={busy} onSetPrimary={() => select(candidate)}/>)}</div><AdminFeedback variant="error" message={message}/></div>;
+  return <div className="candidate-picker"><p className="candidate-picker-count">確認できる候補 {candidates.length}件</p><div className="media-grid">{candidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={subjectLabel} busy={busy} onSetPrimary={(approveRights) => select(candidate, approveRights)}/>)}</div><AdminFeedback variant="error" message={message}/></div>;
 }

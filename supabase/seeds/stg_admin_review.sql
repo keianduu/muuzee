@@ -546,8 +546,8 @@ select
   'https://creativecommons.org/publicdomain/zero/1.0/',
   'Muuzee QA Fixture',
   'Synthetic asset generated for Muuzee Admin QA.',
-  case when media_sequence % 2 = 1 then 'approved' else 'needs_review' end,
-  case when media_sequence % 2 = 1 then '2026-10-16T00:00:00Z'::timestamptz else null end,
+  'approved',
+  '2026-10-16T00:00:00Z'::timestamptz,
   true
 from media_matrix
 on conflict (id) do update set
@@ -995,6 +995,10 @@ begin
   if actual <> 12 then raise exception 'Order 325.9 Image Candidate count mismatch: %', actual; end if;
   select count(*) into actual from public.media_assets where id::text like '32590000-0000-4325-8325-03%';
   if actual <> 24 then raise exception 'Order 325.9 Media count mismatch: %', actual; end if;
+  select count(*) into actual from public.media_assets where id::text like '32590000-0000-4325-8325-03%' and rights_status = 'approved' and rights_checked_at is not null;
+  if actual <> 24 then raise exception 'Order 325.9 approved Media count mismatch: %', actual; end if;
+  select count(distinct rights_status) into actual from public.source_image_candidates where id::text like '32590000-0000-4325-8325-02%';
+  if actual <> 3 then raise exception 'Order 325.9 Candidate Rights matrix mismatch: % states', actual; end if;
   select count(*) into actual from public.exhibition_occurrences where exhibition_id = any(array(select ('32590000-0000-4325-8325-4' || lpad(i::text,11,'0'))::uuid from generate_series(1,56) fixture(i)));
   if actual <> 54 then raise exception 'Order 325.9 Occurrence count mismatch: %', actual; end if;
   select count(*) into actual from public.exhibition_artists where exhibition_id = any(array(select ('32590000-0000-4325-8325-4' || lpad(i::text,11,'0'))::uuid from generate_series(1,56) fixture(i)));

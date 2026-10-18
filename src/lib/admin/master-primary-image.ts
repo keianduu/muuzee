@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { assertCandidateImageUrl, downloadCandidateImage } from "./candidate-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { MASTER_CONFIGS, type MasterEntity } from "./master-config";
-import { chooseAutoPrimaryCandidate, isPrimaryCandidateUsable, mediaAssetMetadataFromCandidate } from "./primary-image-policy";
+import { canRegisterPrimaryCandidate, chooseAutoPrimaryCandidate, isPrimaryCandidateUsable, mediaAssetMetadataFromCandidate } from "./primary-image-policy";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const IMAGE_OWNER_CONFIGS = {
@@ -18,7 +18,7 @@ export function isImageOwnerEntity(value: string): value is ImageOwnerEntity {
   return Object.prototype.hasOwnProperty.call(IMAGE_OWNER_CONFIGS, value);
 }
 
-export async function setMasterPrimaryFromCandidate(entity: ImageOwnerEntity, masterId: string, candidateId: string, options: { replaceExisting?: boolean } = {}, db: SupabaseClient = createSupabaseAdminClient()) {
+export async function setMasterPrimaryFromCandidate(entity: ImageOwnerEntity, masterId: string, candidateId: string, options: { replaceExisting?: boolean; approveRights?: boolean } = {}, db: SupabaseClient = createSupabaseAdminClient()) {
   const owner = IMAGE_OWNER_CONFIGS[entity].ownerKey;
   const { data: current, error: currentError } = await db.from("media_assets").select("id").eq(owner, masterId).eq("is_primary", true).maybeSingle();
   if (currentError) throw currentError; if (current && !options.replaceExisting) return { changed: false, reason: "primary_exists" as const };
@@ -26,7 +26,11 @@ export async function setMasterPrimaryFromCandidate(entity: ImageOwnerEntity, ma
   const sourceIds = (sources || []).map((row) => row.id); if (!sourceIds.length) throw new Error("画像Candidateが見つかりません。");
   const { data: candidate, error: candidateError } = await db.from("source_image_candidates").select("*").eq("id", candidateId).in("source_record_id", sourceIds).single();
   if (candidateError || !candidate) throw candidateError || new Error("画像Candidateが見つかりません。");
-  if (!isPrimaryCandidateUsable(candidate)) throw new Error("利用できない候補です。");
+  if (!canRegisterPrimaryCandidate(candidate, options.approveRights)) {
+    if (candidate.rights_status === "needs_review") throw new Error("利用条件の確認と明示的な承認が必要です。");
+    throw new Error("利用できない候補です。");
+  }
+  const rightsCheckedAt = new Date().toISOString();
   const sourceUrl = candidate.source_url || candidate.image_url;
   const { data: existing } = await db.from("media_assets").select("id").eq(owner, masterId).eq("source_url", sourceUrl).maybeSingle();
   let assetId = existing?.id as string | undefined; let storagePath: string | null = null;
@@ -35,15 +39,15 @@ export async function setMasterPrimaryFromCandidate(entity: ImageOwnerEntity, ma
     const { bytes, contentType, extension } = await downloadCandidateImage(url); storagePath = `${entity}/${masterId}/${randomUUID()}.${extension}`;
     const { error: uploadError } = await db.storage.from("exhibition-images").upload(storagePath, bytes, { contentType }); if (uploadError) throw uploadError;
     const owners = { exhibition_id: null, venue_id: null, artist_id: null, work_id: null, [owner]: masterId };
-    const { data: asset, error } = await db.from("media_assets").insert({ ...owners, kind: "image", storage_path: storagePath, original_filename: candidate.stable_identifier || `candidate-${candidate.id}.${extension}`, ...mediaAssetMetadataFromCandidate(candidate), is_primary: false }).select("id").single();
+    const { data: asset, error } = await db.from("media_assets").insert({ ...owners, kind: "image", storage_path: storagePath, original_filename: candidate.stable_identifier || `candidate-${candidate.id}.${extension}`, ...mediaAssetMetadataFromCandidate(candidate), rights_checked_at: rightsCheckedAt, is_primary: false }).select("id").single();
     if (error || !asset) { await db.storage.from("exhibition-images").remove([storagePath]); throw error || new Error("候補画像を保存できませんでした。"); } assetId = asset.id;
   }
   if (options.replaceExisting) {
     const { error: demoteError } = await db.from("media_assets").update({ is_primary: false }).eq(owner, masterId).eq("is_primary", true).neq("id", assetId);
     if (demoteError) throw demoteError;
   }
-  const { error } = await db.from("media_assets").update({ is_primary: true }).eq("id", assetId).eq(owner, masterId); if (error) throw error;
-  const { error: selectedError } = await db.from("source_image_candidates").update({ review_status: "accepted", is_active: true }).eq("id", candidateId).in("source_record_id", sourceIds);
+  const { error } = await db.from("media_assets").update({ is_primary: true, rights_status: "approved", rights_checked_at: rightsCheckedAt }).eq("id", assetId).eq(owner, masterId); if (error) throw error;
+  const { error: selectedError } = await db.from("source_image_candidates").update({ review_status: "accepted", rights_status: "approved", is_active: true }).eq("id", candidateId).in("source_record_id", sourceIds);
   if (selectedError) throw selectedError;
   const { error: excludedError } = await db.from("source_image_candidates").update({ review_status: "rejected", is_active: false }).in("source_record_id", sourceIds).neq("id", candidateId).eq("is_active", true);
   if (excludedError) throw excludedError;

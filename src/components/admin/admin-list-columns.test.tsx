@@ -48,9 +48,10 @@ describe("Admin simplified list columns", () => {
 
   it("removes Source and Publication columns from Exhibition without changing schedule ownership", () => {
     const page = read("../../app/admin/exhibitions/page.tsx");
-    expect(page).not.toContain("<th>Source / sync</th>");
-    expect(page).not.toContain("<th>Publication</th>");
+    const list = read("./exhibition-list.tsx");
+    expect(list).not.toContain("<th>Source / sync</th>");
+    expect(list).not.toContain("<th>Publication</th>");
     expect(page).toContain("canonicalizeExhibitionScheduleQuery");
-    expect(page).toContain('<AdminRelationCount items={[{ kind: "artists"');
+    expect(list).toContain('<AdminRelationCount items={[{ kind: "artists"');
   });
 });

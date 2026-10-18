@@ -55,8 +55,8 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
   async function reviewCoordinate(candidate: VenueCoordinateCandidateRow, action: "accept" | "reject") {
     await request(`/api/admin/venues/${venue.id}/coordinate-candidates/${candidate.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) }, { preserveListOrder: true });
   }
-  async function setPrimaryImage(candidate: SourceImageCandidateRow) {
-    const body = await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST" }, { preserveListOrder: true });
+  async function setPrimaryImage(candidate: SourceImageCandidateRow, approveRights: boolean) {
+    const body = await request(`/api/admin/venues/${venue.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approveRights }) }, { preserveListOrder: true });
     if (body?.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, asset: body.asset as MediaAssetRow });
   }
   async function upload(form: FormData) {
@@ -67,6 +67,10 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
     if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return;
     const body = await request(`/api/admin/venues/${venue.id}/media/${asset.id}`, { method: "DELETE" }, { preserveListOrder: true, invalidateData: false });
     if (body?.removedAssetId) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, removedAssetId: String(body.removedAssetId) });
+  }
+  async function approveRights(asset: MediaAssetRow) {
+    const body = await request(`/api/admin/masters/venues/${venue.id}/media/${asset.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve_rights" }) }, { preserveListOrder: true, invalidateData: false });
+    if (body?.asset) dispatchAdminMediaMutation({ entity: "venues", ownerId: venue.id, asset: body.asset as MediaAssetRow });
   }
 
   const candidates = [...(venue.venue_external_match_candidates || [])].filter((candidate) => candidate.provider === "wikidata").sort((a, b) => b.confidence - a.confidence);
@@ -80,7 +84,7 @@ export function VenueEditor({ venue, showBasicForm = true, view = "all", tagRows
       <AdminTabs tabs={VENUE_EDIT_TABS} value={editTab} onChange={selectEditTab} label="Venue編集セクション" variant="edit" returnAnchor="image"/>
       <div role="tabpanel">
         {editTab === "basic" && <VenueBasicEditor venue={venue} busy={busy} onSave={save} onOpenCoordinateReview={onOpenReviewPanel ? () => onOpenReviewPanel("coordinates") : undefined}/>}
-        {editTab === "image" && <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage}/>}
+        {editTab === "image" && <VenueImageEditor venue={venue} busy={busy} candidates={imageCandidates} onUpload={upload} onRemove={remove} onApproveRights={approveRights} onOpenImageCandidate={onOpenImageCandidate} onSetPrimary={setPrimaryImage}/>}
         {editTab === "relations" && <div className="venue-relations"><VenueRelations venue={venue}/><MasterTags entity="venues" masterId={venue.id} rows={tagRows} title="タグ"/></div>}
       </div>
     </div>}

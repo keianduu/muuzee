@@ -7,6 +7,7 @@ import { isMasterEntity, MASTER_CONFIGS } from "@/lib/admin/master-config";
 import { getMasterMedia } from "@/lib/admin/master-repository";
 import { signedMediaAsset } from "@/lib/admin/media-asset-response";
 import { shouldSetManualMediaPrimary } from "@/lib/admin/media-asset-state";
+import { assertManualImageRightsConfirmed } from "@/lib/admin/primary-image-policy";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -54,8 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ent
       originalFilename = decodeURIComponent(imageUrl.pathname.split("/").pop() || `remote-image.${extension}`).slice(0, 255);
     }
     const sourceType = nullableText(form.get("source_type")); if (!sourceType) throw new Error("Source typeは必須です。");
-    const rightsStatus = nullableText(form.get("rights_status"));
-    if (!rightsStatus || !["approved", "rejected", "needs_review"].includes(rightsStatus)) throw new Error("Rights classificationは必須です。");
+    const rightsStatus = assertManualImageRightsConfirmed(form.get("rights_confirmed"));
     const sourceUrl = nullableText(form.get("source_url")) || (!file ? imageUrlValue : null); assertHttpUrl(sourceUrl, "Source URL");
     uploadedPath = `${entity}/${id}/${randomUUID()}.${extension}`;
     const db = createSupabaseAdminClient();

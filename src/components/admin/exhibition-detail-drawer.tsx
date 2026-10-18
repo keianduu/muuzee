@@ -4,11 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { displayStatus } from "@/lib/admin/master-labels";
 import { canonicalizeExhibitionScheduleQuery, detailPanelQuery, selectedQuery } from "@/lib/admin/master-list-state";
-import { isPrimaryCandidateUsable } from "@/lib/admin/primary-image-policy";
 import { ExhibitionEditor, type ExhibitionEditorProps } from "./exhibition-editor";
 import { MasterImageCandidatePicker } from "./master-image-candidate";
 
-export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) {
+export function ExhibitionDetailDrawer({ selectedId, onRequestClose }: { selectedId?: string; onRequestClose?: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -22,9 +21,10 @@ export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) 
   const [loading, setLoading] = useState(false);
   const secondaryRequested = searchParams.get("panel") === "image";
   const close = useCallback(() => {
-    const query = selectedQuery(canonicalizeExhibitionScheduleQuery(searchParams.toString()), null);
-    router.replace(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    const query = selectedQuery(canonicalizeExhibitionScheduleQuery(window.location.search.slice(1)), null);
+    onRequestClose?.();
+    window.history.replaceState(null, "", `${pathname}${query ? `?${query}` : ""}`);
+  }, [onRequestClose, pathname]);
 
   const closeSecondary = useCallback(() => {
     if (openedSecondary.current) {
@@ -32,15 +32,15 @@ export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) 
       router.back();
       return;
     }
-    const query = detailPanelQuery(canonicalizeExhibitionScheduleQuery(searchParams.toString()), null);
+    const query = detailPanelQuery(canonicalizeExhibitionScheduleQuery(window.location.search.slice(1)), null);
     window.history.replaceState(null, "", `${pathname}${query ? `?${query}` : ""}`);
-  }, [pathname, router, searchParams]);
+  }, [pathname, router]);
 
   const openImageCandidate = useCallback((candidateId: string | null) => {
     openedSecondary.current = true;
-    const query = detailPanelQuery(canonicalizeExhibitionScheduleQuery(searchParams.toString()), "image", { candidateId });
+    const query = detailPanelQuery(canonicalizeExhibitionScheduleQuery(window.location.search.slice(1)), "image", { candidateId });
     window.history.pushState(null, "", `${pathname}?${query}`);
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); setError(""); return; }
@@ -78,7 +78,7 @@ export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) 
       document.body.classList.remove("is-master-drawer-open");
       previouslyFocused.current?.focus?.({ preventScroll: true });
     };
-  }, [router, selectedId]);
+  }, [selectedId]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -116,7 +116,7 @@ export function ExhibitionDetailDrawer({ selectedId }: { selectedId?: string }) 
   if (!selectedId) return null;
   const candidates = detail?.exhibition.source_records
     ?.flatMap((source) => source.source_image_candidates || [])
-    .filter(isPrimaryCandidateUsable) || [];
+    .filter((candidate) => candidate.is_active !== false) || [];
   return <div className={`master-drawer-layer${secondaryRequested ? " has-secondary" : ""}`}>
     <button type="button" className="master-drawer-scrim" aria-label="一覧へ戻る" tabIndex={-1} onClick={close}/>
     <aside className="master-drawer master-drawer--primary" role="dialog" aria-modal={secondaryRequested ? undefined : "true"} aria-hidden={secondaryRequested || undefined} aria-labelledby="exhibition-drawer-title">

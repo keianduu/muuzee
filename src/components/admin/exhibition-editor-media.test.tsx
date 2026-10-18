@@ -36,14 +36,51 @@ describe("Exhibition shared detail architecture", () => {
 
   it("opens Exhibition image candidates in the shared secondary drawer", () => {
     const drawer = read("./exhibition-detail-drawer.tsx");
-    const page = read("../../app/admin/exhibitions/page.tsx");
+    const list = read("./exhibition-list.tsx");
     expect(drawer).toContain('searchParams.get("panel") === "image"');
     expect(drawer).toContain('<MasterImageCandidatePicker entity="exhibitions"');
     expect(drawer).toContain("if (secondaryRequested) closeSecondary()");
     expect(drawer).toContain('data-secondary-return-anchor="image"');
     expect(drawer).toContain("aria-hidden={secondaryRequested || undefined}");
-    expect(page).toContain("data-exhibition-detail-trigger={item.id}");
+    expect(list).toContain("data-exhibition-detail-trigger={item.id}");
     expect(drawer).toContain("element.dataset.exhibitionDetailTrigger === selectedId");
+  });
+
+  it("keeps Exhibition selection in local History state without Router navigation", () => {
+    const list = read("./exhibition-list.tsx");
+    const drawer = read("./exhibition-detail-drawer.tsx");
+    expect(list).toContain("setActiveSelectedId(id)");
+    expect(list).toContain("window.history.pushState");
+    expect(list).toContain('window.addEventListener("popstate", syncSelection)');
+    expect(list).toContain("event.target === event.currentTarget");
+    expect(drawer).toContain("window.history.replaceState");
+    expect(drawer).not.toContain("router.replace(`${pathname}${query");
+  });
+
+  it("renders actionable requirement controls and local editor targeting", () => {
+    const editor = read("./exhibition-editor.tsx");
+    const status = read("./exhibition-status.tsx");
+    expect(status).toContain("requirement-action");
+    expect(status).toContain("onRequirementSelect(item.key)");
+    expect(editor).toContain("exhibitionRequirementTarget(key)");
+    expect(editor).toContain("setTab(target.detailTab)");
+    expect(editor).toContain("setEditTab(target.editTab)");
+    expect(editor).toContain("scrollIntoView");
+    expect(editor).not.toContain("router.push");
+    expect(editor).not.toContain("router.replace");
+  });
+
+  it("enforces the shared manual registration and legacy remediation controls", () => {
+    const manager = read("./admin-image-manager.tsx");
+    const route = read("../../app/api/admin/exhibitions/[id]/media/route.ts");
+    expect(manager).toContain('name="rights_confirmed"');
+    expect(manager).not.toContain('name="rights_status"');
+    expect(manager).toContain("Rightsを確認して利用可能にする");
+    expect(manager).toContain("data-admin-rights-remediation");
+    expect(route).toContain('form.get("image_url")');
+    expect(route).toContain("downloadCandidateImage");
+    expect(route).toContain("assertManualImageRightsConfirmed");
+    expect(route).toContain('rights_status: rightsStatus');
   });
 
   it("keeps only active canonical relations and unresolved active mentions", () => {
