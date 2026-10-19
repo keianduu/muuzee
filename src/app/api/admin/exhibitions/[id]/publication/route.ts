@@ -12,6 +12,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const input = { title: exhibitionResult.data.title, venueId: occurrenceResult.data?.venue_id, startDate: occurrenceResult.data?.start_date, endDate: occurrenceResult.data?.end_date, primaryImage: imageResult.data ? { id: imageResult.data.id, rightsStatus: imageResult.data.rights_status } : null }; const evaluation = evaluatePublication(input);
     if (action === "publish" && !evaluation.canPublish) throw new Error(`公開条件が不足しています: ${evaluation.missing.join("、")}`);
     const nextStatus = action === "unpublish" ? statusAfterUnpublish() : "published"; const { error } = await db.from("exhibitions").update({ publication_status: nextStatus }).eq("id", id); if (error) throw error;
-    revalidatePath("/admin"); revalidatePath("/admin/exhibitions"); revalidatePath(`/admin/exhibitions/${id}`); return NextResponse.json({ message: nextStatus === "published" ? "公開しました。" : "非公開にしました。" });
+    revalidatePath("/admin"); revalidatePath("/admin/exhibitions"); revalidatePath(`/admin/exhibitions/${id}`); return NextResponse.json({ message: nextStatus === "published" ? "公開しました。" : "非公開にしました。", publication_status: nextStatus });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Publication update failed" }, { status: 400 }); }
 }

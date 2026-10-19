@@ -69,7 +69,10 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, requirements, 
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "処理に失敗しました。");
       setMessage(body.message || "保存しました。");
-      window.dispatchEvent(new CustomEvent("muuzee:exhibition-updated", { detail: { id: exhibition.id } }));
+      window.dispatchEvent(new CustomEvent("muuzee:exhibition-updated", { detail: {
+        id: exhibition.id,
+        ...(typeof body.publication_status === "string" ? { publication_status: body.publication_status } : {}),
+      } }));
       if (!embeddedInList) router.refresh();
       return body as Record<string, unknown>;
     } catch (error) {
