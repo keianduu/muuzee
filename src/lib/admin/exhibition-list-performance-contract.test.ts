@@ -23,6 +23,7 @@ describe("Exhibition list performance contract", () => {
     expect(repository).toContain('options.image === "present"');
     expect(repository).toContain('options.image === "missing"');
     expect(repository).toContain('query.ilike("title"');
+    expect(repository).toContain('.is("exhibition_occurrences", null)');
   });
 
   it("signs only primary images belonging to bounded returned rows", () => {
@@ -44,6 +45,8 @@ describe("Exhibition list performance contract", () => {
     expect(component).toContain('clearSelected()');
     expect(component).toContain('window.history.replaceState');
     expect(component).toContain('mergeUniqueRows(current, body.rows)');
+    expect(component).toContain('rebuildLoadedRows(loadedResults.map((loaded) => loaded.rows))');
+    expect(component).toContain('if (!body.matches)');
     expect(component).toContain('pageQuery(queryString, nextPage)');
     expect(component).not.toContain('router.refresh()');
     expect(component).not.toContain('window.location.reload');

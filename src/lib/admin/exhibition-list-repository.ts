@@ -1,6 +1,6 @@
 import { createSupabaseAdminClient, hasSupabaseAdminEnvironment } from "@/lib/supabase/admin";
 import { normalizeExhibitionSchedule, normalizePublicationStatus, type ExhibitionSchedule } from "./master-list-state";
-import type { ExhibitionListResult, ExhibitionListRow } from "./exhibition-list-state";
+import { exhibitionListRowMatchesFilters, occurrenceMatchesSchedule, type ExhibitionListResult, type ExhibitionListRow, type ExhibitionListRowMembershipResult } from "./exhibition-list-state";
 
 export type ExhibitionListOptions = {
   q?: string;
@@ -38,9 +38,19 @@ async function scheduleExhibitionIds(schedule: ExhibitionSchedule, today: string
     return [...new Set((data || []).map((row) => row.exhibition_id))];
   }
   if (schedule === "unknown") {
-    const { data, error } = await base().is("start_date", null).is("end_date", null);
-    if (error) throw error;
-    return [...new Set((data || []).map((row) => row.exhibition_id))];
+    const [undated, withoutActiveOccurrence] = await Promise.all([
+      base().is("start_date", null).is("end_date", null),
+      db.from("exhibitions")
+        .select("id,exhibition_occurrences()")
+        .neq("exhibition_occurrences.relation_status", "stale")
+        .is("exhibition_occurrences", null),
+    ]);
+    if (undated.error) throw undated.error;
+    if (withoutActiveOccurrence.error) throw withoutActiveOccurrence.error;
+    return [...new Set([
+      ...(undated.data || []).map((row) => row.exhibition_id),
+      ...(withoutActiveOccurrence.data || []).map((row) => row.id),
+    ])];
   }
   const [dated, openEnded] = await Promise.all([
     base().gte("end_date", today),
@@ -63,15 +73,6 @@ function intersectIds(left: string[] | null, right: string[] | null) {
   if (!right) return left;
   const accepted = new Set(right);
   return left.filter((id) => accepted.has(id));
-}
-
-export function occurrenceMatchesSchedule(occurrence: Pick<OccurrenceRow, "start_date" | "end_date">, schedule: ExhibitionSchedule, today: string) {
-  const unknown = !occurrence.start_date && !occurrence.end_date;
-  const past = Boolean(occurrence.end_date && occurrence.end_date < today);
-  if (schedule === "unknown") return unknown;
-  if (schedule === "past") return past;
-  if (schedule === "current_upcoming") return !unknown && !past;
-  return true;
 }
 
 async function hydrateRows(baseRows: BaseRow[], schedule: ExhibitionSchedule = "all", today = tokyoToday()): Promise<ExhibitionListRow[]> {
@@ -167,14 +168,18 @@ export async function listExhibitions(options: ExhibitionListOptions = {}): Prom
   }
 }
 
-export async function getExhibitionListRow(id: string, options: Pick<ExhibitionListOptions, "schedule" | "today"> = {}) {
+export async function getExhibitionListRow(id: string, options: Pick<ExhibitionListOptions, "q" | "status" | "image" | "schedule" | "today"> = {}) {
   if (!hasSupabaseAdminEnvironment()) return { data: null, error: "Supabase環境変数が未設定です。", configured: false };
   try {
     const db = createSupabaseAdminClient();
     const { data, error } = await db.from("exhibitions").select("id,title,updated_at,publication_status").eq("id", id).single();
     if (error) throw error;
-    const [row] = await hydrateRows([data as BaseRow], normalizeExhibitionSchedule(options.schedule), options.today || tokyoToday());
-    return { data: row, error: null, configured: true };
+    const today = options.today || tokyoToday();
+    const [row] = await hydrateRows([data as BaseRow], normalizeExhibitionSchedule(options.schedule), today);
+    const result: ExhibitionListRowMembershipResult = exhibitionListRowMatchesFilters(row, options, today)
+      ? { matches: true, row }
+      : { matches: false };
+    return { data: result, error: null, configured: true };
   } catch (error) {
     return { data: null, error: error instanceof Error ? error.message : "展覧会一覧行の取得に失敗しました。", configured: true };
   }

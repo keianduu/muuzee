@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyExhibitionPublicationUpdate, isExhibitionListUpdate, nextFocusIdAfterRemoval, type ExhibitionListRow } from "./exhibition-list-state";
-import { occurrenceMatchesSchedule } from "./exhibition-list-repository";
-import { mergeUniqueRows } from "./master-list-state";
+import { applyExhibitionPublicationUpdate, exhibitionListRowMatchesFilters, exhibitionMatchesSchedule, isExhibitionListUpdate, nextFocusIdAfterRemoval, occurrenceMatchesSchedule, type ExhibitionListRow } from "./exhibition-list-state";
+import { mergeUniqueRows, rebuildLoadedRows } from "./master-list-state";
 
 function row(id: string, publication_status = "draft"): ExhibitionListRow {
   return {
@@ -63,11 +62,40 @@ describe("Exhibition list update state", () => {
     expect(new Set(appended.map((item) => item.id)).size).toBe(70);
   });
 
+  it("rebuilds the loaded boundary after an early row leaves page one", () => {
+    const serverRows = Array.from({ length: 100 }, (_, index) => row(String(index + 1)));
+    const afterRemoval = serverRows.filter((item) => item.id !== "10");
+    const reconciled = rebuildLoadedRows([afterRemoval.slice(0, 50)]);
+
+    expect(reconciled).toHaveLength(50);
+    expect(reconciled.some((item) => item.id === "51")).toBe(true);
+    expect(new Set(reconciled.map((item) => item.id)).size).toBe(50);
+  });
+
   it("selects an occurrence summary that matches the active schedule filter", () => {
     const today = "2026-10-19";
     expect(occurrenceMatchesSchedule({ start_date: "2026-01-01", end_date: "2026-10-18" }, "past", today)).toBe(true);
     expect(occurrenceMatchesSchedule({ start_date: "2026-10-01", end_date: "2026-12-01" }, "current_upcoming", today)).toBe(true);
     expect(occurrenceMatchesSchedule({ start_date: null, end_date: null }, "unknown", today)).toBe(true);
     expect(occurrenceMatchesSchedule({ start_date: null, end_date: null }, "current_upcoming", today)).toBe(false);
+  });
+
+  it("keeps Exhibitions without active occurrences in unknown only", () => {
+    const today = "2026-10-19";
+    expect(exhibitionMatchesSchedule([], "unknown", today)).toBe(true);
+    expect(exhibitionMatchesSchedule([], "current_upcoming", today)).toBe(false);
+    expect(exhibitionMatchesSchedule([], "past", today)).toBe(false);
+  });
+
+  it("evaluates publication, image, keyword, and schedule membership for one refreshed row", () => {
+    const today = "2026-10-19";
+    const candidate = row("a");
+    candidate.title = "Tokyo Modern Art";
+
+    expect(exhibitionListRowMatchesFilters(candidate, { status: "unpublished", image: "missing", q: "modern", schedule: "unknown" }, today)).toBe(true);
+    expect(exhibitionListRowMatchesFilters(candidate, { status: "published", schedule: "unknown" }, today)).toBe(false);
+    expect(exhibitionListRowMatchesFilters({ ...candidate, image: { kind: "primary", rights_status: "approved", thumbnail_url: "/image.jpg" } }, { image: "missing", schedule: "unknown" }, today)).toBe(false);
+    expect(exhibitionListRowMatchesFilters(candidate, { q: "impressionism", schedule: "unknown" }, today)).toBe(false);
+    expect(exhibitionListRowMatchesFilters({ ...candidate, occurrence: { start_date: "2026-10-01", end_date: "2026-12-01", venue: null } }, { schedule: "unknown" }, today)).toBe(false);
   });
 });

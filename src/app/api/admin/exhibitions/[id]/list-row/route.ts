@@ -7,7 +7,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     if (!validUuid(id)) throw new Error("Invalid exhibition ID");
     const query = new URL(request.url).searchParams;
-    const result = await getExhibitionListRow(id, { schedule: query.get("schedule") || undefined });
+    const result = await getExhibitionListRow(id, {
+      q: query.get("q") || undefined,
+      status: query.get("status") || undefined,
+      image: query.get("image") || undefined,
+      schedule: query.get("schedule") || undefined,
+    });
     if (!result.data) return NextResponse.json({ error: result.error || "展覧会一覧行が見つかりません。" }, { status: 404 });
     return NextResponse.json(result.data);
   } catch (error) {

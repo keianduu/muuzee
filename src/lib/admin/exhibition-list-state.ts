@@ -1,4 +1,4 @@
-import { publicationMatches, type PublicationListStatus } from "./master-list-state";
+import { normalizeExhibitionSchedule, normalizePublicationStatus, publicationMatches, type ExhibitionSchedule, type PublicationListStatus } from "./master-list-state";
 
 export const EXHIBITION_LIST_UPDATED_EVENT = "muuzee:exhibition-updated";
 
@@ -38,6 +38,44 @@ export type ExhibitionListUpdate = {
   publication_status?: string;
   row?: ExhibitionListRow;
 };
+
+export type ExhibitionListRowMembershipResult =
+  | { matches: true; row: ExhibitionListRow }
+  | { matches: false };
+
+type ScheduleOccurrence = {
+  start_date: string | null;
+  end_date: string | null;
+};
+
+export function occurrenceMatchesSchedule(occurrence: ScheduleOccurrence, schedule: ExhibitionSchedule, today: string) {
+  const unknown = !occurrence.start_date && !occurrence.end_date;
+  const past = Boolean(occurrence.end_date && occurrence.end_date < today);
+  if (schedule === "unknown") return unknown;
+  if (schedule === "past") return past;
+  if (schedule === "current_upcoming") return !unknown && !past;
+  return true;
+}
+
+export function exhibitionMatchesSchedule(occurrences: readonly ScheduleOccurrence[], schedule: ExhibitionSchedule, today: string) {
+  if (schedule === "all") return true;
+  if (!occurrences.length) return schedule === "unknown";
+  return occurrences.some((occurrence) => occurrenceMatchesSchedule(occurrence, schedule, today));
+}
+
+export function exhibitionListRowMatchesFilters(
+  row: ExhibitionListRow,
+  filters: { q?: string; status?: string; image?: string; schedule?: string },
+  today: string,
+) {
+  if (!publicationMatches(row.publication_status, normalizePublicationStatus(filters.status))) return false;
+  const query = filters.q?.trim().toLocaleLowerCase();
+  if (query && !row.title.toLocaleLowerCase().includes(query)) return false;
+  if (filters.image === "present" && row.image.kind !== "primary") return false;
+  if (filters.image === "missing" && row.image.kind === "primary") return false;
+  const occurrences = row.occurrence ? [row.occurrence] : [];
+  return exhibitionMatchesSchedule(occurrences, normalizeExhibitionSchedule(filters.schedule), today);
+}
 
 export function isExhibitionListUpdate(value: unknown): value is ExhibitionListUpdate {
   if (!value || typeof value !== "object") return false;
