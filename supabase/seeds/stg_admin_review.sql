@@ -407,6 +407,13 @@ with candidate_matrix(owner_type, owner_index, candidate_index, candidate_sequen
     ('exhibition', 7, 1, 301, 307, 'd', 'approved'),
     ('exhibition', 8, 1, 302, 308, 'a', 'needs_review'),
     ('exhibition', 8, 2, 303, 308, 'b', 'rejected')
+), candidate_assets as (
+  select
+    candidate_matrix.*,
+    'https://raw.githubusercontent.com/keianduu/muuzee/main/prototype/assets/images/exhibitions/exhibition-' ||
+      case image_variant when 'a' then '01' when 'b' then '02' when 'c' then '03' else '04' end ||
+      '.jpg' as candidate_image_url
+  from candidate_matrix
 )
 insert into public.source_image_candidates (
   id,
@@ -441,11 +448,11 @@ insert into public.source_image_candidates (
 select
   ('32590000-0000-4325-8325-02' || lpad(candidate_sequence::text, 10, '0'))::uuid,
   ('32590000-0000-4325-8325-01' || lpad(source_sequence::text, 10, '0'))::uuid,
-  :'fixture_base_url' || '/fixtures/order3259-review-' || image_variant || '.svg',
-  :'fixture_base_url' || '/fixtures/order3259-review-' || image_variant || '.svg',
+  candidate_image_url,
+  candidate_image_url,
   'muuzee_stg_admin_review_fixture',
   'order3259-' || owner_type || '-' || owner_index || '-candidate-' || candidate_index,
-  :'fixture_base_url' || '/fixtures/order3259-review-' || image_variant || '.svg',
+  candidate_image_url,
   'Muuzee QA Fixture',
   '[STG QA] Synthetic fixture ' || upper(image_variant),
   'CC0 1.0',
@@ -469,7 +476,7 @@ select
   'Order 325.9 deterministic candidate state.',
   '2026-10-16T00:00:00Z'::timestamptz,
   '2026-10-16T00:00:00Z'::timestamptz
-from candidate_matrix
+from candidate_assets
 on conflict (id) do update set
   source_record_id = excluded.source_record_id,
   image_url = excluded.image_url,

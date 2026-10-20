@@ -154,6 +154,14 @@ describe("STG Admin Review Fixture safety", () => {
     expect(createSyntheticPng(1)).not.toEqual(first);
   });
 
+  it("uses a public HTTPS raster for every actionable image Candidate", () => {
+    expect(seed).toContain("https://raw.githubusercontent.com/keianduu/muuzee/main/prototype/assets/images/exhibitions/exhibition-");
+    expect(seed).toContain("candidate_image_url");
+    const candidateSection = seed.slice(seed.indexOf("with candidate_matrix"), seed.indexOf("with media_matrix"));
+    expect(candidateSection).not.toContain("/fixtures/order3259-review-");
+    expect(candidateSection).not.toContain(".svg");
+  });
+
   it("defines the required volumes and uses exact-owner cleanup without destructive shortcuts", () => {
     expect(FIXTURE_COUNTS).toMatchObject({
       exhibitions: 56,
