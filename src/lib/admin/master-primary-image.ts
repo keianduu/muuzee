@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { assertCandidateImageUrl, downloadCandidateImage } from "./candidate-image";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { MASTER_CONFIGS, type MasterEntity } from "./master-config";
-import { canRegisterPrimaryCandidate, chooseAutoPrimaryCandidate, isPrimaryCandidateUsable, mediaAssetMetadataFromCandidate } from "./primary-image-policy";
+import { candidateRightsDecision, canRegisterPrimaryCandidate, chooseAutoPrimaryCandidate, isPrimaryCandidateUsable, mediaAssetMetadataFromCandidate } from "./primary-image-policy";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const IMAGE_OWNER_CONFIGS = {
@@ -27,7 +27,7 @@ export async function setMasterPrimaryFromCandidate(entity: ImageOwnerEntity, ma
   const { data: candidate, error: candidateError } = await db.from("source_image_candidates").select("*").eq("id", candidateId).in("source_record_id", sourceIds).single();
   if (candidateError || !candidate) throw candidateError || new Error("画像Candidateが見つかりません。");
   if (!canRegisterPrimaryCandidate(candidate, options.approveRights)) {
-    if (candidate.rights_status === "needs_review") throw new Error("利用条件の確認と明示的な承認が必要です。");
+    if (candidateRightsDecision(candidate) === "review_required") throw new Error("利用条件の確認と明示的な承認が必要です。");
     throw new Error("利用できない候補です。");
   }
   const rightsCheckedAt = new Date().toISOString();

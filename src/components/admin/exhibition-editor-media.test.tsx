@@ -44,6 +44,24 @@ describe("Exhibition shared detail architecture", () => {
     expect(drawer).toContain("aria-hidden={secondaryRequested || undefined}");
     expect(list).toContain("data-exhibition-detail-trigger={item.id}");
     expect(drawer).toContain("element.dataset.exhibitionDetailTrigger === selectedId");
+    expect(drawer).toContain("await refreshDetail()");
+    expect(drawer).toContain("onSelected={completeCandidateSelection}");
+    expect(drawer).not.toContain('window.addEventListener("muuzee:exhibition-updated"');
+    expect(drawer).not.toContain('window.addEventListener("muuzee:master-updated"');
+  });
+
+  it("awaits one canonical Detail refresh before notifying the Exhibition list", () => {
+    const editor = read("./exhibition-editor.tsx");
+    const mutation = read("../../lib/admin/exhibition-mutation.ts");
+    const picker = read("./master-image-candidate.tsx");
+    expect(editor).toContain("completeExhibitionMutation");
+    expect(editor).toContain("refreshDetail: onMutationCommitted");
+    expect(editor).toContain("notifyList: () => notifyList(body)");
+    expect(editor).not.toContain("router.refresh");
+    expect(mutation.indexOf("options.applyImmediate?.()")).toBeLessThan(mutation.indexOf("await options.refreshDetail()"));
+    expect(mutation.indexOf("await options.refreshDetail()")).toBeLessThan(mutation.indexOf("options.notifyList()"));
+    expect(picker).toContain("onSelected: () => void | Promise<void>");
+    expect(picker).toContain("await completeSelection()");
   });
 
   it("keeps Exhibition selection in local History state without Router navigation", () => {

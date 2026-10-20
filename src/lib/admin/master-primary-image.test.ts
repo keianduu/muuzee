@@ -10,7 +10,7 @@ function imageSelectionDb(ownerKey = "venue_id") {
       { id: "candidate-a", source_record_id: "source-1", source_url: "https://source.example/a", image_url: "https://image.example/a.jpg", is_active: true, review_status: "unreviewed", rights_status: "approved" },
       { id: "candidate-b", source_record_id: "source-1", source_url: "https://source.example/b", image_url: "https://image.example/b.jpg", is_active: true, review_status: "unreviewed", rights_status: "needs_review" },
       { id: "candidate-c", source_record_id: "source-1", source_url: "https://source.example/c", image_url: "https://image.example/c.jpg", is_active: true, review_status: "unreviewed", rights_status: "approved" },
-    ],
+    ] as Array<Record<string, unknown> & { id: string; is_active: boolean; review_status: string; rights_status: string | null }>,
     media: [
       { id: "asset-a", [ownerKey]: "venue-1", source_url: "https://source.example/a", is_primary: true },
       { id: "asset-b", [ownerKey]: "venue-1", source_url: "https://source.example/b", is_primary: false },
@@ -78,6 +78,19 @@ describe("shared Venue / Artist primary image policy", () => {
     ]);
     expect(state.candidates.find(({ id }) => id === "candidate-b")).toMatchObject({ rights_status: "approved" });
     expect(state.media.find(({ id }) => id === "asset-b")).toMatchObject({ rights_status: "approved" });
+  });
+
+  it("requires explicit approval for null Rights and persists only approved Candidate / Media state", async () => {
+    const { db, state } = imageSelectionDb();
+    state.candidates.push({ id: "candidate-null", source_record_id: "source-1", source_url: "https://source.example/null", image_url: "https://image.example/null.jpg", is_active: true, review_status: "unreviewed", rights_status: null });
+    state.media.push({ id: "asset-null", venue_id: "venue-1", source_url: "https://source.example/null", is_primary: false });
+
+    await expect(setMasterPrimaryFromCandidate("venues", "venue-1", "candidate-null", { replaceExisting: true }, db)).rejects.toThrow("明示的な承認");
+    await setMasterPrimaryFromCandidate("venues", "venue-1", "candidate-null", { replaceExisting: true, approveRights: true }, db);
+
+    expect(state.candidates.find(({ id }) => id === "candidate-null")).toMatchObject({ rights_status: "approved", review_status: "accepted", is_active: true });
+    expect(state.media.find(({ id }) => id === "asset-null")).toMatchObject({ rights_status: "approved", is_primary: true });
+    expect(state.media.filter((asset) => asset.is_primary)).toHaveLength(1);
   });
 
   it("does not auto-select a needs-review candidate", async () => {

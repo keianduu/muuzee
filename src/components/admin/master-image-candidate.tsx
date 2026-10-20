@@ -4,6 +4,7 @@
 
 import type { SourceImageCandidateRow } from "@/lib/admin/types";
 import { candidateLicenseProfile, imageDiscoverySourceLabel } from "@/lib/admin/master-image";
+import { candidateRightsDecision } from "@/lib/admin/primary-image-policy";
 import { AdminFeedback } from "./admin-feedback";
 import { useState } from "react";
 import { dispatchAdminMediaMutation, type AdminMediaEntity } from "@/lib/admin/media-asset-state";
@@ -33,8 +34,9 @@ export function MasterImageCandidateCard({ candidate, subjectLabel, busy, onSetP
   onSetPrimary: (approveRights: boolean) => void;
 }) {
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
-  const rejected = candidate.rights_status === "rejected" || candidate.review_status === "rejected" || !candidate.is_active;
-  const needsConfirmation = candidate.rights_status === "needs_review";
+  const rightsDecision = candidateRightsDecision(candidate);
+  const rejected = rightsDecision === "rejected";
+  const needsConfirmation = rightsDecision === "review_required";
   const disabled = busy || rejected || (needsConfirmation && !rightsConfirmed);
   const match = candidateMatchSummary(candidate);
   return <article className="card media-card">
@@ -57,10 +59,17 @@ export function MasterImageCandidatePicker({ entity, ownerId, candidates, subjec
   ownerId: string;
   candidates: SourceImageCandidateRow[];
   subjectLabel: string;
-  onSelected: () => void;
+  onSelected: () => void | Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [selectionCommitted, setSelectionCommitted] = useState(false);
+
+  async function completeSelection() {
+    await onSelected();
+    setMessage("");
+  }
+
   async function select(candidate: SourceImageCandidateRow, approveRights: boolean) {
     setBusy(true); setMessage("");
     try {
@@ -68,11 +77,20 @@ export function MasterImageCandidatePicker({ entity, ownerId, candidates, subjec
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "候補画像の設定に失敗しました。");
       if (body.asset) dispatchAdminMediaMutation({ entity, ownerId, asset: body.asset });
-      window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity, id: ownerId, preserveListOrder: true } }));
-      onSelected();
+      setSelectionCommitted(true);
+      if (entity !== "exhibitions") window.dispatchEvent(new CustomEvent("muuzee:master-updated", { detail: { entity, id: ownerId, preserveListOrder: true } }));
+      await completeSelection();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "候補画像の設定に失敗しました。");
     } finally { setBusy(false); }
   }
-  return <div className="candidate-picker"><p className="candidate-picker-count">確認できる候補 {candidates.length}件</p><div className="media-grid">{candidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={subjectLabel} busy={busy} onSetPrimary={(approveRights) => select(candidate, approveRights)}/>)}</div><AdminFeedback variant="error" message={message}/></div>;
+  async function retryCompletion() {
+    setBusy(true); setMessage("");
+    try {
+      await completeSelection();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "最新状態の取得に失敗しました。");
+    } finally { setBusy(false); }
+  }
+  return <div className="candidate-picker"><p className="candidate-picker-count">確認できる候補 {candidates.length}件</p><div className="media-grid">{candidates.map((candidate) => <MasterImageCandidateCard key={candidate.id} candidate={candidate} subjectLabel={subjectLabel} busy={busy || selectionCommitted} onSetPrimary={(approveRights) => select(candidate, approveRights)}/>)}</div><AdminFeedback variant="error" message={message}/>{selectionCommitted && message && <div className="actions"><button type="button" className="button secondary" disabled={busy} onClick={retryCompletion}>最新状態を再取得</button></div>}</div>;
 }

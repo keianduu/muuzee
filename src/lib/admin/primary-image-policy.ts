@@ -10,15 +10,21 @@ export type AutoPrimaryDecision =
   | { candidateId: string; reason: "single_candidate" }
   | { candidateId: null; reason: "primary_exists" | "no_candidates" | "multiple_candidates" };
 
+export type CandidateRightsDecision = "approved" | "rejected" | "review_required";
+
+export function candidateRightsDecision(candidate: PrimaryImageCandidate): CandidateRightsDecision {
+  if (candidate.is_active === false || candidate.review_status === "rejected" || candidate.rights_status === "rejected") return "rejected";
+  return candidate.rights_status === "approved" ? "approved" : "review_required";
+}
+
 export function isPrimaryCandidateUsable(candidate: PrimaryImageCandidate) {
-  return candidate.is_active !== false
-    && candidate.review_status !== "rejected"
-    && candidate.rights_status === "approved";
+  return candidateRightsDecision(candidate) === "approved";
 }
 
 export function canRegisterPrimaryCandidate(candidate: PrimaryImageCandidate, approveRights = false) {
-  if (candidate.is_active === false || candidate.review_status === "rejected" || candidate.rights_status === "rejected") return false;
-  return candidate.rights_status === "approved" || (candidate.rights_status === "needs_review" && approveRights);
+  const decision = candidateRightsDecision(candidate);
+  if (decision === "rejected") return false;
+  return decision === "approved" || approveRights;
 }
 
 export function isLegacyMediaRightsApprovable(rightsStatus: string | null | undefined) {

@@ -208,7 +208,7 @@ export type SourceImageCandidateRow = {
   license_short_name: string | null;
   license_url: string | null;
   usage_terms: string | null;
-  rights_status: "rejected" | "needs_review" | "approved";
+  rights_status: string | null;
   candidate_entity_id: string | null;
   candidate_entity_label: string | null;
   candidate_match_confidence: number | null;

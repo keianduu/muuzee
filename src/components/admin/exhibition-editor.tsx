@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ExhibitionRow, MediaAssetRow, OccurrenceRow, SourceImageCandidateRow, VenueRow } from "@/lib/admin/types";
 import type { PublicationRequirement } from "@/lib/admin/publication";
 import { exhibitionRequirementTarget } from "@/lib/admin/exhibition-requirement-target";
+import { completeExhibitionMutation, EXHIBITION_REFRESH_FAILED_MESSAGE } from "@/lib/admin/exhibition-mutation";
 import { dispatchAdminMediaMutation } from "@/lib/admin/media-asset-state";
 import { AdminFeedback } from "./admin-feedback";
 import { AdminImageManager } from "./admin-image-manager";
@@ -14,15 +14,18 @@ import { ExhibitionDataReview } from "./exhibition-data-review";
 import { ExhibitionRelations } from "./exhibition-relations";
 import { ExhibitionStatus } from "./exhibition-status";
 
-export type ExhibitionEditorProps = {
+export type ExhibitionDetailData = {
   exhibition: ExhibitionRow;
   occurrence: OccurrenceRow | null;
   venue: VenueRow | null;
   prompt: string;
   requirements: PublicationRequirement[];
   canPublish: boolean;
-  embeddedInList?: boolean;
+};
+
+export type ExhibitionEditorProps = ExhibitionDetailData & {
   onOpenImageCandidate?: (candidateId: string | null) => void;
+  onMutationCommitted: () => Promise<void>;
 };
 
 type DetailTab = "status" | "edit" | "data";
@@ -40,12 +43,12 @@ const EXHIBITION_SOURCE_TYPES = [
   { value: "other", label: "Other" },
 ] as const;
 
-export function ExhibitionEditor({ exhibition, occurrence, venue, requirements, canPublish, embeddedInList = false, onOpenImageCandidate }: ExhibitionEditorProps) {
-  const router = useRouter();
+export function ExhibitionEditor({ exhibition, occurrence, venue, requirements, canPublish, onOpenImageCandidate, onMutationCommitted }: ExhibitionEditorProps) {
   const [tab, setTab] = useState<DetailTab>("status");
   const [editTab, setEditTab] = useState<EditTab>("basic");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
 
   function openRequirement(key: PublicationRequirement["key"]) {
     const target = exhibitionRequirementTarget(key);
@@ -62,19 +65,32 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, requirements, 
     }));
   }
 
-  async function request(url: string, init: RequestInit) {
+  function notifyList(body: Record<string, unknown> = {}) {
+    window.dispatchEvent(new CustomEvent("muuzee:exhibition-updated", { detail: {
+      id: exhibition.id,
+      ...(typeof body.publication_status === "string" ? { publication_status: body.publication_status } : {}),
+    } }));
+  }
+
+  async function request(url: string, init: RequestInit, applyImmediate?: (body: Record<string, unknown>) => void) {
     setBusy(true); setMessage("");
+    setRefreshFailed(false);
     try {
       const response = await fetch(url, init);
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "処理に失敗しました。");
-      setMessage(body.message || "保存しました。");
-      window.dispatchEvent(new CustomEvent("muuzee:exhibition-updated", { detail: {
-        id: exhibition.id,
-        ...(typeof body.publication_status === "string" ? { publication_status: body.publication_status } : {}),
-      } }));
-      if (!embeddedInList) router.refresh();
-      return body as Record<string, unknown>;
+      const body = await response.json() as Record<string, unknown>;
+      if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "処理に失敗しました。");
+      try {
+        await completeExhibitionMutation({
+          applyImmediate: () => applyImmediate?.(body),
+          refreshDetail: onMutationCommitted,
+          notifyList: () => notifyList(body),
+        });
+        setMessage(typeof body.message === "string" ? body.message : "保存しました。");
+      } catch {
+        setRefreshFailed(true);
+        setMessage(EXHIBITION_REFRESH_FAILED_MESSAGE);
+      }
+      return body;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "処理に失敗しました。");
       return null;
@@ -87,24 +103,41 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, requirements, 
     await request(`/api/admin/exhibitions/${exhibition.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) });
   }
   async function upload(form: FormData) {
-    const body = await request(`/api/admin/exhibitions/${exhibition.id}/media`, { method: "POST", body: form });
-    if (body?.asset) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow });
+    await request(`/api/admin/exhibitions/${exhibition.id}/media`, { method: "POST", body: form }, (body) => {
+      if (body.asset) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow });
+    });
   }
   async function publication(next: boolean) {
     await request(`/api/admin/exhibitions/${exhibition.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: next ? "publish" : "unpublish" }) });
   }
   async function remove(asset: MediaAssetRow) {
     if (!window.confirm(`${asset.original_filename || "画像"}を削除しますか？`)) return;
-    const body = await request(`/api/admin/exhibitions/${exhibition.id}/media/${asset.id}`, { method: "DELETE" });
-    if (body?.removedAssetId) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, removedAssetId: String(body.removedAssetId) });
+    await request(`/api/admin/exhibitions/${exhibition.id}/media/${asset.id}`, { method: "DELETE" }, (body) => {
+      if (body.removedAssetId) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, removedAssetId: String(body.removedAssetId) });
+    });
   }
   async function approveRights(asset: MediaAssetRow) {
-    const body = await request(`/api/admin/exhibitions/${exhibition.id}/media/${asset.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve_rights" }) });
-    if (body?.asset) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow });
+    await request(`/api/admin/exhibitions/${exhibition.id}/media/${asset.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve_rights" }) }, (body) => {
+      if (body.asset) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow });
+    });
   }
   async function setPrimaryCandidate(candidate: SourceImageCandidateRow, approveRights: boolean) {
-    const body = await request(`/api/admin/masters/exhibitions/${exhibition.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approveRights }) });
-    if (body?.asset) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow });
+    await request(`/api/admin/masters/exhibitions/${exhibition.id}/image-candidates/${candidate.id}/set-primary`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ approveRights }) }, (body) => {
+      if (body.asset) dispatchAdminMediaMutation({ entity: "exhibitions", ownerId: exhibition.id, asset: body.asset as MediaAssetRow });
+    });
+  }
+
+  async function retryRefresh() {
+    setBusy(true); setMessage("");
+    try {
+      await onMutationCommitted();
+      notifyList();
+      setRefreshFailed(false);
+      setMessage("最新状態を取得しました。");
+    } catch {
+      setRefreshFailed(true);
+      setMessage(EXHIBITION_REFRESH_FAILED_MESSAGE);
+    } finally { setBusy(false); }
   }
 
   const imageCandidates = (exhibition.source_records || []).flatMap((source) => source.source_image_candidates || []).filter((candidate) => candidate.is_active !== false);
@@ -123,6 +156,7 @@ export function ExhibitionEditor({ exhibition, occurrence, venue, requirements, 
       </div>}
       {tab === "data" && <ExhibitionDataReview exhibition={exhibition}/>}
       <AdminFeedback variant={message.includes("失敗") || message.includes("不足") || message.includes("必要") ? "error" : "success"} message={message}/>
+      {refreshFailed && <div className="actions"><button type="button" className="button secondary" disabled={busy} onClick={retryRefresh}>最新状態を再取得</button></div>}
     </div>
   </>;
 }
