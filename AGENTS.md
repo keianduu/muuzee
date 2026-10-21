@@ -725,3 +725,14 @@ Key rules:
 - ChatGPT reviews the actual current state, creates/refines separate Tasks when needed, closes the current Task only after Acceptance Criteria/Human gates are satisfied, then prepares the next eligible Task.
 - In a new chat, recover state from durable project sources; do not require the user to restate prior chat history.
 - Every Codex instruction shown to the user must be one contiguous, self-contained block that can be copied in full with one action. Do not split required instructions across surrounding prose or multiple blocks.
+
+
+## Codex Completion Notification
+
+For ChatGPT/Codex-orchestrated Muuzee work, completion notification is part of the closeout contract.
+
+After the current run has reached its requested STOP point and any required commit, push, validation, and Notion update are complete, trigger the GitHub completion notification exactly once as defined in:
+
+`docs/codex-orchestration-workflow.md`
+
+Use the repository workflow `codex-completion-notify.yml`. Do not notify at intermediate checkpoints. Notification failure must be reported, but it must not cause implementation work to be repeated or scope to expand.
