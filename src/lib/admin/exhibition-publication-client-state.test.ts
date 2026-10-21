@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  commitExhibitionPublicationState,
   exhibitionClientListQuery,
   exhibitionFirstPageCacheKey,
   exhibitionFirstPageRequestQuery,
   exhibitionListPath,
+  failExhibitionPublicationState,
+  isCurrentExhibitionListRequest,
   isLatestExhibitionListRequest,
+  requestExhibitionPublicationState,
 } from "./exhibition-publication-client-state";
 
 describe("Exhibition publication client state", () => {
@@ -38,5 +42,79 @@ describe("Exhibition publication client state", () => {
     expect(exhibitionListPath("/admin/exhibitions", "")).toBe("/admin/exhibitions");
     expect(isLatestExhibitionListRequest(3, 3)).toBe(true);
     expect(isLatestExhibitionListRequest(2, 3)).toBe(false);
+  });
+
+  it("keeps the last valid committed list while an uncached target is pending", () => {
+    const current = {
+      requestedQuery: "status=unpublished",
+      committed: { query: "status=unpublished", result: { rows: ["A"] } },
+    };
+    const pending = requestExhibitionPublicationState(current, "status=published");
+
+    expect(pending.requestedQuery).toBe("status=published");
+    expect(pending.committed).toEqual(current.committed);
+    expect(commitExhibitionPublicationState(pending, "status=published", { rows: ["B"] })).toEqual({
+      requestedQuery: "status=published",
+      committed: { query: "status=published", result: { rows: ["B"] } },
+    });
+  });
+
+  it("commits cached targets immediately and retains them when revalidation fails", () => {
+    const current = {
+      requestedQuery: "status=unpublished",
+      committed: { query: "status=unpublished", result: { rows: ["A"] } },
+    };
+    const cached = requestExhibitionPublicationState(current, "status=published", { rows: ["B cached"] });
+
+    expect(cached.committed).toEqual({ query: "status=published", result: { rows: ["B cached"] } });
+    expect(failExhibitionPublicationState(cached, true)).toEqual(cached);
+  });
+
+  it("rolls rapid uncached switches back to the last valid committed state", () => {
+    const current = {
+      requestedQuery: "status=unpublished",
+      committed: { query: "status=unpublished", result: { rows: ["A"] } },
+    };
+    const pendingB = requestExhibitionPublicationState(current, "status=published");
+    const pendingC = requestExhibitionPublicationState(pendingB, "status=archived");
+    const failedC = failExhibitionPublicationState(pendingC, false);
+
+    expect(pendingB.committed.query).toBe("status=unpublished");
+    expect(pendingC.committed.query).toBe("status=unpublished");
+    expect(failedC).toEqual(current);
+  });
+
+  it("keeps mutation membership on the committed status while another status is pending", () => {
+    const pending = requestExhibitionPublicationState({
+      requestedQuery: "status=unpublished",
+      committed: { query: "status=unpublished", result: { rows: ["A"] } },
+    }, "status=published");
+
+    expect(new URLSearchParams(pending.requestedQuery).get("status")).toBe("published");
+    expect(new URLSearchParams(pending.committed.query).get("status")).toBe("unpublished");
+  });
+
+  it("uses the same committed-state contract for uncached and cached history targets", () => {
+    const current = {
+      requestedQuery: "status=unpublished",
+      committed: { query: "status=unpublished", result: { rows: ["A"] } },
+    };
+    const uncachedBack = requestExhibitionPublicationState(current, "status=published");
+    const cachedForward = requestExhibitionPublicationState(current, "status=archived", { rows: ["C cached"] });
+
+    expect(uncachedBack.committed).toEqual(current.committed);
+    expect(cachedForward.committed).toEqual({ query: "status=archived", result: { rows: ["C cached"] } });
+  });
+
+  it("rejects an old 50-row page response after the committed query or request generation changes", () => {
+    const oldPageTwo = [{ id: "A-51" }, { id: "A-52" }];
+    const committedRows = [{ id: "B-1" }];
+    const acceptsOldPage = isCurrentExhibitionListRequest("status=unpublished", "status=published", 4, 5);
+    const rowsAfterOldResponse = acceptsOldPage ? [...committedRows, ...oldPageTwo] : committedRows;
+
+    expect(isCurrentExhibitionListRequest("status=unpublished", "status=unpublished", 4, 4)).toBe(true);
+    expect(isCurrentExhibitionListRequest("status=unpublished", "status=published", 4, 4)).toBe(false);
+    expect(isCurrentExhibitionListRequest("status=published", "status=published", 3, 4)).toBe(false);
+    expect(rowsAfterOldResponse).toEqual(committedRows);
   });
 });

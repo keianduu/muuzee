@@ -5,15 +5,17 @@ import { AdminListControls } from "./admin-list-controls";
 import { ExhibitionList } from "./exhibition-list";
 import { EXHIBITION_LIST_UPDATED_EVENT, type ExhibitionListResult } from "@/lib/admin/exhibition-list-state";
 import {
+  commitExhibitionPublicationState,
   exhibitionClientListQuery,
   exhibitionFirstPageCacheKey,
   exhibitionFirstPageRequestQuery,
   exhibitionListPath,
-  isLatestExhibitionListRequest,
+  failExhibitionPublicationState,
+  isCurrentExhibitionListRequest,
+  requestExhibitionPublicationState,
+  type ExhibitionPublicationClientState,
 } from "@/lib/admin/exhibition-publication-client-state";
 import { normalizePublicationStatus, type PublicationListStatus } from "@/lib/admin/master-list-state";
-
-type ValidListState = { query: string; result: ExhibitionListResult };
 
 export function ExhibitionListShell({
   initialResult,
@@ -25,22 +27,22 @@ export function ExhibitionListShell({
   initialSelectedId?: string;
 }) {
   const initialQuery = exhibitionClientListQuery(initialQueryString);
-  const [queryString, setQueryString] = useState(initialQuery);
-  const [result, setResult] = useState(initialResult);
+  const initialClientState = {
+    requestedQuery: initialQuery,
+    committed: { query: initialQuery, result: initialResult },
+  };
+  const [clientState, setClientState] = useState<ExhibitionPublicationClientState<ExhibitionListResult>>(initialClientState);
   const [pendingStatus, setPendingStatus] = useState<PublicationListStatus | null>(null);
   const [switchError, setSwitchError] = useState("");
   const [retryQuery, setRetryQuery] = useState<string | null>(null);
-  const queryRef = useRef(initialQuery);
-  const resultRef = useRef(initialResult);
+  const clientStateRef = useRef<ExhibitionPublicationClientState<ExhibitionListResult>>(initialClientState);
   const cacheRef = useRef(new Map([[exhibitionFirstPageCacheKey(initialQuery), initialResult]]));
   const requestGeneration = useRef(0);
   const requestController = useRef<AbortController | null>(null);
 
-  const applyListState = useCallback((next: ValidListState) => {
-    queryRef.current = next.query;
-    resultRef.current = next.result;
-    setQueryString(next.query);
-    setResult(next.result);
+  const applyClientState = useCallback((next: ExhibitionPublicationClientState<ExhibitionListResult>) => {
+    clientStateRef.current = next;
+    setClientState(next);
   }, []);
 
   useEffect(() => {
@@ -49,15 +51,14 @@ export function ExhibitionListShell({
     requestGeneration.current += 1;
     cacheRef.current.clear();
     cacheRef.current.set(exhibitionFirstPageCacheKey(nextQuery), initialResult);
-    applyListState({ query: nextQuery, result: initialResult });
+    applyClientState({ requestedQuery: nextQuery, committed: { query: nextQuery, result: initialResult } });
     setPendingStatus(null);
     setSwitchError("");
     setRetryQuery(null);
-  }, [applyListState, initialQueryString, initialResult]);
+  }, [applyClientState, initialQueryString, initialResult]);
 
   const fetchFirstPage = useCallback(async (
     requestedQuery: string,
-    previous: ValidListState,
     hasCachedResult: boolean,
   ) => {
     requestController.current?.abort();
@@ -71,36 +72,36 @@ export function ExhibitionListShell({
       });
       const body = await response.json() as ExhibitionListResult;
       if (!response.ok || body.error) throw new Error(body.error || "展覧会一覧の取得に失敗しました。");
-      if (!isLatestExhibitionListRequest(generation, requestGeneration.current)) return;
+      if (!isCurrentExhibitionListRequest(requestedQuery, clientStateRef.current.requestedQuery, generation, requestGeneration.current)) return;
       cacheRef.current.set(exhibitionFirstPageCacheKey(requestedQuery), body);
-      applyListState({ query: requestedQuery, result: body });
+      applyClientState(commitExhibitionPublicationState(clientStateRef.current, requestedQuery, body));
       setPendingStatus(null);
       setSwitchError("");
       setRetryQuery(null);
     } catch (error) {
-      if (controller.signal.aborted || !isLatestExhibitionListRequest(generation, requestGeneration.current)) return;
+      if (controller.signal.aborted || !isCurrentExhibitionListRequest(requestedQuery, clientStateRef.current.requestedQuery, generation, requestGeneration.current)) return;
       setPendingStatus(null);
       setSwitchError(error instanceof Error ? error.message : "展覧会一覧の取得に失敗しました。");
       setRetryQuery(requestedQuery);
+      const failedState = failExhibitionPublicationState(clientStateRef.current, hasCachedResult);
+      applyClientState(failedState);
       if (!hasCachedResult) {
-        applyListState(previous);
-        window.history.replaceState(null, "", exhibitionListPath(window.location.pathname, previous.query));
+        window.history.replaceState(null, "", exhibitionListPath(window.location.pathname, failedState.committed.query));
       }
     }
-  }, [applyListState]);
+  }, [applyClientState]);
 
   const switchToQuery = useCallback((requestedQuery: string, pushHistory: boolean) => {
     const nextQuery = exhibitionClientListQuery(requestedQuery);
-    if (nextQuery === queryRef.current && !switchError) return;
-    const previous = { query: queryRef.current, result: resultRef.current };
+    if (nextQuery === clientStateRef.current.requestedQuery && !switchError) return;
     const cached = cacheRef.current.get(exhibitionFirstPageCacheKey(nextQuery));
     if (pushHistory) window.history.pushState(null, "", exhibitionListPath(window.location.pathname, nextQuery));
-    applyListState({ query: nextQuery, result: cached ?? previous.result });
+    applyClientState(requestExhibitionPublicationState(clientStateRef.current, nextQuery, cached));
     setPendingStatus(normalizePublicationStatus(new URLSearchParams(nextQuery).get("status")));
     setSwitchError("");
     setRetryQuery(null);
-    void fetchFirstPage(nextQuery, previous, Boolean(cached));
-  }, [applyListState, fetchFirstPage, switchError]);
+    void fetchFirstPage(nextQuery, Boolean(cached));
+  }, [applyClientState, fetchFirstPage, switchError]);
 
   const switchPublicationStatus = useCallback((status: PublicationListStatus) => {
     switchToQuery(exhibitionClientListQuery(window.location.search.slice(1), status), true);
@@ -109,7 +110,7 @@ export function ExhibitionListShell({
   useEffect(() => {
     const restorePublicationState = () => {
       const nextQuery = exhibitionClientListQuery(window.location.search.slice(1));
-      if (nextQuery === queryRef.current) return;
+      if (nextQuery === clientStateRef.current.requestedQuery) return;
       switchToQuery(nextQuery, false);
     };
     window.addEventListener("popstate", restorePublicationState);
@@ -122,13 +123,13 @@ export function ExhibitionListShell({
     return () => window.removeEventListener(EXHIBITION_LIST_UPDATED_EVENT, invalidateFirstPages);
   }, []);
 
-  const params = Object.fromEntries(new URLSearchParams(queryString));
+  const params = Object.fromEntries(new URLSearchParams(clientState.requestedQuery));
 
   return <>
     <AdminListControls
       entity="exhibitions"
       params={params}
-      publicationStatus={normalizePublicationStatus(new URLSearchParams(queryString).get("status"))}
+      publicationStatus={normalizePublicationStatus(new URLSearchParams(clientState.requestedQuery).get("status"))}
       publicationPendingStatus={pendingStatus}
       onPublicationStatusChange={switchPublicationStatus}
     />
@@ -136,6 +137,11 @@ export function ExhibitionListShell({
       {pendingStatus && <span className="muted">一覧を更新中...</span>}
       {switchError && <span className="error admin-publication-switch-error">{switchError}<button className="button secondary" type="button" onClick={() => retryQuery && switchToQuery(retryQuery, exhibitionClientListQuery(window.location.search.slice(1)) !== retryQuery)}>再試行</button></span>}
     </div>
-    <ExhibitionList result={result} queryString={queryString} initialSelectedId={initialSelectedId}/>
+    <ExhibitionList
+      result={clientState.committed.result}
+      queryString={clientState.committed.query}
+      selectionQueryString={clientState.requestedQuery}
+      initialSelectedId={initialSelectedId}
+    />
   </>;
 }

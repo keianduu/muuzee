@@ -47,7 +47,9 @@ describe("Exhibition list performance contract", () => {
     expect(component).toContain('mergeUniqueRows(current, body.rows)');
     expect(component).toContain('rebuildLoadedRows(loadedResults.map((loaded) => loaded.rows))');
     expect(component).toContain('if (!body.matches)');
-    expect(component).toContain('pageQuery(queryString, nextPage)');
+    expect(component).toContain('pageQuery(requestedQuery, nextPage)');
+    expect(component).toContain('signal: controller.signal');
+    expect(component).toContain('isCurrentExhibitionListRequest(requestedQuery, committedQueryRef.current, generation, loadMoreGeneration.current)');
     expect(component).not.toContain('router.refresh()');
     expect(component).not.toContain('window.location.reload');
   });

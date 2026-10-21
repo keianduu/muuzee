@@ -5,12 +5,13 @@
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyExhibitionPublicationUpdate, EXHIBITION_LIST_UPDATED_EVENT, isExhibitionListUpdate, nextFocusIdAfterRemoval, type ExhibitionListResult, type ExhibitionListRow, type ExhibitionListRowMembershipResult } from "@/lib/admin/exhibition-list-state";
+import { isCurrentExhibitionListRequest } from "@/lib/admin/exhibition-publication-client-state";
 import { canonicalizeExhibitionScheduleQuery, mergeUniqueRows, normalizePublicationStatus, pageQuery, rebuildLoadedRows, replaceRowInPlace, selectedQuery, shouldActivateListRowFromKeyboard } from "@/lib/admin/master-list-state";
 import { formatAdminDateTime } from "@/lib/admin/admin-date-time";
 import { AdminRelationCount } from "./admin-relation-count";
 import { ExhibitionDetailDrawer } from "./exhibition-detail-drawer";
 
-export function ExhibitionList({ result, queryString, initialSelectedId }: { result: ExhibitionListResult; queryString: string; initialSelectedId?: string }) {
+export function ExhibitionList({ result, queryString, selectionQueryString, initialSelectedId }: { result: ExhibitionListResult; queryString: string; selectionQueryString?: string; initialSelectedId?: string }) {
   const pathname = usePathname();
   const [rows, setRows] = useState(result.rows);
   const [total, setTotal] = useState(result.total);
@@ -23,6 +24,9 @@ export function ExhibitionList({ result, queryString, initialSelectedId }: { res
   const rowsRef = useRef(rows);
   const latestResult = useRef(result);
   const reconcileGeneration = useRef(0);
+  const loadMoreGeneration = useRef(0);
+  const loadMoreController = useRef<AbortController | null>(null);
+  const committedQueryRef = useRef(queryString);
   rowsRef.current = rows;
   latestResult.current = result;
   const activeStatus = useMemo(() => normalizePublicationStatus(new URLSearchParams(queryString).get("status")), [queryString]);
@@ -30,12 +34,23 @@ export function ExhibitionList({ result, queryString, initialSelectedId }: { res
 
   useEffect(() => {
     reconcileGeneration.current += 1;
+    loadMoreController.current?.abort();
+    loadMoreController.current = null;
+    loadMoreGeneration.current += 1;
+    committedQueryRef.current = queryString;
     setRows(latestResult.current.rows);
     setTotal(latestResult.current.total);
     setPage(1);
+    setLoadingMore(false);
     setLoadError("");
     setActiveSelectedId(new URLSearchParams(window.location.search).get("selected") || undefined);
   }, [queryString, result]);
+
+  useEffect(() => {
+    setActiveSelectedId(new URLSearchParams(window.location.search).get("selected") || undefined);
+  }, [selectionQueryString]);
+
+  useEffect(() => () => loadMoreController.current?.abort(), []);
 
   const clearSelected = useCallback(() => {
     setActiveSelectedId(undefined);
@@ -138,11 +153,17 @@ export function ExhibitionList({ result, queryString, initialSelectedId }: { res
       if (!entry.isIntersecting || loadingMore) return;
       setLoadingMore(true);
       setLoadError("");
+      const requestedQuery = queryString;
+      const generation = ++loadMoreGeneration.current;
+      loadMoreController.current?.abort();
+      const controller = new AbortController();
+      loadMoreController.current = controller;
       try {
         const nextPage = page + 1;
-        const response = await fetch(`/api/admin/exhibitions?${pageQuery(queryString, nextPage)}`, { cache: "no-store" });
+        const response = await fetch(`/api/admin/exhibitions?${pageQuery(requestedQuery, nextPage)}`, { cache: "no-store", signal: controller.signal });
         const body = await response.json() as ExhibitionListResult;
         if (!response.ok || body.error) throw new Error(body.error || "追加読み込みに失敗しました。");
+        if (!isCurrentExhibitionListRequest(requestedQuery, committedQueryRef.current, generation, loadMoreGeneration.current)) return;
         setRows((current) => {
           const next = mergeUniqueRows(current, body.rows);
           rowsRef.current = next;
@@ -151,9 +172,13 @@ export function ExhibitionList({ result, queryString, initialSelectedId }: { res
         setTotal(body.total);
         setPage(nextPage);
       } catch (error) {
+        if (controller.signal.aborted || !isCurrentExhibitionListRequest(requestedQuery, committedQueryRef.current, generation, loadMoreGeneration.current)) return;
         setLoadError(error instanceof Error ? error.message : "追加読み込みに失敗しました。");
       } finally {
-        setLoadingMore(false);
+        if (isCurrentExhibitionListRequest(requestedQuery, committedQueryRef.current, generation, loadMoreGeneration.current)) {
+          loadMoreController.current = null;
+          setLoadingMore(false);
+        }
       }
     }, { rootMargin: "320px 0px" });
     observer.observe(target);

@@ -21,12 +21,30 @@ describe("Exhibition publication client switch contract", () => {
     expect(shell).toContain('fetch(`/api/admin/exhibitions?${exhibitionFirstPageRequestQuery(requestedQuery)}`');
     expect(shell).toContain("new Map(");
     expect(shell).toContain("new AbortController()");
-    expect(shell).toContain("isLatestExhibitionListRequest");
+    expect(shell).toContain("isCurrentExhibitionListRequest");
     expect(shell).toContain('window.addEventListener("popstate"');
     expect(shell).toContain("EXHIBITION_LIST_UPDATED_EVENT");
     expect(shell).not.toContain("router.push");
     expect(shell).not.toContain("router.refresh");
     expect(shell).not.toContain("location.reload");
+  });
+
+  it("separates requested navigation from the last valid committed list", () => {
+    const shell = read("./exhibition-list-shell.tsx");
+    expect(shell).toContain("clientState.requestedQuery");
+    expect(shell).toContain("result={clientState.committed.result}");
+    expect(shell).toContain("queryString={clientState.committed.query}");
+    expect(shell).toContain("selectionQueryString={clientState.requestedQuery}");
+    expect(shell).toContain("requestExhibitionPublicationState");
+    expect(shell).toContain("commitExhibitionPublicationState");
+    expect(shell).toContain("failExhibitionPublicationState");
+  });
+
+  it("aborts and rejects stale infinite-scroll responses after a committed query change", () => {
+    const list = read("./exhibition-list.tsx");
+    expect(list).toContain("loadMoreController.current?.abort()");
+    expect(list).toContain("signal: controller.signal");
+    expect(list).toContain("isCurrentExhibitionListRequest(requestedQuery, committedQueryRef.current, generation, loadMoreGeneration.current)");
   });
 
   it("leaves shared router navigation as the default for the other master lists", () => {
