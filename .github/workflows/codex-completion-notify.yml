@@ -1,0 +1,52 @@
+name: Codex completion notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Completed Codex task branch
+        required: true
+        type: string
+      sha:
+        description: Completed commit SHA
+        required: true
+        type: string
+      summary:
+        description: Short completion summary
+        required: false
+        default: Codex task completed and is ready for ChatGPT review.
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify completion issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.inputs.branch;
+            const sha = context.payload.inputs.sha;
+            const summary = context.payload.inputs.summary || "Codex task completed and is ready for ChatGPT review.";
+            const body = [
+              "@keianduu",
+              "",
+              "✅ **Codex task completed**",
+              `- Branch: \`${branch}\``,
+              `- SHA: \`${sha}\``,
+              `- Summary: ${summary}`,
+              "- Next: ChatGPT review",
+              "",
+              `[Commit](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 5,
+              body,
+            });
