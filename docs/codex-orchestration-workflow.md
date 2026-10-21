@@ -209,3 +209,31 @@ Therefore, any decision or process rule that would materially affect future Muuz
 - Task-specific discussion and result → the relevant Notion Task.
 
 Do not make the user reconstruct important project state from old chats.
+
+
+## Codex completion notification
+
+Muuzee uses GitHub Issue #5 as the durable completion-notification sink:
+
+`https://github.com/keianduu/muuzee/issues/5`
+
+When a Codex implementation/operation run reaches the requested STOP point and all required commit/push/Notion closeout steps for that run are complete, Codex should trigger the repository workflow exactly once:
+
+```bash
+gh workflow run codex-completion-notify.yml \
+  --ref main \
+  -f branch="$(git branch --show-current)" \
+  -f sha="$(git rev-parse HEAD)" \
+  -f summary="<short completion summary>"
+```
+
+The workflow runs as GitHub Actions and posts an `@keianduu` comment to Issue #5 so GitHub Mobile can deliver a push notification.
+
+Rules:
+
+- trigger only at the requested completion/STOP boundary, not for intermediate checkpoints;
+- do not trigger before the task branch has been pushed when the current instruction requires a push;
+- keep the summary short and non-sensitive;
+- never include credentials, tokens, passwords, environment values, or other secrets;
+- if `gh workflow run` fails because GitHub CLI/auth/workflow availability is missing, do not change or repeat implementation work solely to fix the notification; report the notification failure explicitly in the completion report;
+- a notification means “Codex run finished and is ready for review”; it does not mean the Task is approved, merged, deployed, or Done.
