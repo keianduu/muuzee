@@ -34,7 +34,8 @@ export function ExhibitionList({ result, queryString, initialSelectedId }: { res
     setTotal(latestResult.current.total);
     setPage(1);
     setLoadError("");
-  }, [queryString]);
+    setActiveSelectedId(new URLSearchParams(window.location.search).get("selected") || undefined);
+  }, [queryString, result]);
 
   const clearSelected = useCallback(() => {
     setActiveSelectedId(undefined);

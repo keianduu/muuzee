@@ -53,18 +53,24 @@ function BinaryCheckboxes({ legend, value, onChange }: {
   </fieldset>;
 }
 
-export function AdminPublicationTabs({ entity, status }: { entity: AdminListEntity; status?: string }) {
+export function AdminPublicationTabs({ entity, status, pendingStatus, onStatusChange }: {
+  entity: AdminListEntity;
+  status?: string;
+  pendingStatus?: PublicationListStatus | null;
+  onStatusChange?: (status: PublicationListStatus) => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selected = normalizePublicationStatus(status);
-  const [pendingStatus, setPendingStatus] = useState<PublicationListStatus | null>(null);
-  const displayedStatus = pendingStatus ?? selected;
+  const [navigationPendingStatus, setNavigationPendingStatus] = useState<PublicationListStatus | null>(null);
+  const activePendingStatus = onStatusChange ? pendingStatus ?? null : navigationPendingStatus;
+  const displayedStatus = activePendingStatus ?? selected;
   const currentQuery = entity === "exhibitions"
     ? canonicalizeExhibitionScheduleQuery(searchParams.toString())
     : searchParams.toString();
 
-  useEffect(() => { setPendingStatus(null); }, [selected]);
+  useEffect(() => { setNavigationPendingStatus(null); }, [selected]);
 
   return <div className="admin-publication-tabs" role="tablist" aria-label="公開状態">
     {PUBLICATION_TABS.map((tab) => <button
@@ -72,11 +78,15 @@ export function AdminPublicationTabs({ entity, status }: { entity: AdminListEnti
       type="button"
       role="tab"
       aria-selected={displayedStatus === tab.value}
-      aria-busy={pendingStatus === tab.value || undefined}
-      className={`${displayedStatus === tab.value ? "is-active" : ""}${pendingStatus === tab.value ? " is-pending" : ""}`.trim() || undefined}
+      aria-busy={activePendingStatus === tab.value || undefined}
+      className={`${displayedStatus === tab.value ? "is-active" : ""}${activePendingStatus === tab.value ? " is-pending" : ""}`.trim() || undefined}
       onClick={() => {
-        if (selected === tab.value) return;
-        setPendingStatus(tab.value);
+        if (displayedStatus === tab.value) return;
+        if (onStatusChange) {
+          onStatusChange(tab.value);
+          return;
+        }
+        setNavigationPendingStatus(tab.value);
         navigate(router, pathname, publicationTabQuery(currentQuery, tab.value));
       }}
     >{tab.label}</button>)}
@@ -101,7 +111,13 @@ export function AdminWorkViewTabs({ view }: { view: WorkListView }) {
   </div>;
 }
 
-export function AdminListControls({ entity, params }: { entity: AdminListEntity; params: Record<string, string> }) {
+export function AdminListControls({ entity, params, publicationStatus, publicationPendingStatus, onPublicationStatusChange }: {
+  entity: AdminListEntity;
+  params: Record<string, string>;
+  publicationStatus?: PublicationListStatus;
+  publicationPendingStatus?: PublicationListStatus | null;
+  onPublicationStatusChange?: (status: PublicationListStatus) => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -176,7 +192,7 @@ export function AdminListControls({ entity, params }: { entity: AdminListEntity;
   };
 
   return <>
-    <AdminPublicationTabs entity={entity} status={params.status}/>
+    <AdminPublicationTabs entity={entity} status={publicationStatus ?? params.status} pendingStatus={publicationPendingStatus} onStatusChange={onPublicationStatusChange}/>
     {!detailSelected && <button
       ref={triggerRef}
       className="admin-list-filter-trigger"

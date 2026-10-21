@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { AdminListControls } from "@/components/admin/admin-list-controls";
-import { ExhibitionList } from "@/components/admin/exhibition-list";
+import { ExhibitionListShell } from "@/components/admin/exhibition-list-shell";
 import { canonicalizeExhibitionScheduleQuery, normalizeExhibitionSchedule, normalizePublicationStatus } from "@/lib/admin/master-list-state";
 import { listExhibitions } from "@/lib/admin/exhibition-list-repository";
 
@@ -24,7 +23,6 @@ export default async function ExhibitionsPage({ searchParams }: { searchParams: 
   return <>
     <div className="page-head"><div><p className="eyebrow">Editorial queue</p><h1>Exhibitions</h1></div></div>
     {!result.configured && <div className="notice">Supabase環境変数が未設定です。</div>}{result.error && result.configured && <div className="error">{result.error}</div>}
-    <AdminListControls entity="exhibitions" params={{ ...listParams, q: queryValue, image, schedule }}/>
-    <ExhibitionList result={result} queryString={queryString} initialSelectedId={selectedId}/>
+    <ExhibitionListShell initialResult={result} initialQueryString={queryString} initialSelectedId={selectedId}/>
   </>;
 }

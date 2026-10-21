@@ -98,8 +98,8 @@ describe("Admin list action architecture", () => {
     expect(navigation).toContain("aria-busy={pending || undefined}");
     expect(styles).toContain(".admin-nav-link.is-pending .admin-nav-icon { visibility: hidden; }");
     expect(styles).toContain("animation: admin-nav-pending-spin .7s linear infinite");
-    expect(controls).toContain("setPendingStatus(tab.value)");
-    expect(controls).toContain("aria-busy={pendingStatus === tab.value || undefined}");
+    expect(controls).toContain("setNavigationPendingStatus(tab.value)");
+    expect(controls).toContain("aria-busy={activePendingStatus === tab.value || undefined}");
   });
 
   it("keeps canonical Artist priority order without loading Quality Summary-only payload", () => {

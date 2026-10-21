@@ -10,9 +10,11 @@ describe("shared publication filter pills", () => {
     const controls = read("./admin-list-controls.tsx");
     const masterIndex = read("./master-index-page.tsx");
     const exhibitions = read("../../app/admin/exhibitions/page.tsx");
+    const exhibitionShell = read("./exhibition-list-shell.tsx");
     expect(controls).toContain("<AdminPublicationTabs entity={entity}");
     expect(masterIndex).toContain("<AdminListControls entity={entity}");
-    expect(exhibitions).toContain('<AdminListControls entity="exhibitions"');
+    expect(exhibitions).toContain("<ExhibitionListShell");
+    expect(exhibitionShell).toContain('entity="exhibitions"');
   });
 
   it("renders Publication tabs as canonical compact Filter Pills", () => {

@@ -199,6 +199,9 @@ pre { overflow: auto; max-height: 420px; padding: 14px; border-radius: 8px; back
 .admin-publication-tabs button:hover { border-color: var(--ink-300); background: var(--surface-hover); color: var(--ink-950); }
 .admin-publication-tabs button.is-active { border-color: var(--ink-950); background: var(--ink-950); color: var(--white); }
 .admin-publication-tabs button.is-pending { cursor: progress; }
+.admin-publication-switch-feedback { min-height: 20px; margin: -12px 0 4px; font-size: 12px; line-height: 18px; }
+.admin-publication-switch-error { display: inline-flex; align-items: center; gap: 12px; margin: 0; padding: 8px 10px; }
+.admin-publication-switch-error .button { min-height: 32px; }
 .admin-list-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
 .admin-list-csv-trigger { gap: 7px; }
 .admin-list-csv-trigger svg { width: 16px; height: 16px; flex: 0 0 auto; }
