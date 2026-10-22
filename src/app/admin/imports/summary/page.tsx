@@ -36,7 +36,7 @@ export default async function DataAcquisitionSummaryPage({ searchParams }: { sea
   const entity = normalizeDataAcquisitionEntity(typeof params.entity === "string" ? params.entity : undefined);
   const summary = await getDataAcquisitionSummary(entity);
   return <>
-    <div className="page-head"><div><p className="eyebrow">Data Acquisition</p><h1>データ取得サマリ</h1><p className="muted">取得状況と不足・要確認をEntityごとに俯瞰します。すべてread-onlyです。</p></div></div>
+    <div className="page-head"><div><p className="eyebrow">Data Acquisition</p><h1>データ取得サマリ</h1><p className="muted">取得状況と不足・要確認をEntityごとに俯瞰します。すべてread-onlyです。</p></div><Link className="button secondary" href="/admin/imports" prefetch={false}>データ取り込みへ戻る</Link></div>
     <DataAcquisitionEntitySwitch entity={entity}/>
     {!summary.configured && <div className="notice">Supabase環境変数が未設定です。</div>}
     {summary.error && summary.configured && <div className="error">{summary.error}</div>}

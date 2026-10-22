@@ -282,6 +282,17 @@ a.data-acquisition-metric:hover { border-color: var(--ink-300); background: var(
 .data-acquisition-detail-grid dd { margin: 0; font-weight: 650; }
 .data-acquisition-runs { min-width: 900px; }
 .data-acquisition-empty { margin: 0; padding: 24px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--surface); color: var(--ink-600); text-align: center; }
+.data-acquisition-operation-stack { display: grid; gap: var(--admin-space-section); }
+.data-acquisition-operation { min-width: 0; }
+.data-acquisition-operation > .eyebrow { margin-bottom: 6px; }
+.data-acquisition-operation > h2 { margin: 0 0 8px; }
+.data-acquisition-operation > .muted { max-width: 840px; margin: 0; }
+.data-acquisition-operation-meta { margin: 10px 0 0; color: var(--ink-500); font-size: 12px; line-height: 1.5; }
+.data-acquisition-operation .toolbar { margin-top: 18px; }
+.data-acquisition-operation .metrics { margin-top: 16px; }
+.data-acquisition-operation > h3 { margin-top: 24px; }
+.data-acquisition-history { min-width: 0; padding-top: 8px; }
+.data-acquisition-history > .muted { margin: 0 0 14px; }
 .action-spacer { flex: 1 1 24px; }
 .action-menu { position: relative; }
 .action-menu summary { list-style: none; cursor: pointer; }

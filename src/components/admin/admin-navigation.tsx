@@ -10,6 +10,7 @@ type NavigationItem = {
   label: string;
   icon: AdminIconName;
   exact?: boolean;
+  aliases?: string[];
 };
 
 type AdminIconName = "dashboard" | "exhibition" | "venue" | "artist" | "work" | "users" | "summary" | "import" | "source";
@@ -23,9 +24,7 @@ const primaryItems: NavigationItem[] = [
 ];
 
 const dataItems: NavigationItem[] = [
-  { href: "/admin/imports/summary", label: "データ取得サマリ", icon: "summary" },
-  { href: "/admin/imports", label: "取り込み実行", icon: "import", exact: true },
-  { href: "/admin/sources", label: "外部Source設定", icon: "source" },
+  { href: "/admin/imports", label: "データ取り込み", icon: "import", aliases: ["/admin/sources"] },
 ];
 
 function AdminIcon({ name }: { name: AdminIconName }) {
@@ -44,9 +43,9 @@ function AdminIcon({ name }: { name: AdminIconName }) {
   return <svg className="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function AdminNavigationLink({ href, label, icon, exact }: NavigationItem) {
+function AdminNavigationLink({ href, label, icon, exact, aliases }: NavigationItem) {
   const pathname = usePathname();
-  const active = isAdminNavigationItemActive(pathname, { href, exact });
+  const active = isAdminNavigationItemActive(pathname, { href, exact, aliases });
   const [pending, setPending] = useState(false);
 
   useEffect(() => { setPending(false); }, [pathname]);
