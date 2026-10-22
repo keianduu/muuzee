@@ -16,6 +16,8 @@ on:
         required: false
         default: Codex task completed and is ready for ChatGPT review.
         type: string
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -23,23 +25,32 @@ permissions:
 
 jobs:
   notify:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 5 &&
+       github.event.comment.user.login == 'keianduu' &&
+       github.event.comment.body == '/test-codex-notify')
     runs-on: ubuntu-latest
     steps:
       - name: Notify completion issue
         uses: actions/github-script@v7
         with:
           script: |
-            const branch = context.payload.inputs.branch;
-            const sha = context.payload.inputs.sha;
-            const summary = context.payload.inputs.summary || "Codex task completed and is ready for ChatGPT review.";
+            const isTest = context.eventName === "issue_comment";
+            const branch = isTest ? "notification-test" : context.payload.inputs.branch;
+            const sha = isTest ? context.sha : context.payload.inputs.sha;
+            const summary = isTest
+              ? "GitHub Mobile completion notification test."
+              : (context.payload.inputs.summary || "Codex task completed and is ready for ChatGPT review.");
             const body = [
               "@keianduu",
               "",
-              "✅ **Codex task completed**",
+              isTest ? "🔔 **Codex completion notification test**" : "✅ **Codex task completed**",
               `- Branch: \`${branch}\``,
               `- SHA: \`${sha}\``,
               `- Summary: ${summary}`,
-              "- Next: ChatGPT review",
+              isTest ? "- Result: notification path is active" : "- Next: ChatGPT review",
               "",
               `[Commit](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`
             ].join("\n");
