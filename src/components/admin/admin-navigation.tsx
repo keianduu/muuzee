@@ -23,9 +23,7 @@ const primaryItems: NavigationItem[] = [
   { href: "/admin/works", label: "Works", icon: "work" },
 ];
 
-const dataItems: NavigationItem[] = [
-  { href: "/admin/imports", label: "データ取り込み", icon: "import", aliases: ["/admin/sources"] },
-];
+const dataAcquisitionItem: NavigationItem = { href: "/admin/imports", label: "データ取り込み", icon: "import", aliases: ["/admin/sources"] };
 
 function AdminIcon({ name }: { name: AdminIconName }) {
   const paths: Record<AdminIconName, React.ReactNode> = {
@@ -68,10 +66,7 @@ export function AdminNavigation() {
       <p className="admin-nav-label">Workspace</p>
       {primaryItems.map((item) => <AdminNavigationLink key={item.href} {...item}/>)}
       <span className="admin-nav-link is-disabled" aria-disabled="true"><span className="admin-nav-link-main"><AdminIcon name="users"/><span>Users</span></span><small>準備中</small></span>
-    </div>
-    <div className="admin-nav-group">
-      <p className="admin-nav-label">データ取り込み</p>
-      {dataItems.map((item) => <AdminNavigationLink key={item.href} {...item}/>)}
+      <AdminNavigationLink {...dataAcquisitionItem}/>
     </div>
   </nav>;
 }
