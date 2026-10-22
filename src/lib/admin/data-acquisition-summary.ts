@@ -57,7 +57,7 @@ const ENTITY_CONFIG: Record<DataAcquisitionEntity, { ownerKey: string }> = {
 
 const RUN_OPERATIONS: Record<DataAcquisitionEntity, readonly string[]> = {
   exhibitions: ["exhibition_daily_sync"],
-  venues: ["wikidata_venue_import", "wikidata_venue_targeted_import", "venue_enrichment", "official_venue_crawl"],
+  venues: ["wikidata_venue_import", "wikidata_venue_targeted_import", "venue_periodic_refresh", "venue_enrichment", "official_venue_crawl"],
   artists: ["wikidata_artist_import", "wikidata_artist_targeted_import"],
   works: [],
 };

@@ -8,8 +8,9 @@ describe("Data Acquisition unified IA", () => {
     const page = read("../../app/admin/imports/page.tsx");
     const daily = read("./daily-sync-form.tsx");
     const resolution = read("./targeted-resolution-form.tsx");
+    const refresh = read("./venue-periodic-refresh-form.tsx");
     const backfill = read("./import-form.tsx");
-    const content = [page, daily, resolution, backfill].join("\n");
+    const content = [page, daily, resolution, refresh, backfill].join("\n");
     expect(page).toContain("<h1>データ取り込み</h1>");
     for (const label of [
       "取り込み状況を確認する",
@@ -37,15 +38,19 @@ describe("Data Acquisition unified IA", () => {
   });
 
   it("keeps the operation stack as the single spacing owner and uses white card surfaces", () => {
-    const page = read("../../app/admin/imports/page.tsx");
     const styles = read("../../app/globals.css");
-    const masterRefresh = page.match(/<section className="card data-acquisition-operation" id="master-refresh">[\s\S]*?<\/section>/)?.[0];
+    const refresh = read("./venue-periodic-refresh-form.tsx");
     expect(styles).toContain(".data-acquisition-operation-stack { display: grid; gap: var(--admin-space-section); }");
     expect(styles).toContain(".data-acquisition-operation-stack > .data-acquisition-operation { background: var(--white); }");
     expect(styles).toContain(".data-acquisition-operation-stack > .resolution-worker { margin: 0; }");
     expect(styles).toContain(".data-acquisition-operation .metric { background: var(--white); }");
-    expect(masterRefresh).toBeTruthy();
-    expect(masterRefresh).not.toContain("<button");
+    expect(refresh).toContain('id="master-refresh"');
+    expect(refresh).toContain('fetch("/api/admin/imports/master-refresh/venue"');
+    expect(refresh).toContain("事前確認");
+    expect(refresh).toContain("更新する");
+    expect(refresh).toContain("Order 150");
+    expect(refresh).toContain("Order 160");
+    expect(refresh.match(/<button/g)).toHaveLength(2);
   });
 
   it("keeps Presentation and Media policy safety visible", () => {
