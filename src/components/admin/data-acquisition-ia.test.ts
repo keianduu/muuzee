@@ -36,6 +36,18 @@ describe("Data Acquisition unified IA", () => {
     expect(backfill).toContain("通常の毎日更新では使いません");
   });
 
+  it("keeps the operation stack as the single spacing owner and uses white card surfaces", () => {
+    const page = read("../../app/admin/imports/page.tsx");
+    const styles = read("../../app/globals.css");
+    const masterRefresh = page.match(/<section className="card data-acquisition-operation" id="master-refresh">[\s\S]*?<\/section>/)?.[0];
+    expect(styles).toContain(".data-acquisition-operation-stack { display: grid; gap: var(--admin-space-section); }");
+    expect(styles).toContain(".data-acquisition-operation-stack > .data-acquisition-operation { background: var(--white); }");
+    expect(styles).toContain(".data-acquisition-operation-stack > .resolution-worker { margin: 0; }");
+    expect(styles).toContain(".data-acquisition-operation .metric { background: var(--white); }");
+    expect(masterRefresh).toBeTruthy();
+    expect(masterRefresh).not.toContain("<button");
+  });
+
   it("keeps Presentation and Media policy safety visible", () => {
     const page = read("../../app/admin/imports/page.tsx");
     const policy = read("./source-policy-table.tsx");
