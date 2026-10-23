@@ -41,13 +41,21 @@ export type VenueIdentityAmbiguity = {
   status: "identity_ambiguous";
 };
 
+export type VenueRefreshCursor = { venueId: string };
+
+type VenueRefreshCoverage = {
+  scanStartCursor: VenueRefreshCursor | null;
+  scanEndCursor: VenueRefreshCursor | null;
+  reachedCorpusEnd: boolean;
+};
+
 type VenueRefreshBatch = {
   targets: VenueRefreshTarget[];
   sourceRowsScanned: number;
   scanTruncated: boolean;
   ambiguousIdentities: number;
   identityAmbiguities: VenueIdentityAmbiguity[];
-};
+} & VenueRefreshCoverage;
 
 export type VenueRefreshPlan = {
   target: VenueRefreshTarget;
@@ -64,6 +72,8 @@ export type VenuePeriodicRefreshResult = {
   scanned: number;
   sourceRowsScanned: number;
   scanTruncated: boolean;
+  reachedCorpusEnd: boolean;
+  coverageContinues: boolean;
   fetched: number;
   changed: number;
   unchanged: number;
@@ -76,11 +86,12 @@ export type VenuePeriodicRefreshResult = {
 };
 
 type RefreshDependencies = {
-  loadTargets: (db: SupabaseClient, limit: number) => Promise<VenueRefreshBatch>;
+  loadCoverageCursor: (db: SupabaseClient) => Promise<VenueRefreshCursor | null>;
+  loadTargets: (db: SupabaseClient, limit: number, cursor: VenueRefreshCursor | null) => Promise<VenueRefreshBatch>;
   fetchVenues: (targets: VenueRefreshTarget[]) => Promise<{ venues: Map<string, WikidataVenue>; errors: Map<string, string> }>;
-  createRun: (db: SupabaseClient, limit: number) => Promise<string>;
+  createRun: (db: SupabaseClient, limit: number, coverage: VenueRefreshCoverage) => Promise<string>;
   applyPlan: (db: SupabaseClient, plan: VenueRefreshPlan) => Promise<void>;
-  finishRun: (db: SupabaseClient, result: VenuePeriodicRefreshResult) => Promise<void>;
+  finishRun: (db: SupabaseClient, result: VenuePeriodicRefreshResult, coverage: VenueRefreshCoverage) => Promise<void>;
 };
 
 export function normalizeVenueRefreshLimit(value?: number) {
@@ -94,7 +105,7 @@ type VenueSourceSelection = {
   ambiguities: Array<{ venueId: string; qids: string[]; qidCount: number }>;
   sourceRowsScanned: number;
   scanTruncated: boolean;
-};
+} & VenueRefreshCoverage;
 
 function classifyVenueSourceGroup(rows: SourceRecord[]) {
   const identities = new Map<string, SourceRecord>();
@@ -125,27 +136,37 @@ export function selectBoundedVenueRefreshSources(rows: SourceRecord[], limit: nu
     byVenue.set(row.venue_id, group);
   }
 
+  const targetLimit = normalizeVenueRefreshLimit(limit);
   const selected: SourceRecord[] = [];
   const ambiguities: Array<{ venueId: string; qids: string[]; qidCount: number }> = [];
-  for (const [, group] of [...byVenue].sort(([left], [right]) => left.localeCompare(right))) {
+  let sourceRowsScanned = 0;
+  let scanEndCursor: VenueRefreshCursor | null = null;
+  const groups = [...byVenue].sort(([left], [right]) => left.localeCompare(right));
+  for (const [venueId, group] of groups) {
     const classification = classifyVenueSourceGroup(group);
     if (classification.selected) selected.push(classification.selected);
     else if (classification.ambiguity) ambiguities.push(classification.ambiguity);
+    sourceRowsScanned += group.length;
+    scanEndCursor = { venueId };
+    if (selected.length >= targetLimit) break;
   }
 
   return {
-    selected: selected.slice(0, normalizeVenueRefreshLimit(limit)),
+    selected: selected.slice(0, targetLimit),
     ambiguousIdentities: ambiguities.length,
     ambiguities: ambiguities.slice(0, MAX_LIMIT),
-    sourceRowsScanned: rows.length,
+    sourceRowsScanned,
     scanTruncated: false,
+    scanStartCursor: null,
+    scanEndCursor,
+    reachedCorpusEnd: sourceRowsScanned === rows.filter((row) => row.venue_id).length,
   };
 }
 
 export async function scanBoundedVenueRefreshSources(
   loadPage: (offset: number, pageSize: number) => Promise<SourceRecord[]>,
   limit: number,
-  options: { pageSize?: number; maxSourceRows?: number } = {},
+  options: { pageSize?: number; maxSourceRows?: number; startCursor?: VenueRefreshCursor | null } = {},
 ): Promise<VenueSourceSelection> {
   const targetLimit = normalizeVenueRefreshLimit(limit);
   const pageSize = Math.max(1, Math.floor(options.pageSize ?? SOURCE_PAGE_SIZE));
@@ -157,12 +178,14 @@ export async function scanBoundedVenueRefreshSources(
   let sourceRowsRead = 0;
   let sourceRowsScanned = 0;
   let reachedEnd = false;
+  let scanEndCursor = options.startCursor || null;
 
   const finalizePendingGroup = () => {
     if (!pendingGroup.length) return;
     const classification = classifyVenueSourceGroup(pendingGroup);
     if (classification.selected) selected.push(classification.selected);
     else if (classification.ambiguity) ambiguities.push(classification.ambiguity);
+    scanEndCursor = { venueId: pendingGroup[0].venue_id };
     pendingGroup = [];
   };
 
@@ -204,6 +227,9 @@ export async function scanBoundedVenueRefreshSources(
     ambiguities: ambiguities.slice(0, MAX_LIMIT),
     sourceRowsScanned,
     scanTruncated,
+    scanStartCursor: options.startCursor || null,
+    scanEndCursor,
+    reachedCorpusEnd: reachedEnd,
   };
 }
 
@@ -228,22 +254,45 @@ async function wikidataSourceId(db: SupabaseClient) {
   return data.id as string;
 }
 
-async function loadTargets(db: SupabaseClient, limit: number) {
+export function venueRefreshCursorFromMetrics(metrics: unknown): VenueRefreshCursor | null {
+  if (!metrics || typeof metrics !== "object" || (metrics as { reachedCorpusEnd?: unknown }).reachedCorpusEnd === true) return null;
+  const cursor = (metrics as { scanEndCursor?: unknown }).scanEndCursor;
+  if (!cursor || typeof cursor !== "object") return null;
+  const venueId = (cursor as { venueId?: unknown }).venueId;
+  return typeof venueId === "string" && venueId.length > 0 ? { venueId } : null;
+}
+
+async function loadCoverageCursor(db: SupabaseClient) {
+  const { data, error } = await db.from("import_runs")
+    .select("metrics")
+    .eq("operation_type", OPERATION_TYPE)
+    .in("status", ["completed", "partial"])
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return venueRefreshCursorFromMetrics(data?.metrics);
+}
+
+async function loadTargets(db: SupabaseClient, limit: number, cursor: VenueRefreshCursor | null) {
   const dataSourceId = await wikidataSourceId(db);
   const selection = await scanBoundedVenueRefreshSources(async (offset, pageSize) => {
-    const { data, error } = await db.from("source_records")
+    let query = db.from("source_records")
       .select("id,external_id,venue_id,source_url,raw_payload,checksum")
       .eq("data_source_id", dataSourceId)
-      .not("venue_id", "is", null)
+      .not("venue_id", "is", null);
+    if (cursor) query = query.gt("venue_id", cursor.venueId);
+    const { data, error } = await query
       .order("venue_id")
       .order("external_id")
       .order("id")
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
     return (data || []) as SourceRecord[];
-  }, limit);
+  }, limit, { startCursor: cursor });
   if (!selection.sourceRowsScanned) return {
     targets: [], sourceRowsScanned: 0, scanTruncated: false, ambiguousIdentities: 0, identityAmbiguities: [],
+    scanStartCursor: selection.scanStartCursor, scanEndCursor: selection.scanEndCursor, reachedCorpusEnd: selection.reachedCorpusEnd,
   };
   const venueIds = [...new Set([
     ...selection.selected.map((row) => row.venue_id),
@@ -252,6 +301,7 @@ async function loadTargets(db: SupabaseClient, limit: number) {
   if (!venueIds.length) return {
     targets: [], sourceRowsScanned: selection.sourceRowsScanned, scanTruncated: selection.scanTruncated,
     ambiguousIdentities: selection.ambiguousIdentities, identityAmbiguities: [],
+    scanStartCursor: selection.scanStartCursor, scanEndCursor: selection.scanEndCursor, reachedCorpusEnd: selection.reachedCorpusEnd,
   };
   const [{ data: venues, error: venueError }, { data: sources, error: sourceError }] = await Promise.all([
     db.from("venues").select("*").in("id", venueIds),
@@ -282,6 +332,9 @@ async function loadTargets(db: SupabaseClient, limit: number) {
     scanTruncated: selection.scanTruncated,
     ambiguousIdentities: selection.ambiguousIdentities,
     identityAmbiguities,
+    scanStartCursor: selection.scanStartCursor,
+    scanEndCursor: selection.scanEndCursor,
+    reachedCorpusEnd: selection.reachedCorpusEnd,
   };
 }
 
@@ -386,20 +439,24 @@ async function applyPlan(db: SupabaseClient, plan: VenueRefreshPlan) {
   for (const change of plan.protectedChanges) await saveProvenance(db, plan, change.field, change.value, false);
 }
 
-async function createRun(db: SupabaseClient, limit: number) {
+async function createRun(db: SupabaseClient, limit: number, coverage: VenueRefreshCoverage) {
   const dataSourceId = await wikidataSourceId(db);
   const { data, error } = await db.from("import_runs").insert({
     data_source_id: dataSourceId,
     operation_type: OPERATION_TYPE,
     status: "running",
     requested_count: limit,
-    metrics: { mode: "bounded", entity: "venue", limit },
+    metrics: { mode: "bounded", entity: "venue", limit, scanStartCursor: coverage.scanStartCursor },
   }).select("id").single();
   if (error || !data) throw error || new Error("Venue periodic refresh run could not be created");
   return data.id as string;
 }
 
-async function finishRun(db: SupabaseClient, result: VenuePeriodicRefreshResult) {
+export function venueRefreshRunMetrics(result: VenuePeriodicRefreshResult, coverage: VenueRefreshCoverage) {
+  return { ...result, ...coverage };
+}
+
+async function finishRun(db: SupabaseClient, result: VenuePeriodicRefreshResult, coverage: VenueRefreshCoverage) {
   if (!result.runId) return;
   const status = result.errors.length === 0 ? "completed" : result.fetched > 0 ? "partial" : "failed";
   const { error } = await db.from("import_runs").update({
@@ -410,13 +467,13 @@ async function finishRun(db: SupabaseClient, result: VenuePeriodicRefreshResult)
     skipped_count: result.unchanged + result.ambiguousIdentities,
     error_count: result.errors.length,
     errors: result.errors.length ? result.errors : null,
-    metrics: result,
+    metrics: venueRefreshRunMetrics(result, coverage),
     finished_at: new Date().toISOString(),
   }).eq("id", result.runId);
   if (error) throw error;
 }
 
-const defaults: RefreshDependencies = { loadTargets, fetchVenues, createRun, applyPlan, finishRun };
+const defaults: RefreshDependencies = { loadCoverageCursor, loadTargets, fetchVenues, createRun, applyPlan, finishRun };
 
 export async function runVenuePeriodicRefresh(
   input: { dryRun?: boolean; limit?: number },
@@ -426,19 +483,27 @@ export async function runVenuePeriodicRefresh(
   const dependencies = { ...defaults, ...overrides };
   const dryRun = input.dryRun !== false;
   const limit = normalizeVenueRefreshLimit(input.limit);
-  const batch = await dependencies.loadTargets(db, limit);
+  const cursor = await dependencies.loadCoverageCursor(db);
+  const batch = await dependencies.loadTargets(db, limit, cursor);
+  const coverage: VenueRefreshCoverage = {
+    scanStartCursor: batch.scanStartCursor,
+    scanEndCursor: batch.scanEndCursor,
+    reachedCorpusEnd: batch.reachedCorpusEnd,
+  };
   const targets = batch.targets;
   const records: VenuePeriodicRefreshResult["records"] = [];
   const result: VenuePeriodicRefreshResult = {
     dryRun, runId: null, limit, requested: limit, scanned: targets.length, fetched: 0, changed: 0, unchanged: 0,
     sourceRowsScanned: batch.sourceRowsScanned,
     scanTruncated: batch.scanTruncated,
+    reachedCorpusEnd: batch.reachedCorpusEnd,
+    coverageContinues: !batch.reachedCorpusEnd,
     protected: 0, protectedFields: 0,
     ambiguousIdentities: batch.ambiguousIdentities,
     identityAmbiguities: batch.identityAmbiguities,
     errors: [], records,
   };
-  if (!dryRun) result.runId = await dependencies.createRun(db, limit);
+  if (!dryRun) result.runId = await dependencies.createRun(db, limit, coverage);
   try {
     const fetched = targets.length
       ? await dependencies.fetchVenues(targets)
@@ -477,6 +542,6 @@ export async function runVenuePeriodicRefresh(
   } catch (error) {
     result.errors.push({ message: error instanceof Error ? error.message : "Venue periodic refresh failed" });
   }
-  if (!dryRun) await dependencies.finishRun(db, result);
+  if (!dryRun) await dependencies.finishRun(db, result, coverage);
   return result;
 }

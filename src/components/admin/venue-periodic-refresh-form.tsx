@@ -10,6 +10,8 @@ type RefreshResult = {
   scanned: number;
   sourceRowsScanned: number;
   scanTruncated: boolean;
+  reachedCorpusEnd: boolean;
+  coverageContinues: boolean;
   fetched: number;
   changed: number;
   unchanged: number;
@@ -63,6 +65,9 @@ export function VenuePeriodicRefreshForm() {
     {result && <div className="master-refresh-result" role="status">
       <strong>{result.dryRun ? "事前確認" : "更新結果"}</strong>
       <p>{result.scanned}件確認 · Source走査 {result.sourceRowsScanned}件{result.scanTruncated ? "（上限到達）" : ""} · 取得 {result.fetched}件 · 変更あり {result.changed}件 · 変更なし {result.unchanged}件 · ID要確認 {result.ambiguousIdentities}件 · 保護された項目あり {result.protected}件（{result.protectedFields}項目）· エラー {result.errors.length}件</p>
+      <small>{result.reachedCorpusEnd
+        ? result.dryRun ? "反映すると今回で一巡します。次回は先頭から確認します。" : "今回で一巡しました。次回は先頭から確認します。"
+        : result.dryRun ? "反映後は続きから確認します。" : "次回は続きから確認します。"}</small>
       {result.identityAmbiguities.length > 0 && <small>要確認: {result.identityAmbiguities.map((item) => `${item.venueName}（${item.qids.join(" / ")}${item.qidCount > item.qids.length ? ` / 他${item.qidCount - item.qids.length}件` : ""}）`).join("、")}</small>}
       {result.runId && <small>Run ID: {result.runId}</small>}
     </div>}

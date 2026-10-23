@@ -52,6 +52,10 @@ describe("Data Acquisition unified IA", () => {
     expect(refresh).toContain("identityAmbiguities");
     expect(refresh).toContain("sourceRowsScanned");
     expect(refresh).toContain("scanTruncated");
+    expect(refresh).toContain("reachedCorpusEnd");
+    expect(refresh).toContain("coverageContinues");
+    expect(refresh).toContain("次回は続きから確認します");
+    expect(refresh).toContain("次回は先頭から確認します");
     expect(refresh).toContain("Order 150");
     expect(refresh).toContain("Order 160");
     expect(refresh.match(/<button/g)).toHaveLength(2);
