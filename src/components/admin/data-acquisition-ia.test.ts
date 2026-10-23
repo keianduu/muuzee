@@ -48,6 +48,8 @@ describe("Data Acquisition unified IA", () => {
     expect(refresh).toContain('fetch("/api/admin/imports/master-refresh/venue"');
     expect(refresh).toContain("事前確認");
     expect(refresh).toContain("更新する");
+    expect(refresh).toContain("ID要確認");
+    expect(refresh).toContain("identityAmbiguities");
     expect(refresh).toContain("Order 150");
     expect(refresh).toContain("Order 160");
     expect(refresh.match(/<button/g)).toHaveLength(2);

@@ -13,6 +13,8 @@ type RefreshResult = {
   unchanged: number;
   protected: number;
   protectedFields: number;
+  ambiguousIdentities: number;
+  identityAmbiguities: Array<{ venueId: string; venueName: string; qids: string[]; qidCount: number; status: "identity_ambiguous" }>;
   errors: Array<{ qid?: string; message: string }>;
 };
 
@@ -58,7 +60,8 @@ export function VenuePeriodicRefreshForm() {
     </div>
     {result && <div className="master-refresh-result" role="status">
       <strong>{result.dryRun ? "事前確認" : "更新結果"}</strong>
-      <p>{result.scanned}件確認 · 取得 {result.fetched}件 · 変更あり {result.changed}件 · 変更なし {result.unchanged}件 · 保護された項目あり {result.protected}件（{result.protectedFields}項目）· エラー {result.errors.length}件</p>
+      <p>{result.scanned}件確認 · 取得 {result.fetched}件 · 変更あり {result.changed}件 · 変更なし {result.unchanged}件 · ID要確認 {result.ambiguousIdentities}件 · 保護された項目あり {result.protected}件（{result.protectedFields}項目）· エラー {result.errors.length}件</p>
+      {result.identityAmbiguities.length > 0 && <small>要確認: {result.identityAmbiguities.map((item) => `${item.venueName}（${item.qids.join(" / ")}${item.qidCount > item.qids.length ? ` / 他${item.qidCount - item.qids.length}件` : ""}）`).join("、")}</small>}
       {result.runId && <small>Run ID: {result.runId}</small>}
     </div>}
     {error && <div className="error" role="alert">{error}</div>}

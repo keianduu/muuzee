@@ -12,6 +12,7 @@ import type { WikidataVenue } from "./venue-import-types";
 const OPERATION_TYPE = "venue_periodic_refresh";
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+const AMBIGUOUS_QID_DIAGNOSTIC_LIMIT = 10;
 const QID = /^Q[1-9]\d*$/;
 
 type CurrentSource = { field_name: string; source: string; is_current: boolean };
@@ -28,6 +29,20 @@ export type VenueRefreshTarget = {
   sourceRecord: SourceRecord;
   venue: Record<string, unknown> & { id: string; name: string };
   sources: CurrentSource[];
+};
+
+export type VenueIdentityAmbiguity = {
+  venueId: string;
+  venueName: string;
+  qids: string[];
+  qidCount: number;
+  status: "identity_ambiguous";
+};
+
+type VenueRefreshBatch = {
+  targets: VenueRefreshTarget[];
+  ambiguousIdentities: number;
+  identityAmbiguities: VenueIdentityAmbiguity[];
 };
 
 export type VenueRefreshPlan = {
@@ -48,12 +63,14 @@ export type VenuePeriodicRefreshResult = {
   unchanged: number;
   protected: number;
   protectedFields: number;
+  ambiguousIdentities: number;
+  identityAmbiguities: VenueIdentityAmbiguity[];
   errors: Array<{ qid?: string; venueId?: string; message: string }>;
   records: Array<{ venueId: string; venueName: string; qid: string; changedFields: string[]; protectedFields: string[]; status: "changed" | "unchanged" | "error" }>;
 };
 
 type RefreshDependencies = {
-  loadTargets: (db: SupabaseClient, limit: number) => Promise<VenueRefreshTarget[]>;
+  loadTargets: (db: SupabaseClient, limit: number) => Promise<VenueRefreshBatch>;
   fetchVenues: (targets: VenueRefreshTarget[]) => Promise<{ venues: Map<string, WikidataVenue>; errors: Map<string, string> }>;
   createRun: (db: SupabaseClient, limit: number) => Promise<string>;
   applyPlan: (db: SupabaseClient, plan: VenueRefreshPlan) => Promise<void>;
@@ -66,16 +83,34 @@ export function normalizeVenueRefreshLimit(value?: number) {
 }
 
 export function selectBoundedVenueRefreshSources(rows: SourceRecord[], limit: number) {
-  const seenVenueIds = new Set<string>();
-  return [...rows]
-    .filter((row) => Boolean(row.venue_id) && QID.test(row.external_id))
-    .sort((left, right) => left.venue_id.localeCompare(right.venue_id) || left.external_id.localeCompare(right.external_id))
-    .filter((row) => {
-      if (seenVenueIds.has(row.venue_id)) return false;
-      seenVenueIds.add(row.venue_id);
-      return true;
-    })
-    .slice(0, normalizeVenueRefreshLimit(limit));
+  const byVenue = new Map<string, Map<string, SourceRecord>>();
+  for (const row of [...rows].sort((left, right) =>
+    left.venue_id.localeCompare(right.venue_id)
+    || left.external_id.localeCompare(right.external_id)
+    || left.id.localeCompare(right.id))) {
+    if (!row.venue_id || !QID.test(row.external_id)) continue;
+    const identities = byVenue.get(row.venue_id) || new Map<string, SourceRecord>();
+    if (!identities.has(row.external_id)) identities.set(row.external_id, row);
+    byVenue.set(row.venue_id, identities);
+  }
+
+  const selected: SourceRecord[] = [];
+  const ambiguities: Array<{ venueId: string; qids: string[]; qidCount: number }> = [];
+  for (const [venueId, identities] of [...byVenue].sort(([left], [right]) => left.localeCompare(right))) {
+    const qids = [...identities.keys()].sort((left, right) => left.localeCompare(right));
+    if (qids.length === 1) selected.push(identities.get(qids[0])!);
+    else if (qids.length > 1) ambiguities.push({
+      venueId,
+      qids: qids.slice(0, AMBIGUOUS_QID_DIAGNOSTIC_LIMIT),
+      qidCount: qids.length,
+    });
+  }
+
+  return {
+    selected: selected.slice(0, normalizeVenueRefreshLimit(limit)),
+    ambiguousIdentities: ambiguities.length,
+    ambiguities: ambiguities.slice(0, MAX_LIMIT),
+  };
 }
 
 export function buildVenueRefreshPlan(target: VenueRefreshTarget, normalized: WikidataVenue): VenueRefreshPlan {
@@ -113,11 +148,15 @@ async function loadTargets(db: SupabaseClient, limit: number) {
     if (error) throw error;
     const page = (data || []) as SourceRecord[];
     linked.push(...page);
-    if (selectBoundedVenueRefreshSources(linked, limit).length >= limit || page.length < 500) break;
+    if (page.length < 500) break;
   }
-  if (!linked.length) return [];
-  const selected = selectBoundedVenueRefreshSources(linked, limit);
-  const venueIds = selected.map((row) => row.venue_id);
+  if (!linked.length) return { targets: [], ambiguousIdentities: 0, identityAmbiguities: [] };
+  const selection = selectBoundedVenueRefreshSources(linked, limit);
+  const venueIds = [...new Set([
+    ...selection.selected.map((row) => row.venue_id),
+    ...selection.ambiguities.map((item) => item.venueId),
+  ])];
+  if (!venueIds.length) return { targets: [], ambiguousIdentities: selection.ambiguousIdentities, identityAmbiguities: [] };
   const [{ data: venues, error: venueError }, { data: sources, error: sourceError }] = await Promise.all([
     db.from("venues").select("*").in("id", venueIds),
     db.from("venue_field_sources").select("venue_id,field_name,source,is_current").in("venue_id", venueIds).eq("is_current", true),
@@ -125,7 +164,7 @@ async function loadTargets(db: SupabaseClient, limit: number) {
   if (venueError) throw venueError;
   if (sourceError) throw sourceError;
   const venueById = new Map(((venues || []) as Array<Record<string, unknown> & { id: string; name: string }>).map((venue) => [venue.id, venue]));
-  return selected.flatMap((sourceRecord) => {
+  const targets = selection.selected.flatMap((sourceRecord) => {
     const venue = venueById.get(sourceRecord.venue_id);
     if (!venue) return [];
     return [{
@@ -134,6 +173,14 @@ async function loadTargets(db: SupabaseClient, limit: number) {
       sources: ((sources || []) as Array<CurrentSource & { venue_id: string }>).filter((row) => row.venue_id === venue.id),
     }];
   });
+  const identityAmbiguities = selection.ambiguities.map((item) => ({
+    venueId: item.venueId,
+    venueName: venueById.get(item.venueId)?.name || item.venueId,
+    qids: item.qids,
+    qidCount: item.qidCount,
+    status: "identity_ambiguous" as const,
+  }));
+  return { targets, ambiguousIdentities: selection.ambiguousIdentities, identityAmbiguities };
 }
 
 async function fetchVenues(targets: VenueRefreshTarget[]) {
@@ -258,7 +305,7 @@ async function finishRun(db: SupabaseClient, result: VenuePeriodicRefreshResult)
     fetched_count: result.fetched,
     created_count: 0,
     updated_count: result.changed,
-    skipped_count: result.unchanged,
+    skipped_count: result.unchanged + result.ambiguousIdentities,
     error_count: result.errors.length,
     errors: result.errors.length ? result.errors : null,
     metrics: result,
@@ -277,15 +324,21 @@ export async function runVenuePeriodicRefresh(
   const dependencies = { ...defaults, ...overrides };
   const dryRun = input.dryRun !== false;
   const limit = normalizeVenueRefreshLimit(input.limit);
-  const targets = await dependencies.loadTargets(db, limit);
+  const batch = await dependencies.loadTargets(db, limit);
+  const targets = batch.targets;
   const records: VenuePeriodicRefreshResult["records"] = [];
   const result: VenuePeriodicRefreshResult = {
     dryRun, runId: null, limit, requested: limit, scanned: targets.length, fetched: 0, changed: 0, unchanged: 0,
-    protected: 0, protectedFields: 0, errors: [], records,
+    protected: 0, protectedFields: 0,
+    ambiguousIdentities: batch.ambiguousIdentities,
+    identityAmbiguities: batch.identityAmbiguities,
+    errors: [], records,
   };
   if (!dryRun) result.runId = await dependencies.createRun(db, limit);
   try {
-    const fetched = await dependencies.fetchVenues(targets);
+    const fetched = targets.length
+      ? await dependencies.fetchVenues(targets)
+      : { venues: new Map<string, WikidataVenue>(), errors: new Map<string, string>() };
     for (const target of targets) {
       const qid = target.sourceRecord.external_id;
       const normalized = fetched.venues.get(qid);
