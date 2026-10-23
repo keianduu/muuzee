@@ -12,6 +12,8 @@ import type { WikidataVenue } from "./venue-import-types";
 const OPERATION_TYPE = "venue_periodic_refresh";
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+const SOURCE_PAGE_SIZE = 200;
+const MAX_SOURCE_ROWS_SCANNED = 1000;
 const AMBIGUOUS_QID_DIAGNOSTIC_LIMIT = 10;
 const QID = /^Q[1-9]\d*$/;
 
@@ -41,6 +43,8 @@ export type VenueIdentityAmbiguity = {
 
 type VenueRefreshBatch = {
   targets: VenueRefreshTarget[];
+  sourceRowsScanned: number;
+  scanTruncated: boolean;
   ambiguousIdentities: number;
   identityAmbiguities: VenueIdentityAmbiguity[];
 };
@@ -58,6 +62,8 @@ export type VenuePeriodicRefreshResult = {
   limit: number;
   requested: number;
   scanned: number;
+  sourceRowsScanned: number;
+  scanTruncated: boolean;
   fetched: number;
   changed: number;
   unchanged: number;
@@ -82,34 +88,122 @@ export function normalizeVenueRefreshLimit(value?: number) {
   return Math.max(1, Math.min(MAX_LIMIT, Math.floor(value as number)));
 }
 
+type VenueSourceSelection = {
+  selected: SourceRecord[];
+  ambiguousIdentities: number;
+  ambiguities: Array<{ venueId: string; qids: string[]; qidCount: number }>;
+  sourceRowsScanned: number;
+  scanTruncated: boolean;
+};
+
+function classifyVenueSourceGroup(rows: SourceRecord[]) {
+  const identities = new Map<string, SourceRecord>();
+  for (const row of rows) {
+    if (QID.test(row.external_id) && !identities.has(row.external_id)) identities.set(row.external_id, row);
+  }
+  const qids = [...identities.keys()].sort((left, right) => left.localeCompare(right));
+  if (qids.length === 1) return { selected: identities.get(qids[0])! };
+  if (qids.length > 1) return {
+    ambiguity: {
+      venueId: rows[0].venue_id,
+      qids: qids.slice(0, AMBIGUOUS_QID_DIAGNOSTIC_LIMIT),
+      qidCount: qids.length,
+    },
+  };
+  return {};
+}
+
 export function selectBoundedVenueRefreshSources(rows: SourceRecord[], limit: number) {
-  const byVenue = new Map<string, Map<string, SourceRecord>>();
+  const byVenue = new Map<string, SourceRecord[]>();
   for (const row of [...rows].sort((left, right) =>
     left.venue_id.localeCompare(right.venue_id)
     || left.external_id.localeCompare(right.external_id)
     || left.id.localeCompare(right.id))) {
-    if (!row.venue_id || !QID.test(row.external_id)) continue;
-    const identities = byVenue.get(row.venue_id) || new Map<string, SourceRecord>();
-    if (!identities.has(row.external_id)) identities.set(row.external_id, row);
-    byVenue.set(row.venue_id, identities);
+    if (!row.venue_id) continue;
+    const group = byVenue.get(row.venue_id) || [];
+    group.push(row);
+    byVenue.set(row.venue_id, group);
   }
 
   const selected: SourceRecord[] = [];
   const ambiguities: Array<{ venueId: string; qids: string[]; qidCount: number }> = [];
-  for (const [venueId, identities] of [...byVenue].sort(([left], [right]) => left.localeCompare(right))) {
-    const qids = [...identities.keys()].sort((left, right) => left.localeCompare(right));
-    if (qids.length === 1) selected.push(identities.get(qids[0])!);
-    else if (qids.length > 1) ambiguities.push({
-      venueId,
-      qids: qids.slice(0, AMBIGUOUS_QID_DIAGNOSTIC_LIMIT),
-      qidCount: qids.length,
-    });
+  for (const [, group] of [...byVenue].sort(([left], [right]) => left.localeCompare(right))) {
+    const classification = classifyVenueSourceGroup(group);
+    if (classification.selected) selected.push(classification.selected);
+    else if (classification.ambiguity) ambiguities.push(classification.ambiguity);
   }
 
   return {
     selected: selected.slice(0, normalizeVenueRefreshLimit(limit)),
     ambiguousIdentities: ambiguities.length,
     ambiguities: ambiguities.slice(0, MAX_LIMIT),
+    sourceRowsScanned: rows.length,
+    scanTruncated: false,
+  };
+}
+
+export async function scanBoundedVenueRefreshSources(
+  loadPage: (offset: number, pageSize: number) => Promise<SourceRecord[]>,
+  limit: number,
+  options: { pageSize?: number; maxSourceRows?: number } = {},
+): Promise<VenueSourceSelection> {
+  const targetLimit = normalizeVenueRefreshLimit(limit);
+  const pageSize = Math.max(1, Math.floor(options.pageSize ?? SOURCE_PAGE_SIZE));
+  const maxSourceRows = Math.max(1, Math.floor(options.maxSourceRows ?? MAX_SOURCE_ROWS_SCANNED));
+  const selected: SourceRecord[] = [];
+  const ambiguities: VenueSourceSelection["ambiguities"] = [];
+  let pendingGroup: SourceRecord[] = [];
+  let offset = 0;
+  let sourceRowsRead = 0;
+  let sourceRowsScanned = 0;
+  let reachedEnd = false;
+
+  const finalizePendingGroup = () => {
+    if (!pendingGroup.length) return;
+    const classification = classifyVenueSourceGroup(pendingGroup);
+    if (classification.selected) selected.push(classification.selected);
+    else if (classification.ambiguity) ambiguities.push(classification.ambiguity);
+    pendingGroup = [];
+  };
+
+  while (sourceRowsRead < maxSourceRows && selected.length < targetLimit) {
+    const requestedPageSize = Math.min(pageSize, maxSourceRows - sourceRowsRead);
+    const page = await loadPage(offset, requestedPageSize);
+    sourceRowsRead += page.length;
+    offset += page.length;
+    if (!page.length) {
+      reachedEnd = true;
+      finalizePendingGroup();
+      break;
+    }
+
+    for (const row of page) {
+      if (!pendingGroup.length || pendingGroup[0].venue_id === row.venue_id) {
+        pendingGroup.push(row);
+        sourceRowsScanned += 1;
+        continue;
+      }
+      finalizePendingGroup();
+      if (selected.length >= targetLimit) break;
+      pendingGroup.push(row);
+      sourceRowsScanned += 1;
+    }
+    if (selected.length >= targetLimit) break;
+
+    if (page.length < requestedPageSize) {
+      reachedEnd = true;
+      finalizePendingGroup();
+      break;
+    }
+  }
+
+  const scanTruncated = !reachedEnd && selected.length < targetLimit;
+  return {
+    selected: selected.slice(0, targetLimit),
+    ambiguousIdentities: ambiguities.length,
+    ambiguities: ambiguities.slice(0, MAX_LIMIT),
+    sourceRowsScanned,
+    scanTruncated,
   };
 }
 
@@ -136,27 +230,29 @@ async function wikidataSourceId(db: SupabaseClient) {
 
 async function loadTargets(db: SupabaseClient, limit: number) {
   const dataSourceId = await wikidataSourceId(db);
-  const linked: SourceRecord[] = [];
-  for (let offset = 0; ; offset += 500) {
+  const selection = await scanBoundedVenueRefreshSources(async (offset, pageSize) => {
     const { data, error } = await db.from("source_records")
       .select("id,external_id,venue_id,source_url,raw_payload,checksum")
       .eq("data_source_id", dataSourceId)
       .not("venue_id", "is", null)
       .order("venue_id")
       .order("external_id")
-      .range(offset, offset + 499);
+      .order("id")
+      .range(offset, offset + pageSize - 1);
     if (error) throw error;
-    const page = (data || []) as SourceRecord[];
-    linked.push(...page);
-    if (page.length < 500) break;
-  }
-  if (!linked.length) return { targets: [], ambiguousIdentities: 0, identityAmbiguities: [] };
-  const selection = selectBoundedVenueRefreshSources(linked, limit);
+    return (data || []) as SourceRecord[];
+  }, limit);
+  if (!selection.sourceRowsScanned) return {
+    targets: [], sourceRowsScanned: 0, scanTruncated: false, ambiguousIdentities: 0, identityAmbiguities: [],
+  };
   const venueIds = [...new Set([
     ...selection.selected.map((row) => row.venue_id),
     ...selection.ambiguities.map((item) => item.venueId),
   ])];
-  if (!venueIds.length) return { targets: [], ambiguousIdentities: selection.ambiguousIdentities, identityAmbiguities: [] };
+  if (!venueIds.length) return {
+    targets: [], sourceRowsScanned: selection.sourceRowsScanned, scanTruncated: selection.scanTruncated,
+    ambiguousIdentities: selection.ambiguousIdentities, identityAmbiguities: [],
+  };
   const [{ data: venues, error: venueError }, { data: sources, error: sourceError }] = await Promise.all([
     db.from("venues").select("*").in("id", venueIds),
     db.from("venue_field_sources").select("venue_id,field_name,source,is_current").in("venue_id", venueIds).eq("is_current", true),
@@ -180,7 +276,13 @@ async function loadTargets(db: SupabaseClient, limit: number) {
     qidCount: item.qidCount,
     status: "identity_ambiguous" as const,
   }));
-  return { targets, ambiguousIdentities: selection.ambiguousIdentities, identityAmbiguities };
+  return {
+    targets,
+    sourceRowsScanned: selection.sourceRowsScanned,
+    scanTruncated: selection.scanTruncated,
+    ambiguousIdentities: selection.ambiguousIdentities,
+    identityAmbiguities,
+  };
 }
 
 async function fetchVenues(targets: VenueRefreshTarget[]) {
@@ -329,6 +431,8 @@ export async function runVenuePeriodicRefresh(
   const records: VenuePeriodicRefreshResult["records"] = [];
   const result: VenuePeriodicRefreshResult = {
     dryRun, runId: null, limit, requested: limit, scanned: targets.length, fetched: 0, changed: 0, unchanged: 0,
+    sourceRowsScanned: batch.sourceRowsScanned,
+    scanTruncated: batch.scanTruncated,
     protected: 0, protectedFields: 0,
     ambiguousIdentities: batch.ambiguousIdentities,
     identityAmbiguities: batch.identityAmbiguities,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WikidataVenue } from "./venue-import-types";
-import { buildVenueRefreshPlan, normalizeVenueRefreshLimit, runVenuePeriodicRefresh, selectBoundedVenueRefreshSources, type VenueIdentityAmbiguity, type VenueRefreshTarget } from "./venue-periodic-refresh";
+import { buildVenueRefreshPlan, normalizeVenueRefreshLimit, runVenuePeriodicRefresh, scanBoundedVenueRefreshSources, selectBoundedVenueRefreshSources, type VenueIdentityAmbiguity, type VenueRefreshTarget } from "./venue-periodic-refresh";
 
 function target(overrides: Partial<VenueRefreshTarget["venue"]> = {}, sources: VenueRefreshTarget["sources"] = []): VenueRefreshTarget {
   return {
@@ -21,7 +21,20 @@ function venue(overrides: Partial<WikidataVenue> = {}): WikidataVenue {
 }
 
 function batch(targets: VenueRefreshTarget[], identityAmbiguities: VenueIdentityAmbiguity[] = []) {
-  return { targets, ambiguousIdentities: identityAmbiguities.length, identityAmbiguities };
+  return { targets, sourceRowsScanned: targets.length, scanTruncated: false, ambiguousIdentities: identityAmbiguities.length, identityAmbiguities };
+}
+
+function sourceRows(count: number, start = 1) {
+  return Array.from({ length: count }, (_, index) => ({
+    ...target().sourceRecord,
+    id: `source-${start + index}`,
+    external_id: `Q${start + index}`,
+    venue_id: `venue-${String(start + index).padStart(3, "0")}`,
+  }));
+}
+
+function paged(rows: VenueRefreshTarget["sourceRecord"][]) {
+  return vi.fn(async (offset: number, pageSize: number) => rows.slice(offset, offset + pageSize));
 }
 
 describe("Venue periodic refresh", () => {
@@ -86,6 +99,73 @@ describe("Venue periodic refresh", () => {
     expect(selection.ambiguousIdentities).toBe(1);
   });
 
+  it("fills a 20-target batch from one page without reading a later page", async () => {
+    const loadPage = paged(sourceRows(20));
+    const selection = await scanBoundedVenueRefreshSources(loadPage, 20, { pageSize: 50, maxSourceRows: 100 });
+    expect(selection).toMatchObject({ selected: expect.any(Array), sourceRowsScanned: 20, scanTruncated: false });
+    expect(selection.selected).toHaveLength(20);
+    expect(loadPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a Venue group intact when it crosses a source page boundary", async () => {
+    const source = target().sourceRecord;
+    const rows = [
+      { ...source, id: "a-1", external_id: "Q1", venue_id: "venue-a" },
+      { ...source, id: "a-2", external_id: "Q1", venue_id: "venue-a" },
+      { ...source, id: "a-3", external_id: "Q2", venue_id: "venue-a" },
+      { ...source, id: "b-1", external_id: "Q3", venue_id: "venue-b" },
+    ];
+    const selection = await scanBoundedVenueRefreshSources(paged(rows), 1, { pageSize: 2, maxSourceRows: 10 });
+    expect(selection.selected.map((row) => row.venue_id)).toEqual(["venue-b"]);
+    expect(selection).toMatchObject({ ambiguousIdentities: 1, sourceRowsScanned: 4, scanTruncated: false });
+  });
+
+  it("does not let an ambiguous group consume the eligible target limit", async () => {
+    const source = target().sourceRecord;
+    const rows = [
+      { ...source, id: "a-1", external_id: "Q1", venue_id: "venue-a" },
+      { ...source, id: "a-2", external_id: "Q2", venue_id: "venue-a" },
+      ...sourceRows(2, 3),
+    ];
+    const selection = await scanBoundedVenueRefreshSources(paged(rows), 2, { pageSize: 10, maxSourceRows: 10 });
+    expect(selection.selected.map((row) => row.external_id)).toEqual(["Q3", "Q4"]);
+    expect(selection.ambiguousIdentities).toBe(1);
+  });
+
+  it("stops paging after the requested eligible targets are finalized", async () => {
+    const loadPage = paged(sourceRows(12));
+    const selection = await scanBoundedVenueRefreshSources(loadPage, 2, { pageSize: 3, maxSourceRows: 12 });
+    expect(selection.selected.map((row) => row.external_id)).toEqual(["Q1", "Q2"]);
+    expect(loadPage).toHaveBeenCalledTimes(1);
+    expect(selection.sourceRowsScanned).toBe(2);
+    expect(selection.scanTruncated).toBe(false);
+  });
+
+  it("stops at the hard source-row ceiling and reports a truncated scan", async () => {
+    const source = target().sourceRecord;
+    const rows = Array.from({ length: 12 }, (_, index) => ({
+      ...source,
+      id: `source-${index}`,
+      external_id: index < 2 ? "invalid" : index % 2 === 0 ? `Q${index + 1}` : `Q${index + 2}`,
+      venue_id: `venue-${Math.floor(index / 2)}`,
+    }));
+    const loadPage = paged(rows);
+    const selection = await scanBoundedVenueRefreshSources(loadPage, 2, { pageSize: 4, maxSourceRows: 8 });
+    expect(selection).toMatchObject({ selected: [], sourceRowsScanned: 8, scanTruncated: true });
+    expect(loadPage).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps duplicate rows for one QID eligible during incremental scanning", async () => {
+    const source = target().sourceRecord;
+    const rows = [
+      { ...source, id: "a-1", external_id: "Q1", venue_id: "venue-a" },
+      { ...source, id: "a-2", external_id: "Q1", venue_id: "venue-a" },
+    ];
+    const selection = await scanBoundedVenueRefreshSources(paged(rows), 1, { pageSize: 10, maxSourceRows: 10 });
+    expect(selection.selected).toHaveLength(1);
+    expect(selection.ambiguousIdentities).toBe(0);
+  });
+
   it("refreshes Wikidata-owned fields while protecting higher-priority provenance", () => {
     const plan = buildVenueRefreshPlan(target({ address: "公式住所" }, [
       { field_name: "name", source: "wikidata", is_current: true },
@@ -111,7 +191,7 @@ describe("Venue periodic refresh", () => {
       createRun, applyPlan, finishRun,
     });
     expect(result.runId).toBeNull();
-    expect(result).toMatchObject({ requested: 20, scanned: 1, fetched: 1, changed: 1, errors: [] });
+    expect(result).toMatchObject({ requested: 20, scanned: 1, sourceRowsScanned: 1, scanTruncated: false, fetched: 1, changed: 1, errors: [] });
     expect(createRun).not.toHaveBeenCalled();
     expect(applyPlan).not.toHaveBeenCalled();
     expect(finishRun).not.toHaveBeenCalled();
@@ -173,6 +253,8 @@ describe("Venue periodic refresh", () => {
     expect(finishRun).toHaveBeenCalledTimes(1);
     expect(result.runId).toBe("run-1");
     expect(result.scanned).toBe(2);
+    expect(result.sourceRowsScanned).toBe(2);
+    expect(result.scanTruncated).toBe(false);
   });
 
   it("records a fetch failure without guessing or applying that Venue", async () => {
