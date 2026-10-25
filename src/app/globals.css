@@ -299,6 +299,7 @@ a.data-acquisition-metric:hover { border-color: var(--ink-300); background: var(
 .master-operator-row-head h3 { margin: 0; font-size: 16px; }
 .master-operator-row-body { min-width: 0; display: grid; grid-template-columns: minmax(250px,.8fr) minmax(300px,1.2fr); align-items: start; gap: 24px; margin-top: 12px; }
 .master-operator-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 0; }
+.master-operator-metric-block { min-width: 0; }
 .master-operator-metrics > div { min-width: 0; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: var(--admin-radius-control); background: var(--surface); }
 .master-operator-metrics dt { color: var(--ink-500); font-size: 12px; line-height: 1.4; }
 .master-operator-metrics dd { margin: 3px 0 0; color: var(--ink-950); font-size: 20px; font-weight: 650; line-height: 1.2; }

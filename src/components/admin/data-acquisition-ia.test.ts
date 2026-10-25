@@ -38,6 +38,10 @@ describe("Data Acquisition unified IA", () => {
     expect(refresh).toContain('fetch("/api/admin/imports/master-refresh/venue"');
     expect(refresh).toContain("変更内容を確認");
     expect(refresh).toContain("情報を更新する");
+    expect(page).toContain("actionsEnabled={masters.configured}");
+    expect(refresh).toContain("if (!actionsEnabled) return");
+    expect(daily).toContain("if (!actionsEnabled) return");
+    expect(resolution).toContain("if (!actionsEnabled) return");
     expect(resolution).toContain("自動処理待ち");
     expect(resolution).toContain("要確認");
     expect(resolution).toContain("showAutomaticActions");

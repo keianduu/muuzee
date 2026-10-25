@@ -7,9 +7,9 @@ export type MasterOperatorEntity = (typeof MASTER_OPERATOR_ENTITIES)[number];
 
 export type MasterOperatorOverview = {
   entity: MasterOperatorEntity;
-  total: number;
-  published: number;
-  unpublished: number;
+  total: number | null;
+  published: number | null;
+  unpublished: number | null;
 };
 
 export type MasterOperatorOverviewResult = {
@@ -31,6 +31,12 @@ export function buildMasterOperatorOverview(
   };
 }
 
+export function buildUnavailableMasterOperatorOverview(
+  entity: MasterOperatorEntity,
+): MasterOperatorOverview {
+  return { entity, total: null, published: null, unpublished: null };
+}
+
 async function countMasters(entity: MasterOperatorEntity, publishedOnly: boolean) {
   const db = createSupabaseAdminClient();
   let query = db.from(entity).select("id", { count: "exact", head: true });
@@ -42,9 +48,9 @@ async function countMasters(entity: MasterOperatorEntity, publishedOnly: boolean
 }
 
 export async function getMasterOperatorOverviews(): Promise<MasterOperatorOverviewResult> {
-  const fallback = MASTER_OPERATOR_ENTITIES.map((entity) => buildMasterOperatorOverview(entity, 0, 0));
+  const unavailable = MASTER_OPERATOR_ENTITIES.map(buildUnavailableMasterOperatorOverview);
   if (!hasSupabaseAdminEnvironment()) {
-    return { data: fallback, configured: false, error: "Supabase環境が未設定のため、Master件数を取得できません。" };
+    return { data: unavailable, configured: false, error: "データを利用できないため、Master件数を取得できません。" };
   }
 
   try {
@@ -57,6 +63,6 @@ export async function getMasterOperatorOverviews(): Promise<MasterOperatorOvervi
     }));
     return { data, configured: true, error: null };
   } catch {
-    return { data: fallback, configured: true, error: "Master件数を取得できませんでした。時間をおいて再度お試しください。" };
+    return { data: unavailable, configured: true, error: "Master件数を取得できませんでした。時間をおいて再度お試しください。" };
   }
 }

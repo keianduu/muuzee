@@ -9,14 +9,18 @@ const LABELS: Record<MasterOperatorEntity, string> = {
 };
 
 function MasterMetrics({ overview }: { overview: MasterOperatorOverview }) {
-  return <dl className="master-operator-metrics" aria-label={`${LABELS[overview.entity]}の件数`}>
-    <div><dt>Master total</dt><dd>{overview.total}</dd></div>
-    <div><dt>公開</dt><dd>{overview.published}</dd></div>
-    <div><dt>非公開</dt><dd>{overview.unpublished}</dd></div>
-  </dl>;
+  const available = overview.total !== null;
+  return <div className="master-operator-metric-block">
+    <dl className="master-operator-metrics" aria-label={`${LABELS[overview.entity]}の件数`}>
+      <div><dt>Master total</dt><dd>{overview.total ?? "—"}</dd></div>
+      <div><dt>公開</dt><dd>{overview.published ?? "—"}</dd></div>
+      <div><dt>非公開</dt><dd>{overview.unpublished ?? "—"}</dd></div>
+    </dl>
+    {!available && <p className="data-acquisition-empty-state">件数を取得できません。</p>}
+  </div>;
 }
 
-export function MasterDataOperationCard({ overviews }: { overviews: MasterOperatorOverview[] }) {
+export function MasterDataOperationCard({ overviews, actionsEnabled }: { overviews: MasterOperatorOverview[]; actionsEnabled: boolean }) {
   return <section className="card data-acquisition-operation master-data-operation" id="master-data">
     <p className="eyebrow">Master Data</p>
     <h2>Masterデータ</h2>
@@ -30,7 +34,7 @@ export function MasterDataOperationCard({ overviews }: { overviews: MasterOperat
         <div className="master-operator-row-body">
           <MasterMetrics overview={overview}/>
           {overview.entity === "venues"
-            ? <VenuePeriodicRefreshForm/>
+            ? <VenuePeriodicRefreshForm actionsEnabled={actionsEnabled}/>
             : <div className="master-operator-pending"><span className="status">準備中</span><p>現在利用できる更新操作はありません。</p></div>}
         </div>
       </article>)}
