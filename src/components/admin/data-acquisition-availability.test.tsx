@@ -45,6 +45,22 @@ describe("Data Acquisition availability", () => {
     expect(html).not.toContain("disabled=\"");
   });
 
+  it("renders only the failed Entity as unavailable while preserving the other counts", () => {
+    const html = renderToStaticMarkup(<MasterDataOperationCard
+      overviews={[
+        buildMasterOperatorOverview("venues", 58, 4),
+        buildUnavailableMasterOperatorOverview("artists"),
+        buildMasterOperatorOverview("works", 57, 3),
+      ]}
+      actionsEnabled
+    />);
+    expect(html.match(/件数を取得できません。/g)).toHaveLength(1);
+    expect(html.match(/<dd>—<\/dd>/g)).toHaveLength(3);
+    expect(html).toContain("<dd>58</dd>");
+    expect(html).toContain("<dd>57</dd>");
+    expect(html).not.toContain("disabled=\"");
+  });
+
   it("disables Exhibition update and automatic resolution actions when the environment is unavailable", () => {
     const html = renderToStaticMarkup(<ExhibitionDataOperationCard overview={automaticOverview} actionsEnabled={false}/>);
     expect(html).toContain("展示会データを更新する");
