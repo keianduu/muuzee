@@ -38,10 +38,29 @@ describe("Data Acquisition unified IA", () => {
     expect(refresh).toContain('fetch("/api/admin/imports/master-refresh/venue"');
     expect(refresh).toContain("変更内容を確認");
     expect(refresh).toContain("情報を更新する");
+    expect(resolution).toContain("自動処理待ち");
+    expect(resolution).toContain("要確認");
+    expect(resolution).toContain("showAutomaticActions");
+    for (const technicalDetail of ["技術詳細", "Source走査", "Run ID"]) expect(refresh).not.toContain(technicalDetail);
+    expect(refresh).not.toContain("事前確認");
+    expect(daily).not.toContain("事前確認");
     expect(backfill).toContain('fetch("/api/admin/imports"');
     expect(page).not.toContain("ImportForm");
     expect(page).not.toContain("SourcePolicy");
     expect(page).not.toContain("getImportRuns");
+  });
+
+  it("uses full-corpus status counts instead of the bounded detail items", () => {
+    const worker = read("../../lib/master-resolution/worker.ts");
+    const presentation = read("../../lib/admin/data-acquisition-presentation.ts");
+    expect(worker).toContain('venueFailed: entityCount("venue", "failed")');
+    expect(worker).toContain('artistFailed: entityCount("artist", "failed")');
+    expect(worker).toContain('venueAmbiguous: entityCount("venue", "ambiguous")');
+    expect(worker).toContain('artistNoCandidate: entityCount("artist", "no_candidate")');
+    expect(worker).toContain("return buildResolutionOverview(rows)");
+    expect(worker).toContain('row.resolution_status === "ambiguous" || row.resolution_status === "no_candidate"');
+    expect(worker).toContain('.slice(0, 100)');
+    expect(presentation).toContain('count("venuePending") + count("artistPending") + count("venueFailed") + count("artistFailed")');
   });
 
   it("keeps the operation stack as the single 32px spacing owner and uses white card surfaces", () => {

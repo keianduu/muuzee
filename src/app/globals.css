@@ -315,11 +315,10 @@ a.data-acquisition-metric:hover { border-color: var(--ink-300); background: var(
 .exhibition-resolution-counts span { padding: 7px 10px; border-radius: var(--admin-radius-control); background: var(--surface); color: var(--ink-600); font-size: 13px; }
 .exhibition-resolution-counts strong { color: var(--ink-950); }
 .exhibition-resolution-operation .actions { margin-top: 12px; }
-.exhibition-resolution-details, .data-acquisition-technical-details { margin-top: 14px; color: var(--ink-600); font-size: 12px; }
-.exhibition-resolution-details summary, .data-acquisition-technical-details summary { width: fit-content; color: var(--ink-800); font-weight: 650; cursor: pointer; }
+.exhibition-resolution-details { margin-top: 14px; color: var(--ink-600); font-size: 12px; }
+.exhibition-resolution-details summary { width: fit-content; color: var(--ink-800); font-weight: 650; cursor: pointer; }
 .exhibition-resolution-details .table-wrap { margin-top: 10px; }
 .exhibition-resolution-details table { min-width: 640px; }
-.data-acquisition-technical-details p { margin: 6px 0 0; overflow-wrap: anywhere; }
 .data-acquisition-empty-state { margin-top: 12px !important; color: var(--ink-500) !important; }
 .master-refresh-result { display: grid; gap: 4px; margin-top: 16px; padding: 14px 16px; border: 1px solid var(--line-soft); border-radius: var(--admin-radius-control); background: var(--surface-hover); }
 .master-refresh-result p, .master-refresh-result small { margin: 0; }

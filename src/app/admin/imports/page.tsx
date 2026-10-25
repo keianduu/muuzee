@@ -1,11 +1,11 @@
 import { ExhibitionDataOperationCard } from "@/components/admin/exhibition-data-operation-card";
 import { MasterDataOperationCard } from "@/components/admin/master-data-operation-card";
 import { getMasterOperatorOverviews } from "@/lib/admin/data-acquisition-operator-overview";
-import { getResolutionOverview } from "@/lib/master-resolution/worker";
+import { buildResolutionOverview, getResolutionOverview } from "@/lib/master-resolution/worker";
 
 export default async function ImportsPage() {
   const masters = await getMasterOperatorOverviews();
-  let overview: Awaited<ReturnType<typeof getResolutionOverview>> = { counts: { venuePending: 0, artistPending: 0 }, items: [] };
+  let overview: Awaited<ReturnType<typeof getResolutionOverview>> = buildResolutionOverview([]);
   let resolutionError = "";
   if (masters.configured) {
     try {

@@ -28,6 +28,32 @@ export type ResolutionResult = {
   tierChanges: { venue: number; artist: number };
 };
 
+type ResolutionOverviewRow = Record<string, unknown> & {
+  entity_type: ResolutionEntity;
+  resolution_status: string;
+};
+
+const RESOLUTION_OVERVIEW_STATUSES = ["pending", "resolved", "ambiguous", "no_candidate", "failed"] as const;
+
+export function buildResolutionOverview(rows: ResolutionOverviewRow[]) {
+  const counts = Object.fromEntries(RESOLUTION_OVERVIEW_STATUSES.map((status) => [status, rows.filter((row) => row.resolution_status === status).length]));
+  const entityCount = (entity: ResolutionEntity, status: string) => rows.filter((row) => row.entity_type === entity && row.resolution_status === status).length;
+  return {
+    counts: {
+      ...counts,
+      venuePending: entityCount("venue", "pending"),
+      artistPending: entityCount("artist", "pending"),
+      venueFailed: entityCount("venue", "failed"),
+      artistFailed: entityCount("artist", "failed"),
+      venueAmbiguous: entityCount("venue", "ambiguous"),
+      artistAmbiguous: entityCount("artist", "ambiguous"),
+      venueNoCandidate: entityCount("venue", "no_candidate"),
+      artistNoCandidate: entityCount("artist", "no_candidate"),
+    },
+    items: rows.filter((row) => row.resolution_status === "ambiguous" || row.resolution_status === "no_candidate").slice(0, 100),
+  };
+}
+
 type Mention = Record<string, unknown> & {
   id: string; exhibition_id: string; source_record_id: string | null; resolution_status: string;
   source_venue_name?: string; source_artist_name?: string; role?: string | null;
@@ -177,9 +203,8 @@ export async function getResolutionOverview(db: SupabaseClient = createSupabaseA
     db.from("exhibition_artist_mentions").select("id,resolution_status,source_artist_name,match_method:extraction_method,match_reason,resolution_diagnostics,matched_artist_id,exhibitions(title)").eq("is_active", true).order("updated_at", { ascending: false }),
   ]);
   if (venue.error) throw venue.error; if (artist.error) throw artist.error;
-  const rows = [...(venue.data || []).map((row) => ({ ...row, entity_type: "venue", source_value: row.source_venue_name, resolved_master_id: row.matched_venue_id })), ...(artist.data || []).map((row) => ({ ...row, entity_type: "artist", source_value: row.source_artist_name, resolved_master_id: row.matched_artist_id }))];
-  const counts = Object.fromEntries(["pending", "resolved", "ambiguous", "no_candidate", "failed"].map((status) => [status, rows.filter((row) => row.resolution_status === status).length]));
-  return { counts: { ...counts, venuePending: rows.filter((row) => row.entity_type === "venue" && row.resolution_status === "pending").length, artistPending: rows.filter((row) => row.entity_type === "artist" && row.resolution_status === "pending").length }, items: rows.filter((row) => row.resolution_status !== "resolved").slice(0, 100) };
+  const rows: ResolutionOverviewRow[] = [...(venue.data || []).map((row) => ({ ...row, entity_type: "venue" as const, source_value: row.source_venue_name, resolved_master_id: row.matched_venue_id })), ...(artist.data || []).map((row) => ({ ...row, entity_type: "artist" as const, source_value: row.source_artist_name, resolved_master_id: row.matched_artist_id }))];
+  return buildResolutionOverview(rows);
 }
 
 export async function runTargetedMasterResolution(options: { dryRun?: boolean; batchSize?: number; entityType?: ResolutionEntity | "all" } = {}, db: SupabaseClient = createSupabaseAdminClient()): Promise<ResolutionResult> {

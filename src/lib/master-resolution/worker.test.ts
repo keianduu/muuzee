@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { matchArtistMention } from "@/lib/artist-matching/mention";
 import { chooseVenueResolution } from "@/lib/venue-resolution/shared";
-import { clampResolutionBatchSize, isClearVenueCandidate } from "./worker";
+import { buildResolutionOverview, clampResolutionBatchSize, isClearVenueCandidate } from "./worker";
 
 describe("targeted master resolution policy", () => {
   it("uses a bounded production-friendly batch", () => {
@@ -31,5 +31,16 @@ describe("targeted master resolution policy", () => {
     const artists = [{ id: "a1", name: "草間彌生", name_en: "Yayoi Kusama", aliases: ["草間弥生"] }];
     expect(matchArtistMention("草間弥生", artists).status).toBe("matched");
     expect(matchArtistMention("草間", artists).status).toBe("unmatched");
+  });
+
+  it("counts the full active overview before bounding diagnostic items", () => {
+    const rows = Array.from({ length: 101 }, (_, index) => ({ entity_type: "venue" as const, resolution_status: "failed", id: `failed-${index}` }));
+    rows.push({ entity_type: "venue", resolution_status: "ambiguous", id: "human-gate" });
+    const overview = buildResolutionOverview(rows);
+
+    expect(overview.counts.venueFailed).toBe(101);
+    expect(overview.counts.venueAmbiguous).toBe(1);
+    expect(overview.items).toHaveLength(1);
+    expect(overview.items[0].id).toBe("human-gate");
   });
 });

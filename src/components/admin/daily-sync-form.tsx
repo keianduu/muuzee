@@ -10,7 +10,7 @@ export function DailySyncForm() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState("");
   async function run(dryRun: boolean) {
-    if (!dryRun && !window.confirm("展示会データを更新します。事前確認と同じ条件で変更を反映します。続行しますか？")) return;
+    if (!dryRun && !window.confirm("展示会データを更新します。現在の条件で変更を反映します。続行しますか？")) return;
     setBusy(true); setResult(null); setError("");
     try {
       const response = await fetch("/api/admin/imports/daily-sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dryRun, sampleLimit: 20, backfillExisting: !dryRun }) });

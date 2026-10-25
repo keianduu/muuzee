@@ -5,20 +5,11 @@ import { useState } from "react";
 
 type RefreshResult = {
   dryRun: boolean;
-  runId: string | null;
-  requested: number;
   scanned: number;
-  sourceRowsScanned: number;
-  scanTruncated: boolean;
   reachedCorpusEnd: boolean;
-  coverageContinues: boolean;
-  fetched: number;
   changed: number;
   unchanged: number;
-  protected: number;
-  protectedFields: number;
   ambiguousIdentities: number;
-  identityAmbiguities: Array<{ venueId: string; venueName: string; qids: string[]; qidCount: number; status: "identity_ambiguous" }>;
   errors: Array<{ qid?: string; message: string }>;
 };
 
@@ -29,7 +20,7 @@ export function VenuePeriodicRefreshForm() {
   const [error, setError] = useState("");
 
   async function run(dryRun: boolean) {
-    if (!dryRun && !window.confirm("Venueの情報を更新します。事前確認と同じ条件で変更を反映します。続行しますか？")) return;
+    if (!dryRun && !window.confirm("Venueの情報を更新します。現在の条件で変更を反映します。続行しますか？")) return;
     setBusy(true);
     setResult(null);
     setError("");
@@ -59,11 +50,6 @@ export function VenuePeriodicRefreshForm() {
       <small>{result.reachedCorpusEnd
         ? "今回で一巡しました。次回は先頭から確認します。"
         : "次回は続きから確認します。"}</small>
-      <details className="data-acquisition-technical-details"><summary>技術詳細</summary>
-        <p>取得 {result.fetched}件 · Source走査 {result.sourceRowsScanned}件{result.scanTruncated ? "（上限到達）" : ""} · 保護対象 {result.protected}件（{result.protectedFields}項目）</p>
-        {result.identityAmbiguities.length > 0 && <p>要確認: {result.identityAmbiguities.map((item) => `${item.venueName}（${item.qids.join(" / ")}${item.qidCount > item.qids.length ? ` / 他${item.qidCount - item.qids.length}件` : ""}）`).join("、")}</p>}
-        {result.runId && <p>Run ID: {result.runId}</p>}
-      </details>
     </div>}
     {error && <div className="error" role="alert">{error}</div>}
   </div>;

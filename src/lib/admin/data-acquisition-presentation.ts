@@ -16,3 +16,14 @@ export function resolutionEntityLabel(entity: unknown) {
   if (entity === "artist") return "Artist";
   return String(entity || "—");
 }
+
+export function resolutionOperatorQueues(counts: Record<string, number>) {
+  const count = (key: string) => Number(counts[key] || 0);
+  const automatic = count("venuePending") + count("artistPending") + count("venueFailed") + count("artistFailed");
+  const human = count("venueAmbiguous") + count("artistAmbiguous") + count("venueNoCandidate") + count("artistNoCandidate");
+  return { automatic, human, showAutomaticActions: automatic > 0 };
+}
+
+export function isHumanResolutionStatus(status: unknown) {
+  return status === "ambiguous" || status === "no_candidate";
+}
