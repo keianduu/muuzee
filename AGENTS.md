@@ -90,6 +90,45 @@ Meaningful prototype changes that affect future design or implementation decisio
 
 Do not treat prototype implementation details as approved specifications unless the user explicitly approves them.
 
+### Admin UX principle — operator tasks only
+
+Admin UI is an **operator work surface**, not a visualization of the implementation model.
+
+For every Admin element, ask:
+
+> What action does the operating user need to take because this information is visible?
+
+If the answer is “none,” keep it out of the default operational UI.
+
+Rules:
+
+- Show only the information needed to understand current operational state, decide the next action, or execute that action.
+- Prefer business/operation wording over technical implementation wording.
+- Do not expose internal configuration merely because it exists.
+- Keep source priority, Source Policy configuration, sync-adapter mechanics, runtime/batch/cursor implementation, provenance internals, internal enums, and technical safeguards in Notion / repository documentation unless the operator must act on them.
+- Use progressive disclosure such as **詳細** for source/provenance/history/diagnostic information that is useful only when intentionally inspected.
+- If multiple backend stages can be safely orchestrated as one business operation, expose one operator action and show progress/result instead of separate technical buttons.
+- Completed setup stages should become completed/non-actionable state. After initial setup, the normal recurring action should be the smallest recurring business action, typically **情報を更新する**.
+- Exception/Human-Gate work should appear when an actionable exception actually exists; do not keep exception machinery as a permanent top-level card.
+- Exceptional maintenance operations must not be permanently exposed only because they are technically possible. Design them when a concrete business case appears.
+- Admin screens should explain **what will happen and what needs attention**, not how adapters, cursors, source precedence, or storage internals work.
+
+For Master-data acquisition, use this conceptual operating model:
+
+1. **リスト取得 / Discovery** — acquire the broad candidate inventory without requiring high field completeness.
+2. **Identity / 重複判定** — prevent duplicate canonical Masters and auto-resolve only clear identity.
+3. **Canonical Master作成** — create/link the maximum safely automatable Master inventory.
+4. **内容充足 / Enrichment** — enrich fields only after the Master inventory exists.
+5. **定期情報更新 / Periodic Refresh** — refresh existing Master information after initial setup.
+
+These are **business/process stages**, not necessarily five separate Admin buttons. If they can be safely chained, prefer one **初回取り込み** action with visible progress through the stages.
+
+Exhibition ingestion is a separate operational flow from Venue / Artist / Works Master construction. Unresolved Venue / Artist relations created during Exhibition ingestion belong to the Exhibition flow as **要確認** and should not automatically become an independent top-level Admin operation.
+
+Historical bulk backfill is not a normal operator flow unless a concrete business need exists. Do not permanently expose it by default; define the safest procedure when an actual backfill case appears.
+
+Notion remains the source of truth for approved operating policy and UX intent. Repository docs/code remain the source of truth for implementation details and technical safeguards.
+
 ---
 
 ## Source of Truth
