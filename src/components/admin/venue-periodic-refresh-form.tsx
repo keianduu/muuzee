@@ -29,7 +29,7 @@ export function VenuePeriodicRefreshForm() {
   const [error, setError] = useState("");
 
   async function run(dryRun: boolean) {
-    if (!dryRun && !window.confirm("既存のWikidata接続済みVenueを最大20件更新します。新規Venueの作成と公開状態の変更は行いません。続行しますか？")) return;
+    if (!dryRun && !window.confirm("Venueの情報を更新します。事前確認と同じ条件で変更を反映します。続行しますか？")) return;
     setBusy(true);
     setResult(null);
     setError("");
@@ -43,34 +43,28 @@ export function VenuePeriodicRefreshForm() {
       if (!response.ok) throw new Error(body.error || "Venue periodic refresh failed");
       setResult(body);
       if (!dryRun) router.refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Venue periodic refresh failed");
+    } catch {
+      setError("Venue情報を確認できませんでした。時間をおいて再度お試しください。");
     } finally {
       setBusy(false);
     }
   }
 
-  return <section className="card data-acquisition-operation" id="master-refresh">
-    <p className="eyebrow">Master Refresh</p>
-    <h2>Venue / Artist / Worksを定期更新する</h2>
-    <p className="muted">初回同期後のMasterをEntityごとに更新します。現在は、既にWikidata QIDへ接続済みのVenueだけを最大20件ずつ安全に確認・反映できます。</p>
-    <div className="master-refresh-entities">
-      <div className="master-refresh-entity">
-        <div><h3>Venue</h3><p>既存QIDの最新値を比較し、Manual / Official Websiteなど優先度の高い値を保護します。新規Venueや画像候補は作成せず、公開状態も変更しません。</p></div>
-        <div className="actions"><button className="button secondary" type="button" disabled={busy} onClick={() => run(true)}>事前確認</button><button className="button" type="button" disabled={busy} onClick={() => run(false)}>{busy ? "処理中…" : "更新する"}</button></div>
-      </div>
-      <div className="master-refresh-entity master-refresh-entity--pending"><div><h3>Artist</h3><p>現在は定期更新の準備中</p><small>Full Sync / Diff Sync contract整備後に有効化します（Order 150）。</small></div></div>
-      <div className="master-refresh-entity master-refresh-entity--pending"><div><h3>Works</h3><p>現在は定期更新の準備中</p><small>Source adapter / deterministic contract整備後に有効化します（Order 160）。</small></div></div>
-    </div>
+  return <div className="master-operator-action" id="venue-periodic-refresh">
+    <p>登録済みのVenue情報に変更があるか確認できます。</p>
+    <div className="actions"><button className="button secondary" type="button" disabled={busy} onClick={() => run(true)}>変更内容を確認</button><button className="button" type="button" disabled={busy} onClick={() => run(false)}>{busy ? "処理中…" : "情報を更新する"}</button></div>
     {result && <div className="master-refresh-result" role="status">
-      <strong>{result.dryRun ? "事前確認" : "更新結果"}</strong>
-      <p>{result.scanned}件確認 · Source走査 {result.sourceRowsScanned}件{result.scanTruncated ? "（上限到達）" : ""} · 取得 {result.fetched}件 · 変更あり {result.changed}件 · 変更なし {result.unchanged}件 · ID要確認 {result.ambiguousIdentities}件 · 保護された項目あり {result.protected}件（{result.protectedFields}項目）· エラー {result.errors.length}件</p>
+      <strong>{result.dryRun ? "変更内容" : "更新結果"}</strong>
+      <p>確認件数 {result.scanned}件 · {result.dryRun ? "更新予定" : "更新件数"} {result.changed}件 · 変更なし {result.unchanged}件 · 要確認 {result.ambiguousIdentities}件 · エラー {result.errors.length}件</p>
       <small>{result.reachedCorpusEnd
-        ? result.dryRun ? "反映すると今回で一巡します。次回は先頭から確認します。" : "今回で一巡しました。次回は先頭から確認します。"
-        : result.dryRun ? "反映後は続きから確認します。" : "次回は続きから確認します。"}</small>
-      {result.identityAmbiguities.length > 0 && <small>要確認: {result.identityAmbiguities.map((item) => `${item.venueName}（${item.qids.join(" / ")}${item.qidCount > item.qids.length ? ` / 他${item.qidCount - item.qids.length}件` : ""}）`).join("、")}</small>}
-      {result.runId && <small>Run ID: {result.runId}</small>}
+        ? "今回で一巡しました。次回は先頭から確認します。"
+        : "次回は続きから確認します。"}</small>
+      <details className="data-acquisition-technical-details"><summary>技術詳細</summary>
+        <p>取得 {result.fetched}件 · Source走査 {result.sourceRowsScanned}件{result.scanTruncated ? "（上限到達）" : ""} · 保護対象 {result.protected}件（{result.protectedFields}項目）</p>
+        {result.identityAmbiguities.length > 0 && <p>要確認: {result.identityAmbiguities.map((item) => `${item.venueName}（${item.qids.join(" / ")}${item.qidCount > item.qids.length ? ` / 他${item.qidCount - item.qids.length}件` : ""}）`).join("、")}</p>}
+        {result.runId && <p>Run ID: {result.runId}</p>}
+      </details>
     </div>}
     {error && <div className="error" role="alert">{error}</div>}
-  </section>;
+  </div>;
 }
