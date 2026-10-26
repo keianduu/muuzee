@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { revalidatePath } from "next/cache";
 import { importWikidataVenues } from "@/lib/wikidata/venue-importer";
 import { POST } from "./route";
 
@@ -44,5 +45,7 @@ describe("POST /api/admin/venues/import/wikidata", () => {
 
     expect(response.status).toBe(200);
     expect(importWikidataVenues).toHaveBeenCalledWith({ mode: "count", count: 25, offset: 50 });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/venues");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/imports");
   });
 });

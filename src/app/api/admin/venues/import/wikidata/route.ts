@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     const offset = Number.isFinite(Number(body.offset)) ? Number(body.offset) : undefined;
     const result = await importWikidataVenues({ mode, count, offset });
     revalidatePath("/admin/venues");
+    revalidatePath("/admin/imports");
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Wikidata Venue Import failed" }, { status: 400 });

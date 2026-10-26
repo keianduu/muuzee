@@ -1,10 +1,14 @@
 import { ExhibitionDataOperationCard } from "@/components/admin/exhibition-data-operation-card";
 import { MasterDataOperationCard } from "@/components/admin/master-data-operation-card";
 import { getMasterOperatorOverviews } from "@/lib/admin/data-acquisition-operator-overview";
+import { getVenueInitialAcquisitionState } from "@/lib/admin/venue-initial-acquisition-state";
 import { getResolutionOverview } from "@/lib/master-resolution/worker";
 
 export default async function ImportsPage() {
-  const masters = await getMasterOperatorOverviews();
+  const [masters, venueAcquisition] = await Promise.all([
+    getMasterOperatorOverviews(),
+    getVenueInitialAcquisitionState(),
+  ]);
   let overview: Awaited<ReturnType<typeof getResolutionOverview>> | null = null;
   let resolutionError = "";
   if (masters.configured) {
@@ -20,7 +24,7 @@ export default async function ImportsPage() {
     {masters.error && masters.configured && <div className="error">{masters.error}</div>}
     {resolutionError && <div className="error">{resolutionError}</div>}
     <div className="data-acquisition-operation-stack">
-      <MasterDataOperationCard overviews={masters.data} actionsEnabled={masters.configured}/>
+      <MasterDataOperationCard overviews={masters.data} actionsEnabled={masters.configured} venueAcquisition={venueAcquisition}/>
       <ExhibitionDataOperationCard overview={overview} actionsEnabled={masters.configured}/>
     </div>
   </>;

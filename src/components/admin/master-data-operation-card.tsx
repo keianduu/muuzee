@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { VenueInitialAcquisitionForm } from "@/components/admin/venue-initial-acquisition-form";
 import { VenuePeriodicRefreshForm } from "@/components/admin/venue-periodic-refresh-form";
 import type { MasterOperatorEntity, MasterOperatorOverview } from "@/lib/admin/data-acquisition-operator-overview";
+import type { VenueInitialAcquisitionState } from "@/lib/admin/venue-initial-acquisition-state";
 
 const LABELS: Record<MasterOperatorEntity, string> = {
   venues: "Venue",
@@ -20,7 +22,11 @@ function MasterMetrics({ overview }: { overview: MasterOperatorOverview }) {
   </div>;
 }
 
-export function MasterDataOperationCard({ overviews, actionsEnabled }: { overviews: MasterOperatorOverview[]; actionsEnabled: boolean }) {
+export function MasterDataOperationCard({ overviews, actionsEnabled, venueAcquisition }: {
+  overviews: MasterOperatorOverview[];
+  actionsEnabled: boolean;
+  venueAcquisition: VenueInitialAcquisitionState;
+}) {
   return <section className="card data-acquisition-operation master-data-operation" id="master-data">
     <p className="eyebrow">Master Data</p>
     <h2>Masterデータ</h2>
@@ -34,7 +40,12 @@ export function MasterDataOperationCard({ overviews, actionsEnabled }: { overvie
         <div className="master-operator-row-body">
           <MasterMetrics overview={overview}/>
           {overview.entity === "venues"
-            ? <VenuePeriodicRefreshForm actionsEnabled={actionsEnabled}/>
+            ? <div className="venue-operator-actions">
+              <VenueInitialAcquisitionForm status={venueAcquisition.status} actionsEnabled={actionsEnabled}/>
+              {venueAcquisition.linkedVenueCount !== null && venueAcquisition.linkedVenueCount > 0
+                ? <VenuePeriodicRefreshForm actionsEnabled={actionsEnabled}/>
+                : <div className="master-operator-pending"><p>初回取り込み後に情報更新を利用できます。</p></div>}
+            </div>
             : <div className="master-operator-pending"><span className="status">準備中</span><p>現在利用できる更新操作はありません。</p></div>}
         </div>
       </article>)}

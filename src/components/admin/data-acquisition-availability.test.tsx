@@ -9,6 +9,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.stubGlobal("React", React);
 
 const entities = ["venues", "artists", "works"] as const;
+const venueNotStarted = { status: "not_started", linkedVenueCount: 0, latestRunStatus: null } as const;
+const venueStarted = { status: "started", linkedVenueCount: 5, latestRunStatus: "completed" } as const;
 const automaticOverview = {
   counts: { venuePending: 1, artistPending: 0, venueFailed: 0, artistFailed: 0 },
   items: [],
@@ -19,6 +21,7 @@ describe("Data Acquisition availability", () => {
     const html = renderToStaticMarkup(<MasterDataOperationCard
       overviews={entities.map((entity) => buildMasterOperatorOverview(entity, 0, 0))}
       actionsEnabled
+      venueAcquisition={venueNotStarted}
     />);
     expect(html.match(/<dd>0<\/dd>/g)).toHaveLength(9);
     expect(html).not.toContain("件数を取得できません。");
@@ -28,18 +31,21 @@ describe("Data Acquisition availability", () => {
     const html = renderToStaticMarkup(<MasterDataOperationCard
       overviews={entities.map(buildUnavailableMasterOperatorOverview)}
       actionsEnabled={false}
+      venueAcquisition={{ status: "unavailable", linkedVenueCount: null, latestRunStatus: null }}
     />);
     expect(html.match(/<dd>—<\/dd>/g)).toHaveLength(9);
     expect(html.match(/件数を取得できません。/g)).toHaveLength(3);
     expect(html).not.toContain("<dd>0</dd>");
-    expect(html.match(/disabled=""/g)).toHaveLength(2);
-    expect(html).toContain("現在は更新操作を利用できません。");
+    expect(html.match(/disabled=""/g)).toHaveLength(1);
+    expect(html).toContain("初回取り込み状況を取得できません。");
+    expect(html).toContain("初回取り込み後に情報更新を利用できます。");
   });
 
   it("keeps environment-dependent actions enabled when only count metrics are unavailable", () => {
     const html = renderToStaticMarkup(<MasterDataOperationCard
       overviews={entities.map(buildUnavailableMasterOperatorOverview)}
       actionsEnabled
+      venueAcquisition={venueNotStarted}
     />);
     expect(html).toContain("件数を取得できません。");
     expect(html).not.toContain("disabled=\"");
@@ -53,6 +59,7 @@ describe("Data Acquisition availability", () => {
         buildMasterOperatorOverview("works", 57, 3),
       ]}
       actionsEnabled
+      venueAcquisition={venueNotStarted}
     />);
     expect(html.match(/件数を取得できません。/g)).toHaveLength(1);
     expect(html.match(/<dd>—<\/dd>/g)).toHaveLength(3);
@@ -84,9 +91,28 @@ describe("Data Acquisition availability", () => {
         buildMasterOperatorOverview("works", 64, 4),
       ]}
       actionsEnabled
+      venueAcquisition={venueStarted}
     />);
     for (const value of ["58", "12", "46", "60", "3", "57", "64", "4"]) {
       expect(html).toContain(`<dd>${value}</dd>`);
     }
+    expect(html).toContain("初回取り込み：進行中");
+    expect(html).toContain("続きを取り込む");
+    expect(html).toContain("変更内容を確認");
+    expect(html).toContain("情報を更新する");
+  });
+
+  it("keeps Venue initial acquisition independent from the Master total", () => {
+    const html = renderToStaticMarkup(<MasterDataOperationCard
+      overviews={entities.map((entity) => buildMasterOperatorOverview(entity, 58, 4))}
+      actionsEnabled
+      venueAcquisition={venueNotStarted}
+    />);
+    expect(html).toContain("<dd>58</dd>");
+    expect(html).toContain("初回取り込み：未実施");
+    expect(html).toContain(">初回取り込み</button>");
+    expect(html).toContain("初回取り込み後に情報更新を利用できます。");
+    expect(html).not.toContain("変更内容を確認");
+    expect(html).not.toContain("情報を更新する");
   });
 });

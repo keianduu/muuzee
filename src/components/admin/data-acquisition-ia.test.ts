@@ -10,8 +10,9 @@ describe("Data Acquisition unified IA", () => {
     const exhibition = read("./exhibition-data-operation-card.tsx");
     const daily = read("./daily-sync-form.tsx");
     const resolution = read("./targeted-resolution-form.tsx");
+    const initial = read("./venue-initial-acquisition-form.tsx");
     const refresh = read("./venue-periodic-refresh-form.tsx");
-    const content = [page, master, exhibition, daily, resolution, refresh].join("\n");
+    const content = [page, master, exhibition, daily, resolution, initial, refresh].join("\n");
     expect(page).toContain("<h1>データ取り込み</h1>");
     expect(master).toContain("Masterデータ");
     expect(exhibition).toContain("展示会データを更新する");
@@ -25,8 +26,10 @@ describe("Data Acquisition unified IA", () => {
 
   it("preserves the current execution boundaries without exposing Backfill or Source Policy", () => {
     const page = read("../../app/admin/imports/page.tsx");
+    const master = read("./master-data-operation-card.tsx");
     const daily = read("./daily-sync-form.tsx");
     const resolution = read("./targeted-resolution-form.tsx");
+    const initial = read("./venue-initial-acquisition-form.tsx");
     const refresh = read("./venue-periodic-refresh-form.tsx");
     const backfill = read("./import-form.tsx");
     expect(daily).toContain('fetch("/api/admin/imports/daily-sync"');
@@ -45,6 +48,13 @@ describe("Data Acquisition unified IA", () => {
     expect(resolution).toContain("自動処理待ち");
     expect(resolution).toContain("要確認");
     expect(resolution).toContain("showAutomaticActions");
+    expect(initial).toContain('fetch("/api/admin/venues/import/wikidata"');
+    expect(initial).toContain('JSON.stringify({ mode: "count", count: VENUE_INITIAL_ACQUISITION_BATCH_SIZE })');
+    expect(initial).toContain("VENUE_INITIAL_ACQUISITION_BATCH_SIZE = 5");
+    expect(initial).not.toContain('mode: "full"');
+    expect(initial).not.toContain("useEffect");
+    expect(master).toContain("venueAcquisition.linkedVenueCount > 0");
+    expect(master).toContain("初回取り込み後に情報更新を利用できます。");
     for (const technicalDetail of ["技術詳細", "Source走査", "Run ID"]) expect(refresh).not.toContain(technicalDetail);
     expect(refresh).not.toContain("事前確認");
     expect(daily).not.toContain("事前確認");
@@ -93,5 +103,17 @@ describe("Data Acquisition unified IA", () => {
     expect(query).toContain('query.eq("publication_status", "published")');
     expect(query).toContain("unpublished: Math.max(0, total - published)");
     expect(query).not.toContain("getDataAcquisitionSummary");
+  });
+
+  it("uses lightweight persisted Venue acquisition evidence", () => {
+    const state = read("../../lib/admin/venue-initial-acquisition-state.ts");
+    expect(state).toContain('.from("source_records")');
+    expect(state).toContain('.select("id", { count: "exact", head: true })');
+    expect(state).toContain('.not("venue_id", "is", null)');
+    expect(state).toContain('.from("import_runs")');
+    expect(state).toContain('.eq("operation_type", "wikidata_venue_import")');
+    expect(state).toContain('.select("status")');
+    expect(state).toContain('.in("status", ["completed", "partial"])');
+    expect(state).not.toContain("getDataAcquisitionSummary");
   });
 });

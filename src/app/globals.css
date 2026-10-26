@@ -307,6 +307,13 @@ a.data-acquisition-metric:hover { border-color: var(--ink-300); background: var(
 .master-operator-action > p, .master-operator-pending p { margin: 0; color: var(--ink-600); font-size: 13px; line-height: 1.5; }
 .master-operator-action .actions { margin-top: 10px; }
 .master-operator-pending { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+.venue-operator-actions { min-width: 0; display: grid; gap: 16px; }
+.venue-operator-actions > * + * { padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.master-operator-action > .venue-initial-acquisition-status { color: var(--ink-950); }
+.venue-initial-acquisition-result { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; }
+.venue-initial-acquisition-result > div { display: flex; gap: 5px; }
+.venue-initial-acquisition-result dt { color: var(--ink-500); }
+.venue-initial-acquisition-result dd { margin: 0; color: var(--ink-950); font-weight: 650; }
 .exhibition-sync-operation { margin-top: 16px; }
 .exhibition-sync-operation .actions { margin-top: 10px; }
 .exhibition-resolution-operation { min-width: 0; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line-soft); }
