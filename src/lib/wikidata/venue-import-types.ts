@@ -44,6 +44,7 @@ export type WikidataVenueImportSummary = {
   unchanged: number;
   sourceSelectionRequired: number;
   imageCandidatesAdded: number;
+  imageDiscoveryErrors: Array<{ qid: string; fileTitle?: string; stage: string; message: string }>;
   errors: Array<{ qid?: string; message: string }>;
   before: { total: number; averageCompleteness: number };
   after: { total: number; averageCompleteness: number };

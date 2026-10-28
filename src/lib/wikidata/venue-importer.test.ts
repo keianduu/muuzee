@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { classifyWikidataVenueMatch, isProtectedVenueField, shouldSkipWikidataVenue, wikidataImportRunStatus, wikidataVenueChecksum } from "./venue-importer";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it, vi } from "vitest";
+import { classifyWikidataVenueMatch, collectVenueImageDiscovery, isProtectedVenueField, shouldSkipWikidataVenue, wikidataImportRunStatus, wikidataVenueChecksum } from "./venue-importer";
 
 describe("Wikidata Venue importer decisions", () => {
   it("uses the QID source checksum for external-ID dedup and unchanged skip", () => {
@@ -32,5 +33,38 @@ describe("Wikidata Venue importer decisions", () => {
     expect(wikidataImportRunStatus(20, 1)).toBe("partial");
     expect(wikidataImportRunStatus(0, 1)).toBe("failed");
     expect(wikidataImportRunStatus(20, 0)).toBe("completed");
+  });
+
+  it("keeps a core-success run completed when optional image discovery reports an error", async () => {
+    const result = { imageCandidatesAdded: 0, imageDiscoveryErrors: [] as Array<{ qid: string; fileTitle?: string; stage: string; message: string }> };
+    const discover = vi.fn(async () => ({
+      qid: "Q1",
+      files: [],
+      trace: [],
+      saved: [],
+      added: 2,
+      errors: [{ fileTitle: "File:Later.jpg", stage: "metadata", message: "Commons unavailable" }],
+    }));
+
+    await collectVenueImageDiscovery({} as SupabaseClient, result, {
+      venueId: "venue-1", qid: "Q1", venueName: "Venue",
+    }, discover);
+
+    expect(result.imageCandidatesAdded).toBe(2);
+    expect(result.imageDiscoveryErrors).toEqual([expect.objectContaining({ qid: "Q1", stage: "metadata" })]);
+    expect(wikidataImportRunStatus(1, 0)).toBe("completed");
+  });
+
+  it("isolates an unexpected image discovery exception from core import status", async () => {
+    const result = { imageCandidatesAdded: 0, imageDiscoveryErrors: [] as Array<{ qid: string; fileTitle?: string; stage: string; message: string }> };
+    const discover = vi.fn(async () => { throw new Error("unexpected image failure"); });
+
+    await collectVenueImageDiscovery({} as SupabaseClient, result, {
+      venueId: "venue-1", qid: "Q1", venueName: "Venue",
+    }, discover);
+
+    expect(result.imageCandidatesAdded).toBe(0);
+    expect(result.imageDiscoveryErrors).toEqual([expect.objectContaining({ qid: "Q1", stage: "unexpected" })]);
+    expect(wikidataImportRunStatus(1, 0)).toBe("completed");
   });
 });

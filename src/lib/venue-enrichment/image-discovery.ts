@@ -6,6 +6,7 @@ import { autoSetPreferredVenueCandidatePrimary } from "@/lib/admin/venue-primary
 
 export type VenueImageDiscoverySource = "wikidata_p18" | "commons_category" | "wikipedia_article";
 export type DiscoveredVenueImage = { fileTitle: string; discoverySource: VenueImageDiscoverySource; score: number };
+export type VenueImageDiscoveryError = { fileTitle?: string; stage: string; message: string };
 
 const SOURCE_PRIORITY: Record<VenueImageDiscoverySource, number> = { wikidata_p18: 3, commons_category: 2, wikipedia_article: 1 };
 const EXCLUDED = /(?:\blogo\b|\bicon\b|\bmap\b|\bdiagram\b|\bposter\b|\bpainting\b|\bsculpture\b|\bartwork\b|collection[ _-]?object|commons-logo|wikimedia-logo|question_book|replace_this_image)/i;
@@ -94,40 +95,98 @@ function preferredDiscoverySource(current: string | null | undefined, incoming: 
   return SOURCE_PRIORITY[incoming] > SOURCE_PRIORITY[current as VenueImageDiscoverySource] ? incoming : current;
 }
 
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function discoveryTraceErrors(trace: Array<Record<string, unknown>>) {
+  return trace.flatMap((entry): VenueImageDiscoveryError[] => typeof entry.error === "string"
+    ? [{ stage: String(entry.source || "discovery"), message: entry.error }]
+    : []);
+}
+
 export async function saveVenueImageDiscovery(db: SupabaseClient, input: { venueId: string; qid: string; venueName: string; venueNameEn?: string | null }) {
-  const discovery = await discoverVenueImageFiles(input);
-  const commonsSourceId = await dataSourceId(db, "wikimedia_commons");
+  let discovery: Awaited<ReturnType<typeof discoverVenueImageFiles>>;
+  try {
+    discovery = await discoverVenueImageFiles(input);
+  } catch (error) {
+    return {
+      qid: input.qid,
+      files: [] as DiscoveredVenueImage[],
+      trace: [] as Array<Record<string, unknown>>,
+      saved: [] as Array<DiscoveredVenueImage & { candidateId: string }>,
+      added: 0,
+      errors: [{ stage: "discovery", message: errorMessage(error, "Venue image discovery failed") }],
+    };
+  }
+  const errors = discoveryTraceErrors(discovery.trace);
+  let commonsSourceId: string;
+  try {
+    commonsSourceId = await dataSourceId(db, "wikimedia_commons");
+  } catch (error) {
+    return {
+      ...discovery,
+      saved: [] as Array<DiscoveredVenueImage & { candidateId: string }>,
+      added: 0,
+      errors: [...errors, { stage: "data_source", message: errorMessage(error, "Commons data source lookup failed") }],
+    };
+  }
   let added = 0;
   const saved: Array<DiscoveredVenueImage & { candidateId: string }> = [];
   for (const file of discovery.files) {
-    const metadata = await getCommonsImageMetadata(file.fileTitle);
+    let metadata: Awaited<ReturnType<typeof getCommonsImageMetadata>>;
+    try {
+      metadata = await getCommonsImageMetadata(file.fileTitle);
+    } catch (error) {
+      errors.push({ fileTitle: file.fileTitle, stage: "metadata", message: errorMessage(error, "Commons metadata lookup failed") });
+      continue;
+    }
     if (!metadata) continue;
-    const externalId = `venue:${input.venueId}:${input.qid}:${metadata.fileTitle}`;
-    const { data: source, error: sourceError } = await db.from("source_records").upsert({
-      data_source_id: commonsSourceId, external_id: externalId, venue_id: input.venueId, source_url: metadata.sourceUrl,
-      raw_payload: metadata.raw, checksum: createHash("sha256").update(JSON.stringify(metadata.raw)).digest("hex"), fetched_at: new Date().toISOString(),
-    }, { onConflict: "data_source_id,external_id" }).select("id").single();
-    if (sourceError || !source) throw sourceError || new Error("Commons source record could not be saved");
-    const { data: prior, error: priorError } = await db.from("source_image_candidates").select("id,review_status,rights_status,discovery_source").eq("source_record_id", source.id).eq("provider", "wikimedia_commons").eq("stable_identifier", metadata.fileTitle).maybeSingle();
-    if (priorError) throw priorError;
-    const { data: candidate, error: candidateError } = await db.from("source_image_candidates").upsert({
-      source_record_id: source.id, image_url: metadata.imageUrl, thumbnail_url: metadata.thumbnailUrl,
-      provider: "wikimedia_commons", stable_identifier: metadata.fileTitle, source_url: metadata.sourceUrl,
-      author: metadata.author, credit: metadata.credit, license_short_name: metadata.licenseShortName,
-      license_url: metadata.licenseUrl, usage_terms: metadata.usageTerms,
-      candidate_entity_id: input.qid, candidate_entity_label: input.venueName,
-      candidate_match_confidence: 1, candidate_match_threshold: 1, candidate_kind: "probable",
-      discovery_source: preferredDiscoverySource(prior?.discovery_source, file.discoverySource),
-      contents_rights_type: metadata.licenseShortName, contents_access: metadata.usageTerms,
-      review_status: prior?.review_status || "unreviewed", rights_status: prior?.rights_status || "needs_review",
-      is_active: true, last_seen_at: new Date().toISOString(),
-    }, { onConflict: "source_record_id,provider,stable_identifier" }).select("id").single();
-    if (candidateError || !candidate) throw candidateError || new Error("Image candidate could not be saved");
-    if (!prior) added += 1;
-    saved.push({ ...file, candidateId: candidate.id });
+    try {
+      const externalId = `venue:${input.venueId}:${input.qid}:${metadata.fileTitle}`;
+      const { data: source, error: sourceError } = await db.from("source_records").upsert({
+        data_source_id: commonsSourceId, external_id: externalId, venue_id: input.venueId, source_url: metadata.sourceUrl,
+        raw_payload: metadata.raw, checksum: createHash("sha256").update(JSON.stringify(metadata.raw)).digest("hex"), fetched_at: new Date().toISOString(),
+      }, { onConflict: "data_source_id,external_id" }).select("id").single();
+      if (sourceError || !source) {
+        errors.push({ fileTitle: file.fileTitle, stage: "source_record", message: errorMessage(sourceError, "Commons source record could not be saved") });
+        continue;
+      }
+      const { data: prior, error: priorError } = await db.from("source_image_candidates").select("id,review_status,rights_status,discovery_source").eq("source_record_id", source.id).eq("provider", "wikimedia_commons").eq("stable_identifier", metadata.fileTitle).maybeSingle();
+      if (priorError) {
+        errors.push({ fileTitle: file.fileTitle, stage: "candidate_lookup", message: errorMessage(priorError, "Image candidate lookup failed") });
+        continue;
+      }
+      const { data: candidate, error: candidateError } = await db.from("source_image_candidates").upsert({
+        source_record_id: source.id, image_url: metadata.imageUrl, thumbnail_url: metadata.thumbnailUrl,
+        provider: "wikimedia_commons", stable_identifier: metadata.fileTitle, source_url: metadata.sourceUrl,
+        author: metadata.author, credit: metadata.credit, license_short_name: metadata.licenseShortName,
+        license_url: metadata.licenseUrl, usage_terms: metadata.usageTerms,
+        candidate_entity_id: input.qid, candidate_entity_label: input.venueName,
+        candidate_match_confidence: 1, candidate_match_threshold: 1, candidate_kind: "probable",
+        discovery_source: preferredDiscoverySource(prior?.discovery_source, file.discoverySource),
+        contents_rights_type: metadata.licenseShortName, contents_access: metadata.usageTerms,
+        review_status: prior?.review_status || "unreviewed", rights_status: prior?.rights_status || "needs_review",
+        is_active: true, last_seen_at: new Date().toISOString(),
+      }, { onConflict: "source_record_id,provider,stable_identifier" }).select("id").single();
+      if (candidateError || !candidate) {
+        errors.push({ fileTitle: file.fileTitle, stage: "candidate_save", message: errorMessage(candidateError, "Image candidate could not be saved") });
+        continue;
+      }
+      if (!prior) added += 1;
+      saved.push({ ...file, candidateId: candidate.id });
+    } catch (error) {
+      errors.push({ fileTitle: file.fileTitle, stage: "candidate_save", message: errorMessage(error, "Image candidate could not be saved") });
+    }
   }
-  if (saved.length) await autoSetPreferredVenueCandidatePrimary(input.venueId);
-  return { ...discovery, saved, added };
+  if (saved.length) {
+    try {
+      await autoSetPreferredVenueCandidatePrimary(input.venueId);
+    } catch (error) {
+      errors.push({ stage: "auto_primary", message: errorMessage(error, "Automatic Primary evaluation failed") });
+    }
+  }
+  return { ...discovery, saved, added, errors };
 }
 
 export function imageDiscoveryStatus(files: DiscoveredVenueImage[]) {

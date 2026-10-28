@@ -46,6 +46,25 @@ export function wikidataImportRunStatus(fetched: number, errorCount: number) {
   return errorCount === 0 ? "completed" : fetched > 0 ? "partial" : "failed";
 }
 
+export async function collectVenueImageDiscovery(
+  db: SupabaseClient,
+  result: Pick<WikidataVenueImportSummary, "imageCandidatesAdded" | "imageDiscoveryErrors">,
+  input: { venueId: string; qid: string; venueName: string; venueNameEn?: string | null },
+  discover: typeof saveVenueImageDiscovery = saveVenueImageDiscovery,
+) {
+  try {
+    const imageDiscovery = await discover(db, input);
+    result.imageCandidatesAdded += imageDiscovery.added;
+    result.imageDiscoveryErrors.push(...imageDiscovery.errors.map((error) => ({ qid: input.qid, ...error })));
+  } catch (error) {
+    result.imageDiscoveryErrors.push({
+      qid: input.qid,
+      stage: "unexpected",
+      message: error instanceof Error ? error.message : "Venue image discovery failed",
+    });
+  }
+}
+
 async function sourceIds(db: SupabaseClient) {
   const { data, error } = await db.from("data_sources").select("id,key").eq("key", DATA_SOURCE_KEY);
   if (error) throw error;
@@ -262,7 +281,7 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
     currentCursor: null,
     currentRoot: null,
     newVenues: 0, linkedExisting: 0, updated: 0, unchanged: 0,
-    sourceSelectionRequired: 0, imageCandidatesAdded: 0, errors: [], before, after: before,
+    sourceSelectionRequired: 0, imageCandidatesAdded: 0, imageDiscoveryErrors: [], errors: [], before, after: before,
   };
   const persistProgress = async (status: "running" | "completed" | "partial" | "failed", finished = false) => {
     const update: Record<string, unknown> = {
@@ -288,6 +307,7 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
     result.fetched += fetched.venues.length;
     for (const venue of fetched.venues) {
       result.processed += 1;
+      let imageInput: { venueId: string; qid: string; venueName: string; venueNameEn?: string | null } | null = null;
       try {
         const { before: existingSource, stored, checksum } = await upsertSourceRecord(db, ids[DATA_SOURCE_KEY], venue, null);
         if (shouldSkipWikidataVenue(existingSource, checksum)) { result.unchanged += 1; continue; }
@@ -317,11 +337,11 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
         }
         const { error: linkError } = await db.from("source_records").update({ venue_id: target.id }).eq("id", stored.id); if (linkError) throw linkError;
         if (!created && await fillExistingVenue(db, target, venue, stored.id, matchMetadata)) result.updated += 1;
-        const imageDiscovery = await saveVenueImageDiscovery(db, { venueId: target.id, qid: venue.qid, venueName: venue.name, venueNameEn: venue.nameEn });
-        result.imageCandidatesAdded += imageDiscovery.added;
+        imageInput = { venueId: target.id, qid: venue.qid, venueName: venue.name, venueNameEn: venue.nameEn };
       } catch (error) {
         result.errors.push({ qid: venue.qid, message: error instanceof Error ? error.message : "Venue import failed" });
       }
+      if (imageInput) await collectVenueImageDiscovery(db, result, imageInput);
     }
   };
   try {

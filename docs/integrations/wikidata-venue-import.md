@@ -84,7 +84,9 @@ Source Priorityは`Manual > Official Website > Trusted API > Wikidata`。空欄�
 
 Full Syncは全QIDをscanし、New / Changed / Unchanged / Source Selectionを集計する。同じQID、source record、image candidateはupsertされる。Sourceから見えなくなったVenueを自動Delete、Archive、Unpublishしない。
 
-`import_runs.operation_type=wikidata_venue_import`へ標準件数と、linked / source selection / image candidate / completeness before-afterを`metrics`で保存する。途中失敗は`partial`または`failed`であり`completed`にしない。
+`import_runs.operation_type=wikidata_venue_import`へ標準件数と、linked / source selection / image candidate / completeness before-afterを`metrics`で保存する。Venue本体・Source link・Provenance等のCore処理の途中失敗は`partial`または`failed`であり`completed`にしない。
+
+Commons / Wikipedia画像探索はCore取り込み後のOptional処理として分離する。候補は1件ずつ保存し、後続候補のmetadata取得や保存が失敗しても、すでに保存した候補数を`imageCandidatesAdded`へ保持する。Optional失敗は`metrics.imageDiscoveryErrors`へ技術診断として記録するが、Core Venue取り込みを失敗扱いにせず、Coreが全件成功していればrunは`completed`とする。画像Rightsの初期値、既存Primary保護、Human Gateは変更しない。
 
 ## Rate-limit protection
 
