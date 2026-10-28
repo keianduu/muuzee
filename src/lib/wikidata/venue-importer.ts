@@ -12,6 +12,16 @@ import { WIKIDATA_VENUE_CLASSES } from "./venue-type-mapper";
 import type { WikidataVenue, WikidataVenueImportSummary } from "./venue-import-types";
 import { shouldApplySourceField } from "@/lib/venue-enrichment/source-application";
 import { saveVenueImageDiscovery } from "@/lib/venue-enrichment/image-discovery";
+import {
+  assertVenueImportRuntimeBudget,
+  createVenueImportRuntimeBudget,
+  HOSTED_ABANDONED_RUN_AFTER_MS,
+  shouldDeferVenueImageDiscovery,
+  VenueImportRuntimeBudgetExhaustedError,
+  venueImportShouldFinalize,
+  type VenueImportRuntimeBudget,
+  type WikidataRuntime,
+} from "./runtime-policy";
 
 const DATA_SOURCE_KEY = "wikidata";
 const AUTO_MATCH = 0.85;
@@ -46,6 +56,31 @@ export function wikidataImportRunStatus(fetched: number, errorCount: number) {
   return errorCount === 0 ? "completed" : fetched > 0 ? "partial" : "failed";
 }
 
+export function interruptedWikidataImportRunStatus(processed: number) {
+  return processed > 0 ? "partial" : "failed";
+}
+
+export function wikidataVenueImportRunUpdate(
+  result: WikidataVenueImportSummary,
+  input: { mode: "count" | "full"; count: number },
+  status: "running" | "completed" | "partial" | "failed",
+  finishedAt?: string,
+) {
+  const update: Record<string, unknown> = {
+    status,
+    requested_count: input.mode === "count" ? input.count : result.discovered,
+    fetched_count: result.fetched,
+    created_count: result.newVenues,
+    updated_count: result.updated + result.linkedExisting,
+    skipped_count: result.unchanged,
+    error_count: result.errors.length,
+    errors: result.errors.length ? result.errors : null,
+    metrics: { ...result, discoveryOffsetEnd: result.currentOffset },
+  };
+  if (finishedAt) update.finished_at = finishedAt;
+  return update;
+}
+
 export async function collectVenueImageDiscovery(
   db: SupabaseClient,
   result: Pick<WikidataVenueImportSummary, "imageCandidatesAdded" | "imageDiscoveryErrors">,
@@ -63,6 +98,21 @@ export async function collectVenueImageDiscovery(
       message: error instanceof Error ? error.message : "Venue image discovery failed",
     });
   }
+}
+
+export async function handleVenueImageDiscovery(
+  runtime: WikidataRuntime,
+  mode: "count" | "full",
+  db: SupabaseClient,
+  result: Pick<WikidataVenueImportSummary, "imageCandidatesAdded" | "imageDiscoveryDeferred" | "imageDiscoveryErrors">,
+  input: { venueId: string; qid: string; venueName: string; venueNameEn?: string | null },
+  discover: typeof saveVenueImageDiscovery = saveVenueImageDiscovery,
+) {
+  if (shouldDeferVenueImageDiscovery(runtime, mode)) {
+    result.imageDiscoveryDeferred += 1;
+    return;
+  }
+  await collectVenueImageDiscovery(db, result, input, discover);
 }
 
 async function sourceIds(db: SupabaseClient) {
@@ -95,14 +145,15 @@ async function nextSampleOffset(db: SupabaseClient, count: number) {
   return Number.isFinite(prior) ? prior : count;
 }
 
-async function fetchNormalizedVenues(discovered: DiscoveredWikidataVenue[]) {
+async function fetchNormalizedVenues(discovered: DiscoveredWikidataVenue[], runtimeBudget: VenueImportRuntimeBudget) {
   const normalized: WikidataVenue[] = [];
   const errors: Array<{ qid?: string; message: string }> = [];
   for (let start = 0; start < discovered.length; start += DETAIL_BATCH_SIZE) {
+    assertVenueImportRuntimeBudget(runtimeBudget);
     const batch = discovered.slice(start, start + DETAIL_BATCH_SIZE);
     try {
       if (start) await new Promise((resolve) => setTimeout(resolve, DETAIL_DELAY_MS));
-      const candidates = await getWikidataEntities(batch.map((item) => item.qid));
+      const candidates = await getWikidataEntities(batch.map((item) => item.qid), { runtimeBudget });
       const administrativeIds = [...new Set(candidates.flatMap((candidate) => {
         const claims = (candidate.raw as { claims?: Record<string, Array<{ mainsnak?: { datavalue?: { value?: unknown } } }>> } | null)?.claims;
         return (claims?.P131 || []).flatMap((claim) => {
@@ -111,7 +162,7 @@ async function fetchNormalizedVenues(discovered: DiscoveredWikidataVenue[]) {
         });
       }))];
       let administrativeEntities: WikidataVenueCandidate[] = [];
-      try { administrativeEntities = administrativeIds.length ? await getWikidataEntities(administrativeIds.slice(0, 50)) : []; }
+      try { administrativeEntities = administrativeIds.length ? await getWikidataEntities(administrativeIds.slice(0, 50), { runtimeBudget, optional: true }) : []; }
       catch { /* Region labels are optional; do not discard otherwise valid Venue details. */ }
       const labels = new Map(administrativeEntities.map((item) => [item.id, item.labelJa || item.labelEn || item.id]));
       for (const candidate of candidates) {
@@ -125,6 +176,31 @@ async function fetchNormalizedVenues(discovered: DiscoveredWikidataVenue[]) {
     }
   }
   return { venues: normalized, errors };
+}
+
+const ABANDONED_RUN_MESSAGE = "Hosted import exceeded its execution window and was finalized before a later explicit retry.";
+
+export async function recoverAbandonedHostedVenueImports(
+  db: SupabaseClient,
+  now = new Date(),
+) {
+  const cutoff = new Date(now.getTime() - HOSTED_ABANDONED_RUN_AFTER_MS).toISOString();
+  const { data, error } = await db.from("import_runs")
+    .select("id")
+    .eq("operation_type", "wikidata_venue_import")
+    .eq("status", "running")
+    .lt("started_at", cutoff);
+  if (error) throw error;
+  const ids = (data || []).map((row) => row.id);
+  if (!ids.length) return 0;
+  const { error: updateError } = await db.from("import_runs").update({
+    status: "failed",
+    error_count: 1,
+    errors: [{ message: ABANDONED_RUN_MESSAGE }],
+    finished_at: now.toISOString(),
+  }).in("id", ids);
+  if (updateError) throw updateError;
+  return ids.length;
 }
 
 function sourceEnvelope(venue: WikidataVenue) {
@@ -264,7 +340,21 @@ function bestExistingMatch(existing: ExistingVenue[], venue: WikidataVenue) {
   return existing.map((row) => ({ row, scored: scoreWikidataCandidate(row, candidate) })).sort((a, b) => b.scored.confidence - a.scored.confidence)[0] || null;
 }
 
-export async function importWikidataVenues(input: { mode: "count" | "full"; count?: number; offset?: number; qids?: string[] }, db: SupabaseClient = createSupabaseAdminClient()): Promise<WikidataVenueImportSummary> {
+export async function importWikidataVenues(input: {
+  mode: "count" | "full";
+  count?: number;
+  offset?: number;
+  qids?: string[];
+  runtime?: WikidataRuntime;
+  runtimeBudgetMs?: number;
+  now?: () => number;
+}, db: SupabaseClient = createSupabaseAdminClient()): Promise<WikidataVenueImportSummary> {
+  const runtime = input.runtime || "local";
+  const now = input.now || Date.now;
+  const runtimeBudget = createVenueImportRuntimeBudget(runtime, now(), input.runtimeBudgetMs);
+  const recoveredAbandonedRuns = runtime === "hosted"
+    ? await recoverAbandonedHostedVenueImports(db, new Date(now()))
+    : 0;
   const targetedQids = [...new Set((input.qids || []).filter((value) => /^Q\d+$/.test(value)))].slice(0, 50);
   const ids = await sourceIds(db);
   const before = await snapshot(db);
@@ -281,31 +371,27 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
     currentCursor: null,
     currentRoot: null,
     newVenues: 0, linkedExisting: 0, updated: 0, unchanged: 0,
-    sourceSelectionRequired: 0, imageCandidatesAdded: 0, imageDiscoveryErrors: [], errors: [], before, after: before,
+    sourceSelectionRequired: 0, imageCandidatesAdded: 0, imageDiscoveryDeferred: 0, imageDiscoveryErrors: [],
+    runtimeBudgetExhausted: false, recoveredAbandonedRuns, errors: [], before, after: before,
   };
   const persistProgress = async (status: "running" | "completed" | "partial" | "failed", finished = false) => {
-    const update: Record<string, unknown> = {
+    const update = wikidataVenueImportRunUpdate(
+      result,
+      { mode: input.mode, count },
       status,
-      requested_count: input.mode === "count" ? count : result.discovered,
-      fetched_count: result.fetched,
-      created_count: result.newVenues,
-      updated_count: result.updated + result.linkedExisting,
-      skipped_count: result.unchanged,
-      error_count: result.errors.length,
-      errors: result.errors.length ? result.errors : null,
-      metrics: { ...result, discoveryOffsetEnd: result.currentOffset },
-    };
-    if (finished) update.finished_at = new Date().toISOString();
+      finished ? new Date(now()).toISOString() : undefined,
+    );
     const { error } = await db.from("import_runs").update(update).eq("id", result.runId);
     if (error) throw error;
   };
   const existing = await allExistingVenues(db);
   const processPage = async (discovered: DiscoveredWikidataVenue[]) => {
     result.discovered += discovered.length;
-    const fetched = await fetchNormalizedVenues(discovered);
+    const fetched = await fetchNormalizedVenues(discovered, runtimeBudget);
     result.errors.push(...fetched.errors);
     result.fetched += fetched.venues.length;
     for (const venue of fetched.venues) {
+      assertVenueImportRuntimeBudget(runtimeBudget, now());
       result.processed += 1;
       let imageInput: { venueId: string; qid: string; venueName: string; venueNameEn?: string | null } | null = null;
       try {
@@ -341,7 +427,9 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
       } catch (error) {
         result.errors.push({ qid: venue.qid, message: error instanceof Error ? error.message : "Venue import failed" });
       }
-      if (imageInput) await collectVenueImageDiscovery(db, result, imageInput);
+      if (imageInput) {
+        await handleVenueImageDiscovery(runtime, input.mode, db, result, imageInput);
+      }
     }
   };
   try {
@@ -349,10 +437,10 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
       result.discoveryPages = 1;
       await processPage(targetedQids.map((qid) => ({ qid, rootIds: [] })));
     } else if (input.mode === "count") {
-      let discovered = await discoverWikidataVenues({ limit: count, offset });
+      let discovered = await discoverWikidataVenues({ limit: count, offset, runtimeBudget });
       if (!discovered.length && offset > 0) {
         offset = 0; result.discoveryOffset = 0; result.currentOffset = 0;
-        discovered = await discoverWikidataVenues({ limit: count, offset: 0 });
+        discovered = await discoverWikidataVenues({ limit: count, offset: 0, runtimeBudget });
       }
       result.discoveryPages = discovered.length ? Math.ceil(discovered.length / 100) : 1;
       result.currentOffset = offset + discovered.length;
@@ -368,6 +456,7 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
             rootQid,
             limit: FULL_SYNC_PAGE_SIZE,
             afterQid: previousCursor,
+            runtimeBudget,
             onRetry: async () => { result.retryCount += 1; await persistProgress("running"); },
           });
           result.discoveryPages += 1;
@@ -385,14 +474,16 @@ export async function importWikidataVenues(input: { mode: "count" | "full"; coun
         }
       }
     }
+    if (venueImportShouldFinalize(runtimeBudget, now())) throw new VenueImportRuntimeBudgetExhaustedError();
     result.after = await snapshot(db);
     const status = wikidataImportRunStatus(result.fetched, result.errors.length);
     await persistProgress(status, true);
     return result;
   } catch (error) {
+    result.runtimeBudgetExhausted = error instanceof VenueImportRuntimeBudgetExhaustedError;
     const message = error instanceof Error ? error.message : "Wikidata discovery failed"; result.errors.push({ message });
-    result.after = await snapshot(db);
-    await persistProgress(result.processed > 0 ? "partial" : "failed", true);
+    if (!result.runtimeBudgetExhausted) result.after = await snapshot(db);
+    await persistProgress(interruptedWikidataImportRunStatus(result.processed), true);
     return result;
   }
 }

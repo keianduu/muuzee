@@ -1,5 +1,10 @@
 import { fetchJson } from "@/lib/external/fetch-json";
 import type { WikidataVenueCandidate } from "./types";
+import {
+  assertVenueImportRuntimeBudget,
+  hostedRequestTimeoutMs,
+  type VenueImportRuntimeBudget,
+} from "./runtime-policy";
 
 type SearchResponse = { search?: Array<{ id: string }> };
 export type WikidataSnak = { mainsnak?: { datavalue?: { value?: unknown } } };
@@ -19,11 +24,23 @@ export function wikidataEntityId(value: unknown) {
   return entityId(value);
 }
 
-export async function getWikidataRawEntities(ids: string[]) {
+export type WikidataClientRequestOptions = {
+  runtimeBudget?: VenueImportRuntimeBudget;
+  optional?: boolean;
+};
+
+export async function getWikidataRawEntities(ids: string[], options: WikidataClientRequestOptions = {}) {
   if (!ids.length) return {} as Record<string, WikidataRawEntity>;
   const url = new URL("https://www.wikidata.org/w/api.php");
   Object.entries({ action: "wbgetentities", ids: ids.join("|"), props: "labels|descriptions|aliases|claims|sitelinks", languages: "ja|en", sitefilter: "jawiki|enwiki", format: "json", origin: "*" }).forEach(([key, value]) => url.searchParams.set(key, value));
-  const payload = await fetchJson<EntitiesResponse>(url);
+  const hosted = options.runtimeBudget?.runtime === "hosted";
+  if (options.runtimeBudget) assertVenueImportRuntimeBudget(options.runtimeBudget);
+  const hostedTimeout = options.runtimeBudget ? hostedRequestTimeoutMs(options.runtimeBudget) : undefined;
+  const payload = await fetchJson<EntitiesResponse>(url, hosted ? {
+    timeoutMs: Math.min(options.optional ? 10_000 : 22_000, hostedTimeout || 22_000),
+    retries: 0,
+    nativeFallback: false,
+  } : {});
   return payload.entities || {};
 }
 
@@ -31,9 +48,9 @@ function entityId(value: unknown) {
   return value && typeof value === "object" && "id" in value ? String((value as { id: unknown }).id) : null;
 }
 
-export async function getWikidataEntities(ids: string[]): Promise<WikidataVenueCandidate[]> {
+export async function getWikidataEntities(ids: string[], options: WikidataClientRequestOptions = {}): Promise<WikidataVenueCandidate[]> {
   if (!ids.length) return [];
-  const entities = await getWikidataRawEntities(ids);
+  const entities = await getWikidataRawEntities(ids, options);
   return ids.flatMap((id) => {
     const entity = entities[id];
     if (!entity) return [];

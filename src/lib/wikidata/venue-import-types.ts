@@ -44,7 +44,10 @@ export type WikidataVenueImportSummary = {
   unchanged: number;
   sourceSelectionRequired: number;
   imageCandidatesAdded: number;
+  imageDiscoveryDeferred: number;
   imageDiscoveryErrors: Array<{ qid: string; fileTitle?: string; stage: string; message: string }>;
+  runtimeBudgetExhausted: boolean;
+  recoveredAbandonedRuns: number;
   errors: Array<{ qid?: string; message: string }>;
   before: { total: number; averageCompleteness: number };
   after: { total: number; averageCompleteness: number };

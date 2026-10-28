@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { revalidatePath } from "next/cache";
 import { importWikidataVenues } from "@/lib/wikidata/venue-importer";
-import { POST } from "./route";
+import { GET, POST } from "./route";
+
+const createSupabaseAdminClient = vi.hoisted(() => vi.fn());
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/wikidata/venue-importer", () => ({ importWikidataVenues: vi.fn() }));
+vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient }));
 
 function request(body: Record<string, unknown>) {
   return new Request("http://localhost/api/admin/venues/import/wikidata", {
@@ -36,7 +39,7 @@ describe("POST /api/admin/venues/import/wikidata", () => {
     const response = await POST(request({ mode: "full" }));
 
     expect(response.status).toBe(200);
-    expect(importWikidataVenues).toHaveBeenCalledWith({ mode: "full", count: 20, offset: undefined });
+    expect(importWikidataVenues).toHaveBeenCalledWith({ mode: "full", count: 20, offset: undefined, runtime: "local" });
   });
 
   it("preserves hosted count imports", async () => {
@@ -44,8 +47,23 @@ describe("POST /api/admin/venues/import/wikidata", () => {
     const response = await POST(request({ mode: "count", count: 25, offset: 50 }));
 
     expect(response.status).toBe(200);
-    expect(importWikidataVenues).toHaveBeenCalledWith({ mode: "count", count: 25, offset: 50 });
+    expect(importWikidataVenues).toHaveBeenCalledWith({ mode: "count", count: 25, offset: 50, runtime: "hosted" });
     expect(revalidatePath).toHaveBeenCalledWith("/admin/venues");
     expect(revalidatePath).toHaveBeenCalledWith("/admin/imports");
+  });
+
+  it("keeps progress page load read-only", async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const limit = vi.fn(() => ({ maybeSingle }));
+    const order = vi.fn(() => ({ limit }));
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+    const update = vi.fn();
+    createSupabaseAdminClient.mockReturnValue({ from: vi.fn(() => ({ select, update })) });
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(update).not.toHaveBeenCalled();
   });
 });

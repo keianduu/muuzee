@@ -1,5 +1,13 @@
 import { fetchJson } from "@/lib/external/fetch-json";
 import { WIKIDATA_VENUE_CLASSES } from "./venue-type-mapper";
+import {
+  assertVenueImportRuntimeBudget,
+  hostedRequestTimeoutMs,
+  HOSTED_WIKIDATA_DISCOVERY_ATTEMPTS,
+  HOSTED_WIKIDATA_DISCOVERY_BACKOFF_MS,
+  VenueImportRuntimeBudgetExhaustedError,
+  type VenueImportRuntimeBudget,
+} from "./runtime-policy";
 
 type SparqlResponse = { results?: { bindings?: Array<{ item?: { value?: string }; root?: { value?: string }; roots?: { value?: string } }> } };
 
@@ -67,20 +75,29 @@ export async function discoverWikidataVenuePage(input: {
   offset?: number;
   afterQid?: string | null;
   onRetry?: (retry: WikidataDiscoveryRetry) => void | Promise<void>;
+  runtimeBudget?: VenueImportRuntimeBudget;
 }) {
   const limit = Math.max(1, Math.min(MAX_PAGE_SIZE, Math.floor(input.limit || DEFAULT_PAGE_SIZE)));
   const url = new URL("https://query.wikidata.org/sparql");
   url.searchParams.set("query", buildWikidataVenueDiscoveryQuery({ ...input, limit, offset: input.offset || 0 }));
   url.searchParams.set("format", "json");
   let lastError: unknown;
-  for (let attempt = 0; attempt <= DISCOVERY_RETRIES; attempt += 1) {
+  const hosted = input.runtimeBudget?.runtime === "hosted";
+  const attempts = hosted ? HOSTED_WIKIDATA_DISCOVERY_ATTEMPTS : DISCOVERY_RETRIES + 1;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const payload = await fetchJson<SparqlResponse>(url, { timeoutMs: 45_000, retries: 0 });
+      if (input.runtimeBudget) assertVenueImportRuntimeBudget(input.runtimeBudget);
+      const payload = await fetchJson<SparqlResponse>(url, {
+        timeoutMs: hosted && input.runtimeBudget ? hostedRequestTimeoutMs(input.runtimeBudget) : 45_000,
+        retries: 0,
+        nativeFallback: !hosted,
+      });
       return normalizeDiscoveryResponse(payload, limit);
     } catch (error) {
+      if (error instanceof VenueImportRuntimeBudgetExhaustedError) throw error;
       lastError = error;
-      if (attempt === DISCOVERY_RETRIES) break;
-      const delayMs = Math.min(20_000, 1_500 * (2 ** attempt));
+      if (attempt === attempts - 1) break;
+      const delayMs = hosted ? HOSTED_WIKIDATA_DISCOVERY_BACKOFF_MS : Math.min(20_000, 1_500 * (2 ** attempt));
       await input.onRetry?.({
         attempt: attempt + 1,
         delayMs,
@@ -92,14 +109,14 @@ export async function discoverWikidataVenuePage(input: {
   throw lastError instanceof Error ? lastError : new Error("WDQS discovery failed after retries");
 }
 
-export async function discoverWikidataVenues(input: { countryQid?: string; limit: number; offset?: number }) {
+export async function discoverWikidataVenues(input: { countryQid?: string; limit: number; offset?: number; runtimeBudget?: VenueImportRuntimeBudget }) {
   const requested = Math.max(1, Math.min(500, Math.floor(input.limit)));
   const firstOffset = Math.max(0, Math.floor(input.offset || 0));
   const all: DiscoveredWikidataVenue[] = [];
   for (let cursor = firstOffset; all.length < requested; ) {
     const remaining = requested - all.length;
     const pageLimit = Math.min(MAX_PAGE_SIZE, remaining);
-    const page = await discoverWikidataVenuePage({ countryQid: input.countryQid, limit: pageLimit, offset: cursor });
+    const page = await discoverWikidataVenuePage({ countryQid: input.countryQid, limit: pageLimit, offset: cursor, runtimeBudget: input.runtimeBudget });
     all.push(...page);
     cursor += page.length;
     if (page.length < pageLimit) break;

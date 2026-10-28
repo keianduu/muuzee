@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchJson } from "@/lib/external/fetch-json";
 import { buildWikidataVenueDiscoveryQuery, discoverWikidataVenuePage, normalizeDiscoveryResponse } from "./venue-discovery";
+import { createVenueImportRuntimeBudget } from "./runtime-policy";
 
 vi.mock("@/lib/external/fetch-json", () => ({ fetchJson: vi.fn() }));
 
@@ -63,5 +64,34 @@ describe("Wikidata Venue discovery", () => {
     await expect(pending).resolves.toEqual([{ qid: "Q1", rootIds: ["Q33506"] }]);
     expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ attempt: 1, delayMs: 1_500, message: "HTTP 502" }));
     expect(fetchJson).toHaveBeenCalledTimes(2);
+  });
+
+  it("limits hosted discovery to two short attempts without native fallback", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-29T00:00:00.000Z"));
+    vi.mocked(fetchJson).mockRejectedValue(new Error("WDQS unavailable"));
+    const budget = createVenueImportRuntimeBudget("hosted", Date.now());
+    const pending = discoverWikidataVenuePage({ limit: 5, offset: 5, runtimeBudget: budget });
+    const rejection = expect(pending).rejects.toThrow("WDQS unavailable");
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await rejection;
+
+    expect(fetchJson).toHaveBeenCalledTimes(2);
+    expect(fetchJson).toHaveBeenNthCalledWith(1, expect.any(URL), {
+      timeoutMs: 22_000,
+      retries: 0,
+      nativeFallback: false,
+    });
+  });
+
+  it("preserves the longer LOCAL discovery policy", async () => {
+    vi.mocked(fetchJson).mockResolvedValue({ results: { bindings: [] } });
+    await discoverWikidataVenuePage({ limit: 5, offset: 5 });
+    expect(fetchJson).toHaveBeenCalledWith(expect.any(URL), {
+      timeoutMs: 45_000,
+      retries: 0,
+      nativeFallback: true,
+    });
   });
 });

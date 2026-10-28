@@ -25,9 +25,13 @@ function nativeHttpsJson<T>(input: URL | string, timeoutMs: number): Promise<T> 
   });
 }
 
-export async function fetchJson<T>(url: URL | string, options: { timeoutMs?: number; retries?: number } = {}): Promise<T> {
+export async function fetchJson<T>(
+  url: URL | string,
+  options: { timeoutMs?: number; retries?: number; nativeFallback?: boolean } = {},
+): Promise<T> {
   const timeoutMs = options.timeoutMs ?? 12_000;
   const retries = options.retries ?? 2;
+  const nativeFallback = options.nativeFallback ?? true;
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
@@ -37,12 +41,15 @@ export async function fetchJson<T>(url: URL | string, options: { timeoutMs?: num
       if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
       return await response.json() as T;
     } catch (error) {
-      try {
-        // Native HTTPS is a fallback for local networks where undici cannot
-        // establish the same outbound route. Normal fetch remains primary.
-        return await nativeHttpsJson<T>(url, Math.max(timeoutMs, 60_000));
-      } catch (nativeError) {
-        lastError = nativeError instanceof Error ? nativeError : error;
+      lastError = error;
+      if (nativeFallback) {
+        try {
+          // Native HTTPS is a fallback for local networks where undici cannot
+          // establish the same outbound route. Normal fetch remains primary.
+          return await nativeHttpsJson<T>(url, Math.max(timeoutMs, 60_000));
+        } catch (nativeError) {
+          lastError = nativeError instanceof Error ? nativeError : error;
+        }
       }
       if (attempt < retries) await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
     } finally {

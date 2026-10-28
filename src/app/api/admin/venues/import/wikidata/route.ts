@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { importWikidataVenues } from "@/lib/wikidata/venue-importer";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { HOSTED_WIKIDATA_FULL_SYNC_ERROR, shouldRejectHostedWikidataFullSync } from "@/lib/wikidata/runtime-policy";
+import { HOSTED_WIKIDATA_FULL_SYNC_ERROR, shouldRejectHostedWikidataFullSync, wikidataRuntime } from "@/lib/wikidata/runtime-policy";
 
 export const maxDuration = 300;
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const mode = body.mode === "full" ? "full" : "count";
     const count = Number(body.count) || 20;
     const offset = Number.isFinite(Number(body.offset)) ? Number(body.offset) : undefined;
-    const result = await importWikidataVenues({ mode, count, offset });
+    const result = await importWikidataVenues({ mode, count, offset, runtime: wikidataRuntime() });
     revalidatePath("/admin/venues");
     revalidatePath("/admin/imports");
     return NextResponse.json(result);
