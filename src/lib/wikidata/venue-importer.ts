@@ -139,10 +139,21 @@ async function snapshot(db: SupabaseClient) {
   return { total: total ?? rows.length, averageCompleteness };
 }
 
-async function nextSampleOffset(db: SupabaseClient, count: number) {
-  const { data } = await db.from("import_runs").select("metrics").eq("operation_type", "wikidata_venue_import").order("started_at", { ascending: false }).limit(1).maybeSingle();
-  const prior = Number((data?.metrics as Record<string, unknown> | null)?.discoveryOffsetEnd || 0);
-  return Number.isFinite(prior) ? prior : count;
+export async function nextSampleOffset(db: SupabaseClient) {
+  const { data, error } = await db.from("import_runs")
+    .select("status,metrics")
+    .eq("operation_type", "wikidata_venue_import")
+    .in("status", ["completed", "partial"])
+    .order("started_at", { ascending: false })
+    .limit(10);
+  if (error) throw error;
+
+  for (const row of data || []) {
+    if (row.status !== "completed" && row.status !== "partial") continue;
+    const checkpoint = (row.metrics as Record<string, unknown> | null)?.discoveryOffsetEnd;
+    if (typeof checkpoint === "number" && Number.isFinite(checkpoint) && checkpoint >= 0) return checkpoint;
+  }
+  return 0;
 }
 
 async function fetchNormalizedVenues(discovered: DiscoveredWikidataVenue[], runtimeBudget: VenueImportRuntimeBudget) {
@@ -359,7 +370,7 @@ export async function importWikidataVenues(input: {
   const ids = await sourceIds(db);
   const before = await snapshot(db);
   const count = targetedQids.length || Math.max(1, Math.min(500, Math.floor(input.count || 20)));
-  let offset = input.mode === "count" ? (input.offset == null ? await nextSampleOffset(db, count) : Math.max(0, Math.floor(input.offset))) : 0;
+  let offset = input.mode === "count" ? (input.offset == null ? await nextSampleOffset(db) : Math.max(0, Math.floor(input.offset))) : 0;
   const { data: run, error: runError } = await db.from("import_runs").insert({
     data_source_id: ids[DATA_SOURCE_KEY], operation_type: targetedQids.length ? "wikidata_venue_targeted_import" : "wikidata_venue_import", status: "running",
     requested_count: input.mode === "count" ? count : 0, metrics: { mode: input.mode, targeted: Boolean(targetedQids.length), discoveryOffset: offset },

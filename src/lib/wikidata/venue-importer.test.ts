@@ -7,12 +7,23 @@ import {
   handleVenueImageDiscovery,
   interruptedWikidataImportRunStatus,
   isProtectedVenueField,
+  nextSampleOffset,
   recoverAbandonedHostedVenueImports,
   shouldSkipWikidataVenue,
   wikidataImportRunStatus,
   wikidataVenueImportRunUpdate,
   wikidataVenueChecksum,
 } from "./venue-importer";
+
+function continuationDb(rows: Array<{ status: string; metrics: Record<string, unknown> | null }>) {
+  const limit = vi.fn().mockResolvedValue({ data: rows, error: null });
+  const order = vi.fn(() => ({ limit }));
+  const inFilter = vi.fn(() => ({ order }));
+  const eq = vi.fn(() => ({ in: inFilter }));
+  const select = vi.fn(() => ({ eq }));
+  const db = { from: vi.fn(() => ({ select })) } as unknown as SupabaseClient;
+  return { db, select, inFilter, limit };
+}
 
 describe("Wikidata Venue importer decisions", () => {
   it("uses the QID source checksum for external-ID dedup and unchanged skip", () => {
@@ -50,6 +61,57 @@ describe("Wikidata Venue importer decisions", () => {
   it("finalizes an interrupted run as failed before Core progress and partial after progress", () => {
     expect(interruptedWikidataImportRunStatus(0)).toBe("failed");
     expect(interruptedWikidataImportRunStatus(1)).toBe("partial");
+  });
+
+  it("continues from an older completed checkpoint when the latest failed run has no end offset", async () => {
+    const { db, select, inFilter, limit } = continuationDb([
+      { status: "failed", metrics: { discoveryOffset: 5 } },
+      { status: "completed", metrics: { discoveryOffsetEnd: 5 } },
+    ]);
+
+    await expect(nextSampleOffset(db)).resolves.toBe(5);
+    expect(select).toHaveBeenCalledWith("status,metrics");
+    expect(inFilter).toHaveBeenCalledWith("status", ["completed", "partial"]);
+    expect(limit).toHaveBeenCalledWith(10);
+  });
+
+  it.each([
+    ["completed", 10],
+    ["partial", 15],
+  ])("uses the latest %s checkpoint with discoveryOffsetEnd=%i", async (status, discoveryOffsetEnd) => {
+    const { db } = continuationDb([{ status, metrics: { discoveryOffsetEnd } }]);
+
+    await expect(nextSampleOffset(db)).resolves.toBe(discoveryOffsetEnd);
+  });
+
+  it("skips malformed terminal checkpoints and uses the next valid end offset", async () => {
+    const { db } = continuationDb([
+      { status: "completed", metrics: { discoveryOffsetEnd: "10" } },
+      { status: "partial", metrics: { discoveryOffsetEnd: Number.NaN } },
+      { status: "completed", metrics: { discoveryOffsetEnd: Number.POSITIVE_INFINITY } },
+      { status: "partial", metrics: { discoveryOffsetEnd: -1 } },
+      { status: "completed", metrics: { discoveryOffsetEnd: 5 } },
+    ]);
+
+    await expect(nextSampleOffset(db)).resolves.toBe(5);
+  });
+
+  it("starts at zero when no valid completed checkpoint exists", async () => {
+    const { db } = continuationDb([
+      { status: "running", metrics: { discoveryOffsetEnd: 20 } },
+      { status: "failed", metrics: null },
+      { status: "completed", metrics: {} },
+    ]);
+
+    await expect(nextSampleOffset(db)).resolves.toBe(0);
+  });
+
+  it("does not treat the starting discoveryOffset as completed progress", async () => {
+    const { db } = continuationDb([
+      { status: "completed", metrics: { discoveryOffset: 25 } },
+    ]);
+
+    await expect(nextSampleOffset(db)).resolves.toBe(0);
   });
 
   it("builds a finished failed/partial update instead of leaving a controlled stop running", () => {
