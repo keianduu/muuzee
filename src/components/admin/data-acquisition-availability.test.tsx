@@ -5,7 +5,11 @@ import { ExhibitionDataOperationCard } from "./exhibition-data-operation-card";
 import { MasterDataOperationCard } from "./master-data-operation-card";
 import { buildMasterOperatorOverview, buildUnavailableMasterOperatorOverview } from "@/lib/admin/data-acquisition-operator-overview";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/admin/imports",
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
 vi.stubGlobal("React", React);
 
 const entities = ["venues", "artists", "works"] as const;
@@ -15,6 +19,7 @@ const automaticOverview = {
   counts: { venuePending: 1, artistPending: 0, venueFailed: 0, artistFailed: 0 },
   items: [],
 };
+const exhibitionMetrics = { total: 12, published: 4, unpublished: 7, ended: 5 };
 
 describe("Data Acquisition availability", () => {
   it("renders configured real zero counts as numeric zero", () => {
@@ -69,18 +74,31 @@ describe("Data Acquisition availability", () => {
   });
 
   it("disables Exhibition update and automatic resolution actions when the environment is unavailable", () => {
-    const html = renderToStaticMarkup(<ExhibitionDataOperationCard overview={automaticOverview} actionsEnabled={false}/>);
+    const html = renderToStaticMarkup(<ExhibitionDataOperationCard overview={automaticOverview} metricOverview={exhibitionMetrics} metricError={null} actionsEnabled={false}/>);
     expect(html).toContain("展示会データを更新する");
     expect(html).toContain("自動で解決する");
     expect(html.match(/disabled=""/g)).toHaveLength(4);
   });
 
   it("does not invent an empty resolution state when the overview is unavailable", () => {
-    const html = renderToStaticMarkup(<ExhibitionDataOperationCard overview={null} actionsEnabled={false}/>);
+    const html = renderToStaticMarkup(<ExhibitionDataOperationCard overview={null} metricOverview={exhibitionMetrics} metricError={null} actionsEnabled={false}/>);
     expect(html).toContain("紐づけ状況を取得できません。");
     expect(html).not.toContain("Venue / Artistの要確認項目はありません。");
     expect(html).not.toContain("自動処理待ち <strong>0</strong>件");
     expect(html).not.toContain("自動で解決する");
+  });
+
+  it("renders Exhibition lifecycle metrics independently from update availability", () => {
+    const html = renderToStaticMarkup(<ExhibitionDataOperationCard overview={automaticOverview} metricOverview={exhibitionMetrics} metricError={null} actionsEnabled/>);
+    for (const label of ["MST", "公開", "非公開", "開催終了"]) expect(html).toContain(label);
+    for (const value of ["12", "4", "7", "5"]) expect(html).toContain(`<dd>${value}</dd>`);
+  });
+
+  it("shows unavailable Exhibition values without disabling actions", () => {
+    const html = renderToStaticMarkup(<ExhibitionDataOperationCard overview={automaticOverview} metricOverview={{ total: null, published: null, unpublished: null, ended: null }} metricError="一部の件数を取得できませんでした。" actionsEnabled/>);
+    expect(html.match(/<dd>—<\/dd>/g)).toHaveLength(4);
+    expect(html).toContain("一部の件数を取得できませんでした。");
+    expect(html).not.toContain('disabled=""');
   });
 
   it("preserves normal configured nonzero counts", () => {

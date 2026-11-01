@@ -2,9 +2,10 @@ import "server-only";
 
 import { createSupabaseAdminClient, hasSupabaseAdminEnvironment } from "@/lib/supabase/admin";
 import { getMasterQualityDashboard, type ArtistQualityDashboard, type VenueQualityDashboard } from "./master-repository";
+import { DATA_ACQUISITION_ENTITIES, type DataAcquisitionEntity } from "./data-acquisition-entity";
 
-export const DATA_ACQUISITION_ENTITIES = ["exhibitions", "venues", "artists", "works"] as const;
-export type DataAcquisitionEntity = (typeof DATA_ACQUISITION_ENTITIES)[number];
+export { DATA_ACQUISITION_ENTITIES } from "./data-acquisition-entity";
+export type { DataAcquisitionEntity } from "./data-acquisition-entity";
 
 export type SummaryMetric = {
   key: string;
@@ -136,7 +137,7 @@ export function buildOverviewMetrics(entity: DataAcquisitionEntity, masters: Mas
   const unpublishedIds = new Set(unpublishedRows.map((row) => row.id));
   const primaryIds = new Set(primaryRows.flatMap((row) => typeof row[ownerKey] === "string" ? [row[ownerKey] as string] : []));
   return [
-    { key: "total", label: "Master total", value: masters.length },
+    { key: "total", label: "MST", value: masters.length },
     { key: "published", label: "公開", value: published, href: listHref(entity, { status: "published" }) },
     { key: "unpublished", label: "非公開", value: unpublished, href: listHref(entity, { status: "unpublished" }), note: "Draft / legacy Readyを含む" },
     { key: "archived", label: "アーカイブ", value: archived, href: listHref(entity, { status: "archived" }) },

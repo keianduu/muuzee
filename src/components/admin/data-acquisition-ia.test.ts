@@ -17,11 +17,24 @@ describe("Data Acquisition unified IA", () => {
     expect(master).toContain("Masterデータ");
     expect(exhibition).toContain("展示会データを更新する");
     expect(page.match(/OperationCard/g)).toHaveLength(4);
-    for (const label of ["Venue", "Artist", "Works", "Master total", "公開", "非公開"]) expect(master).toContain(label);
-    expect(master).toContain("/admin/imports/summary?entity=${overview.entity}");
+    for (const label of ["Venue", "Artist", "Works", "MST", "公開", "非公開"]) expect(master).toContain(label);
+    expect(master).not.toContain("詳細 →");
     for (const entity of ["venues", "artists", "works"]) expect(master).toContain(`${entity}:`);
-    expect(exhibition).toContain("?entity=exhibitions");
+    expect(exhibition).not.toContain("詳細 →");
+    for (const label of ["MST", "公開", "非公開", "開催終了"]) expect(exhibition).toContain(label);
     for (const removed of ["取り込み状況を確認する", "Venue / Artist情報を確認する", "Venue / Artist / Worksを定期更新する", "データごとの反映ルールを確認する", "過去データを一括取り込みする", "取り込み履歴を確認する"]) expect(content).not.toContain(removed);
+  });
+
+  it("loads only the selected same-screen summary and keeps the compatibility route", () => {
+    const page = read("../../app/admin/imports/page.tsx");
+    const compatibility = read("../../app/admin/imports/summary/page.tsx");
+    const summaryContent = read("./data-acquisition-summary-content.tsx");
+    expect(page).toContain("detailEntity ? getDataAcquisitionSummary(detailEntity) : Promise.resolve(null)");
+    expect(page).toContain("DataAcquisitionSummaryDrawer");
+    expect(compatibility).toContain("DataAcquisitionEntitySwitch");
+    expect(compatibility).toContain("DataAcquisitionSummaryContent");
+    expect(summaryContent).toContain("取得・公開状況");
+    expect(summaryContent).toContain("取得履歴");
   });
 
   it("preserves the current execution boundaries without exposing Backfill or Source Policy", () => {

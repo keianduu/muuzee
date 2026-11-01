@@ -292,7 +292,12 @@ a.data-acquisition-metric:hover { border-color: var(--ink-300); background: var(
 .data-acquisition-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .data-acquisition-card-head h2, .data-acquisition-card-head .eyebrow { margin-top: 0; }
 .data-acquisition-card-head h2 { margin-bottom: 8px; }
-.data-acquisition-card-head > a, .master-operator-row-head > a { color: var(--ink-600); font-size: 13px; font-weight: 650; white-space: nowrap; }
+.data-acquisition-detail-trigger { cursor: pointer; transition: border-color 180ms ease, background-color 180ms ease; }
+.data-acquisition-detail-trigger:hover { border-color: var(--ink-300); background: var(--surface-hover); }
+.data-acquisition-detail-trigger:focus-visible { outline: 2px solid var(--admin-focus); outline-offset: 2px; }
+.master-operator-row.data-acquisition-detail-trigger { margin: 0 -12px; padding: 18px 12px; border-radius: var(--admin-radius-control); }
+.exhibition-operator-metric-block { margin-top: 16px; }
+.exhibition-operator-metrics { grid-template-columns: repeat(4,minmax(0,1fr)); }
 .master-operator-list { display: grid; margin-top: 18px; border-top: 1px solid var(--line-soft); }
 .master-operator-row { min-width: 0; padding: 18px 0; border-bottom: 1px solid var(--line-soft); }
 .master-operator-row-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -545,6 +550,7 @@ body.is-master-drawer-open { overflow: hidden; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--admin-focus); outline-offset: 2px; }
 @media (max-width: 920px) { .master-operator-row-body { grid-template-columns: 1fr; gap: 14px; } }
 @media (max-width: 760px) { .admin-shell { display: block; } .admin-sidebar { position: sticky; width: 100%; height: auto; padding: 12px; border-right: 0; border-bottom: 1px solid var(--line); } .brand { padding: 0 4px 10px; } .admin-nav { display: flex; width: 100%; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; } .admin-nav-group { display: flex; flex: 0 0 auto; gap: 4px; } .admin-nav-group + .admin-nav-group { padding-left: 8px; border-left: 1px solid var(--line); } .admin-nav-label, .admin-sidebar-environment { display: none; } .admin-nav-link { height: 34px; min-height: 34px; padding: 0 10px; } .admin-content { min-height: calc(100vh - 105px); } .admin-main { padding: 24px 16px 48px; } .page-head h1 { font-size: 28px; } .form-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .master-operator-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); } .master-operator-action .actions, .exhibition-sync-operation .actions, .exhibition-resolution-operation .actions { align-items: stretch; flex-direction: column; } .master-operator-action .button, .exhibition-sync-operation .button, .exhibition-resolution-operation .button { width: 100%; } }
+@media (max-width: 520px) { .exhibition-operator-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 680px) { .detail-navigation, .detail-status { align-items: stretch; flex-direction: column; } .publication-status-card { grid-template-columns: 1fr; } .publication-status-actions { justify-content: space-between; } .relation-grid, .tag-form { grid-template-columns: 1fr; } .action-popover { position: fixed; top: 96px; left: 20px; right: 20px; width: auto; max-height: calc(100vh - 120px); overflow: auto; } }
 @media (max-width: 1100px) { .action-popover { position: fixed; top: 80px; right: 20px; max-height: calc(100dvh - 100px); overflow: auto; } .master-drawer { width: 100%; min-width: 0; border-left: 0; } .master-drawer-layer.has-secondary .master-drawer--primary { right: 0; } .master-drawer--secondary { right: 0; z-index: 3; width: 100%; } }
 @media (max-width: 760px) { .master-drawer-header { min-height: 76px; padding: 12px 14px; } .master-drawer-header h1 { font-size: 20px; } .master-drawer-body { padding: 0 14px 36px; } .detail-tabs { margin-left: -14px; margin-right: -14px; padding: 8px 14px; } }

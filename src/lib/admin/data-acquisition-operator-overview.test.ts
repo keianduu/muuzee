@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMasterOperatorOverview, buildUnavailableMasterOperatorOverview } from "./data-acquisition-operator-overview";
+import { buildExhibitionOperatorOverview, buildMasterOperatorOverview, buildUnavailableMasterOperatorOverview, countDistinctEndedExhibitions } from "./data-acquisition-operator-overview";
 
 describe("Master operator overview", () => {
   it("defines every non-published canonical Master as unpublished", () => {
@@ -23,5 +23,21 @@ describe("Master operator overview", () => {
       published: null,
       unpublished: null,
     });
+  });
+});
+
+describe("Exhibition operator overview", () => {
+  it("counts distinct ended Exhibitions across multiple past occurrences", () => {
+    expect(countDistinctEndedExhibitions([
+      { exhibition_id: "published-ended" },
+      { exhibition_id: "published-ended" },
+      { exhibition_id: "draft-ended" },
+    ])).toBe(2);
+  });
+
+  it("keeps publication and lifecycle metrics independent", () => {
+    const overview = buildExhibitionOperatorOverview({ total: 4, published: 2, unpublished: 1, ended: 2 });
+    expect(overview).toEqual({ total: 4, published: 2, unpublished: 1, ended: 2 });
+    expect(overview.published! + overview.unpublished! + overview.ended!).toBe(5);
   });
 });

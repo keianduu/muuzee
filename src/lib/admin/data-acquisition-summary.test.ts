@@ -39,6 +39,7 @@ describe("data acquisition summary boundary", () => {
     expect(Object.fromEntries(metrics.map((metric) => [metric.key, metric.value]))).toEqual({
       total: 4, published: 1, unpublished: 2, archived: 1, "source-linked": 2, "image-missing": 2,
     });
+    expect(metrics.find((metric) => metric.key === "total")?.label).toBe("MST");
     expect(metrics.find((metric) => metric.key === "unpublished")?.href).toBe("/admin/artists?status=unpublished");
     expect(metrics.find((metric) => metric.key === "image-missing")?.href).toBe("/admin/artists?status=unpublished&image=missing");
   });

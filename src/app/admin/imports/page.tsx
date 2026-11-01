@@ -1,13 +1,21 @@
 import { ExhibitionDataOperationCard } from "@/components/admin/exhibition-data-operation-card";
 import { MasterDataOperationCard } from "@/components/admin/master-data-operation-card";
-import { getMasterOperatorOverviews } from "@/lib/admin/data-acquisition-operator-overview";
+import { DataAcquisitionSummaryContent } from "@/components/admin/data-acquisition-summary-content";
+import { DataAcquisitionSummaryDrawer } from "@/components/admin/data-acquisition-summary-drawer";
+import { normalizeDataAcquisitionDetail } from "@/lib/admin/data-acquisition-detail-state";
+import { getExhibitionOperatorOverview, getMasterOperatorOverviews } from "@/lib/admin/data-acquisition-operator-overview";
+import { getDataAcquisitionSummary } from "@/lib/admin/data-acquisition-summary";
 import { getVenueInitialAcquisitionState } from "@/lib/admin/venue-initial-acquisition-state";
 import { getResolutionOverview } from "@/lib/master-resolution/worker";
 
-export default async function ImportsPage() {
-  const [masters, venueAcquisition] = await Promise.all([
+export default async function ImportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const detailEntity = normalizeDataAcquisitionDetail(typeof params.detail === "string" ? params.detail : undefined);
+  const [masters, exhibitions, venueAcquisition, detailSummary] = await Promise.all([
     getMasterOperatorOverviews(),
+    getExhibitionOperatorOverview(),
     getVenueInitialAcquisitionState(),
+    detailEntity ? getDataAcquisitionSummary(detailEntity) : Promise.resolve(null),
   ]);
   let overview: Awaited<ReturnType<typeof getResolutionOverview>> | null = null;
   let resolutionError = "";
@@ -25,7 +33,8 @@ export default async function ImportsPage() {
     {resolutionError && <div className="error">{resolutionError}</div>}
     <div className="data-acquisition-operation-stack">
       <MasterDataOperationCard overviews={masters.data} actionsEnabled={masters.configured} venueAcquisition={venueAcquisition}/>
-      <ExhibitionDataOperationCard overview={overview} actionsEnabled={masters.configured}/>
+      <ExhibitionDataOperationCard overview={overview} metricOverview={exhibitions.data} metricError={exhibitions.error} actionsEnabled={masters.configured}/>
     </div>
+    {detailEntity && detailSummary && <DataAcquisitionSummaryDrawer entity={detailEntity}><DataAcquisitionSummaryContent summary={detailSummary}/></DataAcquisitionSummaryDrawer>}
   </>;
 }
