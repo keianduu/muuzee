@@ -2,9 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import {
   buildVenueDiscoveryInventoryQuery,
   createInitialCheckpoint,
-  normalizeCheckpoint,
   normalizeVenueDiscoveryBindings,
   parseGeneratorArgs,
+  resumeVenueDiscoveryGeneration,
   runVenueDiscoveryInventoryGeneration,
   validateLocalConfiguration,
   VENUE_DISCOVERY_OPERATION,
@@ -63,21 +63,17 @@ async function loadOrCreateGeneration(dataSourceId) {
   }
 
   if (existing) {
-    if (existing.data_source_id !== dataSourceId || existing.operation_type !== VENUE_DISCOVERY_OPERATION) {
-      throw new Error("Requested import run is not a Wikidata Venue Discovery generation.");
-    }
-    const checkpoint = normalizeCheckpoint(existing.metrics);
-    checkpoint.attempts.push({
+    return resumeVenueDiscoveryGeneration({
+      generation: existing,
+      dataSourceId,
       startedAt: new Date().toISOString(),
-      startRootIndex: checkpoint.rootIndex,
-      startAfterQid: checkpoint.afterQid,
-      status: "running",
+      updateGeneration: async (updates) => {
+        await must(
+          db.from("import_runs").update(updates).eq("id", existing.id),
+          "Resume discovery generation",
+        );
+      },
     });
-    await must(
-      db.from("import_runs").update({ status: "running", errors: null, finished_at: null, metrics: checkpoint }).eq("id", existing.id),
-      "Resume discovery generation",
-    );
-    return { id: existing.id, checkpoint };
   }
 
   const checkpoint = createInitialCheckpoint();

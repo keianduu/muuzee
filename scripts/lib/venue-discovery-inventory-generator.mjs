@@ -85,6 +85,35 @@ export function normalizeCheckpoint(value) {
   };
 }
 
+export async function resumeVenueDiscoveryGeneration({
+  generation,
+  dataSourceId,
+  startedAt,
+  updateGeneration,
+}) {
+  if (generation.data_source_id !== dataSourceId || generation.operation_type !== VENUE_DISCOVERY_OPERATION) {
+    throw new Error("Requested import run is not a Wikidata Venue Discovery generation.");
+  }
+  if (!["running", "partial"].includes(generation.status)) {
+    throw new Error(`Discovery generation is not resumable from status: ${generation.status}`);
+  }
+
+  const checkpoint = normalizeCheckpoint(generation.metrics);
+  checkpoint.attempts.push({
+    startedAt,
+    startRootIndex: checkpoint.rootIndex,
+    startAfterQid: checkpoint.afterQid,
+    status: "running",
+  });
+  await updateGeneration({
+    status: "running",
+    errors: null,
+    finished_at: null,
+    metrics: checkpoint,
+  });
+  return { id: generation.id, checkpoint };
+}
+
 export function buildVenueDiscoveryInventoryQuery({ rootQid, afterQid = null, limit }) {
   if (!QID_PATTERN.test(rootQid)) throw new Error("Invalid discovery root QID.");
   if (afterQid && !QID_PATTERN.test(afterQid)) throw new Error("Invalid discovery cursor QID.");

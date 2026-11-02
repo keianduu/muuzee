@@ -3,6 +3,7 @@ import {
   buildVenueDiscoveryInventoryQuery,
   createInitialCheckpoint,
   parseGeneratorArgs,
+  resumeVenueDiscoveryGeneration,
   runVenueDiscoveryInventoryGeneration,
   validateLocalConfiguration,
 } from "./lib/venue-discovery-inventory-generator.mjs";
@@ -75,5 +76,54 @@ describe("Venue Discovery Inventory generator", () => {
       completeGeneration,
     })).rejects.toThrow("provider unavailable");
     expect(completeGeneration).not.toHaveBeenCalled();
+  });
+
+  it.each(["running", "partial"])("resumes a %s generation and records the next attempt", async (status) => {
+    const updateGeneration = vi.fn();
+    const generation = {
+      id: "10000000-0000-4000-8000-000000000001",
+      data_source_id: "20000000-0000-4000-8000-000000000002",
+      operation_type: "wikidata_venue_discovery_inventory",
+      status,
+      metrics: { ...createInitialCheckpoint(), rootIndex: 1, completedRoots: ["Q33506"] },
+    };
+
+    const resumed = await resumeVenueDiscoveryGeneration({
+      generation,
+      dataSourceId: generation.data_source_id,
+      startedAt: "2026-11-02T00:00:00.000Z",
+      updateGeneration,
+    });
+
+    expect(resumed).toMatchObject({ id: generation.id, checkpoint: { rootIndex: 1, inventoryComplete: false } });
+    expect(updateGeneration).toHaveBeenCalledOnce();
+    expect(updateGeneration).toHaveBeenCalledWith(expect.objectContaining({
+      status: "running",
+      errors: null,
+      finished_at: null,
+      metrics: expect.objectContaining({
+        attempts: [expect.objectContaining({ startedAt: "2026-11-02T00:00:00.000Z", status: "running" })],
+      }),
+    }));
+  });
+
+  it.each(["completed", "failed"])("rejects a %s generation before any mutation", async (status) => {
+    const updateGeneration = vi.fn();
+    const generation = {
+      id: "10000000-0000-4000-8000-000000000001",
+      data_source_id: "20000000-0000-4000-8000-000000000002",
+      operation_type: "wikidata_venue_discovery_inventory",
+      status,
+      metrics: { ...createInitialCheckpoint(), rootIndex: 2, inventoryComplete: true },
+    };
+
+    await expect(resumeVenueDiscoveryGeneration({
+      generation,
+      dataSourceId: generation.data_source_id,
+      startedAt: "2026-11-02T00:00:00.000Z",
+      updateGeneration,
+    })).rejects.toThrow(`Discovery generation is not resumable from status: ${status}`);
+    expect(updateGeneration).not.toHaveBeenCalled();
+    expect(generation).toMatchObject({ status, metrics: { rootIndex: 2, inventoryComplete: true } });
   });
 });

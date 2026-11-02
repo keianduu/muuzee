@@ -36,6 +36,12 @@ describe("Venue Discovery Inventory schema", () => {
 
   it("only reconciles inactive and invalid rows when a complete generation is finalized", () => {
     expect(migration).toContain("create or replace function public.complete_venue_discovery_inventory_generation(");
+    expect(migration).toContain("p_metrics jsonb default '{}'::jsonb");
+    expect(migration).toContain("p_metrics @> '{\"inventoryComplete\": true}'::jsonb");
+    expect(migration).toContain("p_metrics -> 'roots' is distinct from '[\"Q33506\", \"Q1007870\"]'::jsonb");
+    expect(migration).toContain("p_metrics -> 'completedRoots' is distinct from '[\"Q33506\", \"Q1007870\"]'::jsonb");
+    expect(migration).toContain("p_metrics ->> 'rootIndex' is distinct from '2'");
+    expect(migration).toContain("raise exception 'Discovery generation completion evidence is incomplete'");
     expect(migration).toContain("last_seen_generation_id is distinct from p_generation_id");
     expect(migration).toContain("and state = 'invalid'");
     expect(migration).toContain("'inventoryComplete', true");

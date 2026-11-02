@@ -242,6 +242,16 @@ begin
     raise exception 'Discovery generation is not active';
   end if;
 
+  if p_metrics is null
+    or jsonb_typeof(p_metrics) <> 'object'
+    or not (p_metrics @> '{"inventoryComplete": true}'::jsonb)
+    or p_metrics -> 'roots' is distinct from '["Q33506", "Q1007870"]'::jsonb
+    or p_metrics -> 'completedRoots' is distinct from '["Q33506", "Q1007870"]'::jsonb
+    or jsonb_typeof(p_metrics -> 'rootIndex') is distinct from 'number'
+    or p_metrics ->> 'rootIndex' is distinct from '2' then
+    raise exception 'Discovery generation completion evidence is incomplete';
+  end if;
+
   update public.venue_discovery_inventory
   set
     state = 'pending',
