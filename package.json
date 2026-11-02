@@ -20,6 +20,7 @@
     "db:cleanup:admin-multi-candidate-local": "node --env-file=.env.local scripts/seed-admin-multi-candidate-fixture.mjs --cleanup",
     "db:seed:admin-artist-detail-local": "node --env-file=.env.local scripts/seed-admin-artist-detail-fixture.mjs",
     "db:cleanup:admin-artist-detail-local": "node --env-file=.env.local scripts/seed-admin-artist-detail-fixture.mjs --cleanup",
+    "db:generate:venue-discovery:local": "node --env-file=.env.local scripts/generate-venue-discovery-inventory.mjs",
     "db:docs": "node scripts/generate-database-docs.mjs",
     "db:docs:check": "node scripts/generate-database-docs.mjs --check"
   },
