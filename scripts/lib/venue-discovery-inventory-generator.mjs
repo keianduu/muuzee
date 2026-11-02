@@ -1,5 +1,7 @@
 export const VENUE_DISCOVERY_ROOTS = Object.freeze(["Q33506", "Q1007870"]);
 export const VENUE_DISCOVERY_OPERATION = "wikidata_venue_discovery_inventory";
+export const APPROVED_STG_PROJECT_REF = "steibqgeoqcsfsafaqcv";
+export const APPROVED_STG_SUPABASE_HOST = `${APPROVED_STG_PROJECT_REF}.supabase.co`;
 
 const QID_PATTERN = /^Q\d+$/;
 
@@ -16,11 +18,35 @@ export function validateLocalConfiguration({ supabaseUrl, vercel, nodeEnv }) {
   return parsed;
 }
 
+export function validateStgConfiguration({ supabaseUrl, projectRef, vercel, nodeEnv }) {
+  if (vercel || nodeEnv === "production") {
+    throw new Error("Refusing to run the STG generator from a Production/Vercel runtime.");
+  }
+  if (projectRef !== APPROVED_STG_PROJECT_REF) {
+    throw new Error(`MUUZEE_STG_PROJECT_REF must equal ${APPROVED_STG_PROJECT_REF}.`);
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(supabaseUrl || "");
+  } catch {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid STG Supabase URL.");
+  }
+  if (parsed.protocol !== "https:" || parsed.hostname !== APPROVED_STG_SUPABASE_HOST) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL does not identify the approved Muuzee STG project.");
+  }
+  return parsed;
+}
+
 export function parseGeneratorArgs(argv) {
-  const result = { apply: false, resumeId: null, pageSize: 50, maxPages: null };
+  const result = { target: null, apply: false, resumeId: null, pageSize: 50, maxPages: null };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--apply") result.apply = true;
+    if (argument === "--local" || argument === "--stg") {
+      if (result.target) throw new Error("Exactly one explicit target is required: --local or --stg.");
+      result.target = argument.slice(2);
+    }
+    else if (argument === "--apply") result.apply = true;
     else if (argument === "--resume") {
       result.resumeId = argv[++index] || null;
       if (!result.resumeId) throw new Error("--resume requires an import_runs UUID.");
@@ -29,6 +55,7 @@ export function parseGeneratorArgs(argv) {
     else if (argument === "--max-pages") result.maxPages = Number(argv[++index]);
     else throw new Error(`Unknown argument: ${argument}`);
   }
+  if (!result.target) throw new Error("Exactly one explicit target is required: --local or --stg.");
   if (!result.apply) throw new Error("Explicit --apply is required.");
   if (!Number.isInteger(result.pageSize) || result.pageSize < 1 || result.pageSize > 100) {
     throw new Error("--page-size must be an integer from 1 to 100.");
@@ -40,6 +67,33 @@ export function parseGeneratorArgs(argv) {
     throw new Error("--resume must be an import_runs UUID.");
   }
   return result;
+}
+
+export function prepareGeneratorExecution({ argv, environment, createDatabaseClient }) {
+  const args = parseGeneratorArgs(argv);
+  const supabaseUrl = environment.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = environment.SUPABASE_SERVICE_ROLE_KEY;
+
+  const parsedUrl = args.target === "local"
+    ? validateLocalConfiguration({
+        supabaseUrl,
+        vercel: environment.VERCEL,
+        nodeEnv: environment.NODE_ENV,
+      })
+    : validateStgConfiguration({
+        supabaseUrl,
+        projectRef: environment.MUUZEE_STG_PROJECT_REF,
+        vercel: environment.VERCEL,
+        nodeEnv: environment.NODE_ENV,
+      });
+
+  if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required.");
+
+  return {
+    args,
+    supabaseUrl: parsedUrl.href,
+    db: createDatabaseClient(parsedUrl.href, serviceRoleKey),
+  };
 }
 
 export function createInitialCheckpoint() {

@@ -1,24 +1,124 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  APPROVED_STG_PROJECT_REF,
   buildVenueDiscoveryInventoryQuery,
   createInitialCheckpoint,
   parseGeneratorArgs,
+  prepareGeneratorExecution,
   resumeVenueDiscoveryGeneration,
   runVenueDiscoveryInventoryGeneration,
   validateLocalConfiguration,
+  validateStgConfiguration,
 } from "./lib/venue-discovery-inventory-generator.mjs";
 
 describe("Venue Discovery Inventory generator", () => {
-  it("requires an explicitly bounded LOCAL apply", () => {
-    expect(() => parseGeneratorArgs([])).toThrow("--apply");
-    expect(() => parseGeneratorArgs(["--apply"])).toThrow("--max-pages");
-    expect(() => parseGeneratorArgs(["--apply", "--max-pages", "1", "--resume"])).toThrow("--resume requires");
-    expect(parseGeneratorArgs(["--apply", "--max-pages", "2", "--page-size", "20"]))
-      .toMatchObject({ apply: true, maxPages: 2, pageSize: 20 });
+  it("requires exactly one explicit, bounded target", () => {
+    expect(() => parseGeneratorArgs([])).toThrow("Exactly one explicit target");
+    expect(() => parseGeneratorArgs(["--local", "--stg", "--apply", "--max-pages", "1"]))
+      .toThrow("Exactly one explicit target");
+    expect(() => parseGeneratorArgs(["--stg", "--project-ref", "other", "--apply", "--max-pages", "1"]))
+      .toThrow("Unknown argument: --project-ref");
+    expect(() => parseGeneratorArgs(["--local", "--apply"])).toThrow("--max-pages");
+    expect(() => parseGeneratorArgs(["--local", "--apply", "--max-pages", "1", "--resume"])).toThrow("--resume requires");
+    expect(parseGeneratorArgs(["--local", "--apply", "--max-pages", "2", "--page-size", "20"]))
+      .toMatchObject({ target: "local", apply: true, maxPages: 2, pageSize: 20 });
+    expect(parseGeneratorArgs(["--stg", "--apply", "--max-pages", "1"]))
+      .toMatchObject({ target: "stg", apply: true, maxPages: 1 });
+  });
+
+  it("preserves LOCAL-only runtime and URL safeguards", () => {
     expect(() => validateLocalConfiguration({ supabaseUrl: "https://example.supabase.co", nodeEnv: "development" }))
       .toThrow("non-LOCAL");
     expect(validateLocalConfiguration({ supabaseUrl: "http://127.0.0.1:54321", nodeEnv: "development" }).hostname)
       .toBe("127.0.0.1");
+    expect(validateLocalConfiguration({ supabaseUrl: "http://localhost:54321", nodeEnv: "development" }).hostname)
+      .toBe("localhost");
+    expect(() => validateLocalConfiguration({ supabaseUrl: "http://127.0.0.1:54321", vercel: "1", nodeEnv: "development" }))
+      .toThrow("non-LOCAL");
+  });
+
+  it("accepts only the exact approved STG identity from a LOCAL process", () => {
+    const exactUrl = `https://${APPROVED_STG_PROJECT_REF}.supabase.co`;
+    expect(validateStgConfiguration({
+      supabaseUrl: exactUrl,
+      projectRef: APPROVED_STG_PROJECT_REF,
+      nodeEnv: "development",
+    }).hostname).toBe(`${APPROVED_STG_PROJECT_REF}.supabase.co`);
+    expect(() => validateStgConfiguration({
+      supabaseUrl: exactUrl,
+      projectRef: "wrong-project",
+      nodeEnv: "development",
+    })).toThrow("MUUZEE_STG_PROJECT_REF");
+    expect(() => validateStgConfiguration({
+      supabaseUrl: "https://wrong-project.supabase.co",
+      projectRef: APPROVED_STG_PROJECT_REF,
+      nodeEnv: "development",
+    })).toThrow("approved Muuzee STG project");
+    expect(() => validateStgConfiguration({
+      supabaseUrl: "https://production-project.supabase.co",
+      projectRef: APPROVED_STG_PROJECT_REF,
+      nodeEnv: "development",
+    })).toThrow("approved Muuzee STG project");
+    expect(() => validateStgConfiguration({
+      supabaseUrl: exactUrl,
+      projectRef: APPROVED_STG_PROJECT_REF,
+      vercel: "1",
+      nodeEnv: "development",
+    })).toThrow("Production/Vercel runtime");
+    expect(() => validateStgConfiguration({
+      supabaseUrl: exactUrl,
+      projectRef: APPROVED_STG_PROJECT_REF,
+      nodeEnv: "production",
+    })).toThrow("Production/Vercel runtime");
+  });
+
+  it("fails target and credential preflight before creating a database client", () => {
+    const createDatabaseClient = vi.fn();
+    expect(() => prepareGeneratorExecution({
+      argv: ["--stg", "--apply", "--max-pages", "1"],
+      environment: {
+        NEXT_PUBLIC_SUPABASE_URL: "https://production-project.supabase.co",
+        MUUZEE_STG_PROJECT_REF: APPROVED_STG_PROJECT_REF,
+        SUPABASE_SERVICE_ROLE_KEY: "not-read-by-failed-preflight",
+        NODE_ENV: "development",
+      },
+      createDatabaseClient,
+    })).toThrow("approved Muuzee STG project");
+    expect(createDatabaseClient).not.toHaveBeenCalled();
+
+    expect(() => prepareGeneratorExecution({
+      argv: ["--stg", "--apply", "--max-pages", "1"],
+      environment: {
+        NEXT_PUBLIC_SUPABASE_URL: `https://${APPROVED_STG_PROJECT_REF}.supabase.co`,
+        MUUZEE_STG_PROJECT_REF: APPROVED_STG_PROJECT_REF,
+        NODE_ENV: "development",
+      },
+      createDatabaseClient,
+    })).toThrow("SUPABASE_SERVICE_ROLE_KEY is required.");
+    expect(createDatabaseClient).not.toHaveBeenCalled();
+
+    prepareGeneratorExecution({
+      argv: ["--local", "--apply", "--max-pages", "1"],
+      environment: {
+        NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+        SUPABASE_SERVICE_ROLE_KEY: "local-test-only",
+        NODE_ENV: "development",
+      },
+      createDatabaseClient,
+    });
+    expect(createDatabaseClient).toHaveBeenCalledOnce();
+
+    prepareGeneratorExecution({
+      argv: ["--stg", "--apply", "--max-pages", "1"],
+      environment: {
+        NEXT_PUBLIC_SUPABASE_URL: `https://${APPROVED_STG_PROJECT_REF}.supabase.co`,
+        MUUZEE_STG_PROJECT_REF: APPROVED_STG_PROJECT_REF,
+        SUPABASE_SERVICE_ROLE_KEY: "stg-test-only",
+        NODE_ENV: "development",
+      },
+      createDatabaseClient,
+    });
+    expect(createDatabaseClient).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the approved Japan, museum/gallery hierarchy, dissolved exclusion, and QID cursor contract", () => {
