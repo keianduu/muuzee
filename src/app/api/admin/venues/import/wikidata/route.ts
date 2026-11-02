@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { importWikidataVenues } from "@/lib/wikidata/venue-importer";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { HOSTED_WIKIDATA_FULL_SYNC_ERROR, shouldRejectHostedWikidataFullSync, wikidataRuntime } from "@/lib/wikidata/runtime-policy";
+import { isVenueInitialAcquisitionEnabled, VENUE_INITIAL_ACQUISITION_DISABLED } from "@/lib/admin/venue-initial-acquisition-capability";
 
 export const maxDuration = 300;
 
@@ -24,9 +25,15 @@ export async function POST(request: Request) {
       return NextResponse.json(HOSTED_WIKIDATA_FULL_SYNC_ERROR, { status: 409 });
     }
     const mode = body.mode === "full" ? "full" : "count";
-    const count = Number(body.count) || 20;
+    const runtime = wikidataRuntime();
+    if (runtime === "hosted" && mode === "count" && !isVenueInitialAcquisitionEnabled({ hosted: true })) {
+      return NextResponse.json(VENUE_INITIAL_ACQUISITION_DISABLED, { status: 403 });
+    }
+    const count = runtime === "hosted" && mode === "count"
+      ? Math.min(5, Number(body.count) || 5)
+      : Number(body.count) || 20;
     const offset = Number.isFinite(Number(body.offset)) ? Number(body.offset) : undefined;
-    const result = await importWikidataVenues({ mode, count, offset, runtime: wikidataRuntime() });
+    const result = await importWikidataVenues({ mode, count, offset, runtime });
     revalidatePath("/admin/venues");
     revalidatePath("/admin/imports");
     return NextResponse.json(result);

@@ -132,6 +132,24 @@ describe("Wikidata Venue importer decisions", () => {
     expect(partial).toMatchObject({ status: "partial", finished_at: "2026-10-29T12:00:00.000Z", fetched_count: 1 });
   });
 
+  it("does not overwrite legacy WDQS continuation evidence for an Inventory-backed run", () => {
+    const result = {
+      runId: "inventory-run", mode: "count", requested: 5, discoveryOffset: 0, discovered: 5, fetched: 5,
+      processed: 5, discoveryPages: 0, retryCount: 0, currentOffset: 0, currentCursor: null,
+      currentRoot: null, newVenues: 1, linkedExisting: 1, updated: 1, unchanged: 1,
+      sourceSelectionRequired: 1, imageCandidatesAdded: 0, imageDiscoveryDeferred: 4,
+      imageDiscoveryErrors: [], runtimeBudgetExhausted: false, recoveredAbandonedRuns: 0,
+      inventoryBacked: true, inventoryClaimed: 5, inventoryProcessed: 5, inventoryRetried: 0,
+      inventoryInvalid: 0, inventoryEmpty: false, errors: [],
+      before: { total: 10, averageCompleteness: 50 }, after: { total: 11, averageCompleteness: 51 },
+    } satisfies WikidataVenueImportSummary;
+
+    const update = wikidataVenueImportRunUpdate(result, { mode: "count", count: 5 }, "completed");
+
+    expect(update.metrics).toMatchObject({ inventoryBacked: true, inventoryClaimed: 5 });
+    expect(update.metrics).not.toHaveProperty("discoveryOffsetEnd");
+  });
+
   it("keeps a core-success run completed when optional image discovery reports an error", async () => {
     const result = { imageCandidatesAdded: 0, imageDiscoveryErrors: [] as Array<{ qid: string; fileTitle?: string; stage: string; message: string }> };
     const discover = vi.fn(async () => ({

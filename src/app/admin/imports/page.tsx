@@ -6,6 +6,7 @@ import { normalizeDataAcquisitionDetail } from "@/lib/admin/data-acquisition-det
 import { getExhibitionOperatorOverview, getMasterOperatorOverviews } from "@/lib/admin/data-acquisition-operator-overview";
 import { getDataAcquisitionSummary } from "@/lib/admin/data-acquisition-summary";
 import { getVenueInitialAcquisitionState } from "@/lib/admin/venue-initial-acquisition-state";
+import { isVenueInitialAcquisitionEnabled } from "@/lib/admin/venue-initial-acquisition-capability";
 import { getResolutionOverview } from "@/lib/master-resolution/worker";
 
 export default async function ImportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -32,7 +33,12 @@ export default async function ImportsPage({ searchParams }: { searchParams: Prom
     {masters.error && masters.configured && <div className="error">{masters.error}</div>}
     {resolutionError && <div className="error">{resolutionError}</div>}
     <div className="data-acquisition-operation-stack">
-      <MasterDataOperationCard overviews={masters.data} actionsEnabled={masters.configured} venueAcquisition={venueAcquisition}/>
+      <MasterDataOperationCard
+        overviews={masters.data}
+        actionsEnabled={masters.configured}
+        venueAcquisition={venueAcquisition}
+        initialAcquisitionEnabled={isVenueInitialAcquisitionEnabled()}
+      />
       <ExhibitionDataOperationCard overview={overview} metricOverview={exhibitions.data} metricError={exhibitions.error} actionsEnabled={masters.configured}/>
     </div>
     {detailEntity && detailSummary && <DataAcquisitionSummaryDrawer entity={detailEntity}><DataAcquisitionSummaryContent summary={detailSummary}/></DataAcquisitionSummaryDrawer>}

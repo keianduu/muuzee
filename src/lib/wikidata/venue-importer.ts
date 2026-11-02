@@ -10,6 +10,15 @@ import { discoverWikidataVenuePage, discoverWikidataVenues, type DiscoveredWikid
 import { mapWikidataVenue } from "./venue-mapper";
 import { WIKIDATA_VENUE_CLASSES } from "./venue-type-mapper";
 import type { WikidataVenue, WikidataVenueImportSummary } from "./venue-import-types";
+import {
+  claimVenueDiscoveryInventory,
+  HOSTED_VENUE_INVENTORY_BATCH_SIZE,
+  invalidateVenueDiscoveryInventoryCandidate,
+  processVenueDiscoveryInventoryCandidate,
+  releaseVenueDiscoveryInventoryClaims,
+  retryVenueDiscoveryInventoryCandidate,
+  type VenueDiscoveryInventoryCandidate,
+} from "./venue-discovery-inventory";
 import { shouldApplySourceField } from "@/lib/venue-enrichment/source-application";
 import { saveVenueImageDiscovery } from "@/lib/venue-enrichment/image-discovery";
 import {
@@ -66,6 +75,8 @@ export function wikidataVenueImportRunUpdate(
   status: "running" | "completed" | "partial" | "failed",
   finishedAt?: string,
 ) {
+  const metrics: Record<string, unknown> = { ...result };
+  if (!result.inventoryBacked) metrics.discoveryOffsetEnd = result.currentOffset;
   const update: Record<string, unknown> = {
     status,
     requested_count: input.mode === "count" ? input.count : result.discovered,
@@ -75,7 +86,7 @@ export function wikidataVenueImportRunUpdate(
     skipped_count: result.unchanged,
     error_count: result.errors.length,
     errors: result.errors.length ? result.errors : null,
-    metrics: { ...result, discoveryOffsetEnd: result.currentOffset },
+    metrics,
   };
   if (finishedAt) update.finished_at = finishedAt;
   return update;
@@ -156,6 +167,36 @@ export async function nextSampleOffset(db: SupabaseClient) {
   return 0;
 }
 
+async function fetchVenueDetailBatch(discovered: DiscoveredWikidataVenue[], runtimeBudget: VenueImportRuntimeBudget) {
+  const candidates = await getWikidataEntities(discovered.map((item) => item.qid), { runtimeBudget });
+  const administrativeIds = [...new Set(candidates.flatMap((candidate) => {
+    const claims = (candidate.raw as { claims?: Record<string, Array<{ mainsnak?: { datavalue?: { value?: unknown } } }>> } | null)?.claims;
+    return (claims?.P131 || []).flatMap((claim) => {
+      const value = claim.mainsnak?.datavalue?.value;
+      return value && typeof value === "object" && "id" in value ? [String((value as { id: unknown }).id)] : [];
+    });
+  }))];
+  let administrativeEntities: WikidataVenueCandidate[] = [];
+  try {
+    administrativeEntities = administrativeIds.length
+      ? await getWikidataEntities(administrativeIds.slice(0, 50), { runtimeBudget, optional: true })
+      : [];
+  } catch {
+    // Region labels are optional; do not discard otherwise valid Venue details.
+  }
+  const labels = new Map(administrativeEntities.map((item) => [item.id, item.labelJa || item.labelEn || item.id]));
+  const venues = candidates.flatMap((candidate) => {
+    const discovery = discovered.find((item) => item.qid === candidate.id);
+    const venue = mapWikidataVenue(candidate, discovery?.rootIds || [], labels);
+    return venue ? [venue] : [];
+  });
+  const validQids = new Set(venues.map((venue) => venue.qid));
+  return {
+    venues,
+    invalidQids: discovered.map((item) => item.qid).filter((qid) => !validQids.has(qid)),
+  };
+}
+
 async function fetchNormalizedVenues(discovered: DiscoveredWikidataVenue[], runtimeBudget: VenueImportRuntimeBudget) {
   const normalized: WikidataVenue[] = [];
   const errors: Array<{ qid?: string; message: string }> = [];
@@ -164,23 +205,8 @@ async function fetchNormalizedVenues(discovered: DiscoveredWikidataVenue[], runt
     const batch = discovered.slice(start, start + DETAIL_BATCH_SIZE);
     try {
       if (start) await new Promise((resolve) => setTimeout(resolve, DETAIL_DELAY_MS));
-      const candidates = await getWikidataEntities(batch.map((item) => item.qid), { runtimeBudget });
-      const administrativeIds = [...new Set(candidates.flatMap((candidate) => {
-        const claims = (candidate.raw as { claims?: Record<string, Array<{ mainsnak?: { datavalue?: { value?: unknown } } }>> } | null)?.claims;
-        return (claims?.P131 || []).flatMap((claim) => {
-          const value = claim.mainsnak?.datavalue?.value;
-          return value && typeof value === "object" && "id" in value ? [String((value as { id: unknown }).id)] : [];
-        });
-      }))];
-      let administrativeEntities: WikidataVenueCandidate[] = [];
-      try { administrativeEntities = administrativeIds.length ? await getWikidataEntities(administrativeIds.slice(0, 50), { runtimeBudget, optional: true }) : []; }
-      catch { /* Region labels are optional; do not discard otherwise valid Venue details. */ }
-      const labels = new Map(administrativeEntities.map((item) => [item.id, item.labelJa || item.labelEn || item.id]));
-      for (const candidate of candidates) {
-        const discovery = batch.find((item) => item.qid === candidate.id);
-        const venue = mapWikidataVenue(candidate, discovery?.rootIds || [], labels);
-        if (venue) normalized.push(venue);
-      }
+      const fetched = await fetchVenueDetailBatch(batch, runtimeBudget);
+      normalized.push(...fetched.venues);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Wikidata entity batch failed";
       batch.forEach((item) => errors.push({ qid: item.qid, message }));
@@ -351,6 +377,83 @@ function bestExistingMatch(existing: ExistingVenue[], venue: WikidataVenue) {
   return existing.map((row) => ({ row, scored: scoreWikidataCandidate(row, candidate) })).sort((a, b) => b.scored.confidence - a.scored.confidence)[0] || null;
 }
 
+type VenueCoreResult = {
+  linkedVenueId: string | null;
+  outcome: "created" | "linked" | "updated" | "unchanged" | "review";
+};
+
+async function processWikidataVenueCore(input: {
+  db: SupabaseClient;
+  dataSourceId: string;
+  existing: ExistingVenue[];
+  venue: WikidataVenue;
+  runtime: WikidataRuntime;
+  mode: "count" | "full";
+  result: WikidataVenueImportSummary;
+}): Promise<VenueCoreResult> {
+  const { db, dataSourceId, existing, venue, runtime, mode, result } = input;
+  const { before: existingSource, stored, checksum } = await upsertSourceRecord(db, dataSourceId, venue, null);
+  if (shouldSkipWikidataVenue(existingSource, checksum)) {
+    result.unchanged += 1;
+    return { linkedVenueId: existingSource?.venue_id || null, outcome: "unchanged" };
+  }
+
+  let target = existingSource?.venue_id ? existing.find((row) => row.id === existingSource.venue_id) || null : null;
+  let created = false;
+  let matchMetadata: { confidence: number; reasons: string[] } | undefined;
+  if (!target) {
+    const { data: linkedCandidate, error: linkedCandidateError } = await db
+      .from("venue_external_match_candidates")
+      .select("venue_id")
+      .eq("provider", "wikidata")
+      .eq("external_id", venue.qid)
+      .eq("status", "matched")
+      .limit(1)
+      .maybeSingle();
+    if (linkedCandidateError) throw linkedCandidateError;
+    target = linkedCandidate?.venue_id ? existing.find((row) => row.id === linkedCandidate.venue_id) || null : null;
+  }
+  if (!target) {
+    const match = bestExistingMatch(existing, venue);
+    const classification = classifyWikidataVenueMatch(match?.scored.confidence || 0);
+    if (classification === "possible" && match) {
+      const status = await saveMatchCandidate(db, match.row.id, venue, match.scored.confidence, match.scored.reasons, "candidate");
+      if (status === "rejected") result.unchanged += 1;
+      else result.sourceSelectionRequired += 1;
+      return { linkedVenueId: null, outcome: status === "rejected" ? "unchanged" : "review" };
+    }
+    if (classification === "high" && match) {
+      target = match.row;
+      result.linkedExisting += 1;
+      matchMetadata = { confidence: match.scored.confidence, reasons: match.scored.reasons };
+      await saveMatchCandidate(db, target.id, venue, match.scored.confidence, match.scored.reasons, "matched");
+    } else {
+      target = await createVenue(db, venue, stored.id);
+      existing.push(target);
+      created = true;
+      result.newVenues += 1;
+      await saveMatchCandidate(db, target.id, venue, 1, ["Created from Wikidata Source A"], "matched");
+    }
+  }
+
+  const { error: linkError } = await db.from("source_records").update({ venue_id: target.id }).eq("id", stored.id);
+  if (linkError) throw linkError;
+  const updated = !created && await fillExistingVenue(db, target, venue, stored.id, matchMetadata);
+  if (updated) result.updated += 1;
+
+  await handleVenueImageDiscovery(runtime, mode, db, result, {
+    venueId: target.id,
+    qid: venue.qid,
+    venueName: venue.name,
+    venueNameEn: venue.nameEn,
+  });
+
+  return {
+    linkedVenueId: target.id,
+    outcome: created ? "created" : matchMetadata ? "linked" : updated ? "updated" : "unchanged",
+  };
+}
+
 export async function importWikidataVenues(input: {
   mode: "count" | "full";
   count?: number;
@@ -367,13 +470,20 @@ export async function importWikidataVenues(input: {
     ? await recoverAbandonedHostedVenueImports(db, new Date(now()))
     : 0;
   const targetedQids = [...new Set((input.qids || []).filter((value) => /^Q\d+$/.test(value)))].slice(0, 50);
+  const inventoryBacked = runtime === "hosted" && input.mode === "count" && targetedQids.length === 0;
   const ids = await sourceIds(db);
   const before = await snapshot(db);
-  const count = targetedQids.length || Math.max(1, Math.min(500, Math.floor(input.count || 20)));
-  let offset = input.mode === "count" ? (input.offset == null ? await nextSampleOffset(db) : Math.max(0, Math.floor(input.offset))) : 0;
+  const requestedCount = targetedQids.length || Math.max(1, Math.min(500, Math.floor(input.count || 20)));
+  const count = inventoryBacked ? Math.min(HOSTED_VENUE_INVENTORY_BATCH_SIZE, requestedCount) : requestedCount;
+  let offset = !inventoryBacked && targetedQids.length === 0 && input.mode === "count"
+    ? (input.offset == null ? await nextSampleOffset(db) : Math.max(0, Math.floor(input.offset)))
+    : 0;
   const { data: run, error: runError } = await db.from("import_runs").insert({
     data_source_id: ids[DATA_SOURCE_KEY], operation_type: targetedQids.length ? "wikidata_venue_targeted_import" : "wikidata_venue_import", status: "running",
-    requested_count: input.mode === "count" ? count : 0, metrics: { mode: input.mode, targeted: Boolean(targetedQids.length), discoveryOffset: offset },
+    requested_count: input.mode === "count" ? count : 0,
+    metrics: inventoryBacked
+      ? { mode: input.mode, targeted: false, inventoryBacked: true }
+      : { mode: input.mode, targeted: Boolean(targetedQids.length), discoveryOffset: offset },
   }).select("id").single();
   if (runError || !run) throw runError || new Error("Import run could not be created");
   const result: WikidataVenueImportSummary = {
@@ -383,7 +493,14 @@ export async function importWikidataVenues(input: {
     currentRoot: null,
     newVenues: 0, linkedExisting: 0, updated: 0, unchanged: 0,
     sourceSelectionRequired: 0, imageCandidatesAdded: 0, imageDiscoveryDeferred: 0, imageDiscoveryErrors: [],
-    runtimeBudgetExhausted: false, recoveredAbandonedRuns, errors: [], before, after: before,
+    runtimeBudgetExhausted: false, recoveredAbandonedRuns,
+    inventoryBacked,
+    inventoryClaimed: 0,
+    inventoryProcessed: 0,
+    inventoryRetried: 0,
+    inventoryInvalid: 0,
+    inventoryEmpty: false,
+    errors: [], before, after: before,
   };
   const persistProgress = async (status: "running" | "completed" | "partial" | "failed", finished = false) => {
     const update = wikidataVenueImportRunUpdate(
@@ -404,49 +521,92 @@ export async function importWikidataVenues(input: {
     for (const venue of fetched.venues) {
       assertVenueImportRuntimeBudget(runtimeBudget, now());
       result.processed += 1;
-      let imageInput: { venueId: string; qid: string; venueName: string; venueNameEn?: string | null } | null = null;
       try {
-        const { before: existingSource, stored, checksum } = await upsertSourceRecord(db, ids[DATA_SOURCE_KEY], venue, null);
-        if (shouldSkipWikidataVenue(existingSource, checksum)) { result.unchanged += 1; continue; }
-        let target = existingSource?.venue_id ? existing.find((row) => row.id === existingSource.venue_id) || null : null;
-        let created = false;
-        let matchMetadata: { confidence: number; reasons: string[] } | undefined;
-        if (!target) {
-          const { data: linkedCandidate } = await db.from("venue_external_match_candidates").select("venue_id").eq("provider", "wikidata").eq("external_id", venue.qid).eq("status", "matched").limit(1).maybeSingle();
-          target = linkedCandidate?.venue_id ? existing.find((row) => row.id === linkedCandidate.venue_id) || null : null;
-        }
-        if (!target) {
-          const match = bestExistingMatch(existing, venue);
-          const classification = classifyWikidataVenueMatch(match?.scored.confidence || 0);
-          if (classification === "possible" && match) {
-            const status = await saveMatchCandidate(db, match.row.id, venue, match.scored.confidence, match.scored.reasons, "candidate");
-            if (status === "rejected") result.unchanged += 1; else result.sourceSelectionRequired += 1;
-            continue;
-          }
-          if (classification === "high" && match) {
-            target = match.row; result.linkedExisting += 1;
-            matchMetadata = { confidence: match.scored.confidence, reasons: match.scored.reasons };
-            await saveMatchCandidate(db, target.id, venue, match.scored.confidence, match.scored.reasons, "matched");
-          } else {
-            target = await createVenue(db, venue, stored.id); existing.push(target); created = true; result.newVenues += 1;
-            await saveMatchCandidate(db, target.id, venue, 1, ["Created from Wikidata Source A"], "matched");
-          }
-        }
-        const { error: linkError } = await db.from("source_records").update({ venue_id: target.id }).eq("id", stored.id); if (linkError) throw linkError;
-        if (!created && await fillExistingVenue(db, target, venue, stored.id, matchMetadata)) result.updated += 1;
-        imageInput = { venueId: target.id, qid: venue.qid, venueName: venue.name, venueNameEn: venue.nameEn };
+        await processWikidataVenueCore({
+          db,
+          dataSourceId: ids[DATA_SOURCE_KEY],
+          existing,
+          venue,
+          runtime,
+          mode: input.mode,
+          result,
+        });
       } catch (error) {
         result.errors.push({ qid: venue.qid, message: error instanceof Error ? error.message : "Venue import failed" });
       }
-      if (imageInput) {
-        await handleVenueImageDiscovery(runtime, input.mode, db, result, imageInput);
-      }
     }
+  };
+  const processInventoryCandidate = async (candidate: VenueDiscoveryInventoryCandidate) => {
+    const discovered = [{ qid: candidate.external_id, rootIds: candidate.discovery_root_ids || [] }];
+    let fetched: Awaited<ReturnType<typeof fetchVenueDetailBatch>>;
+    try {
+      assertVenueImportRuntimeBudget(runtimeBudget, now());
+      fetched = await fetchVenueDetailBatch(discovered, runtimeBudget);
+    } catch (error) {
+      if (error instanceof VenueImportRuntimeBudgetExhaustedError) throw error;
+      result.errors.push({ qid: candidate.external_id, message: error instanceof Error ? error.message : "Wikidata entity request failed" });
+      await retryVenueDiscoveryInventoryCandidate(db, { inventoryId: candidate.id, runId: result.runId, error });
+      result.inventoryRetried = (result.inventoryRetried || 0) + 1;
+      return;
+    }
+
+    const venue = fetched.venues[0];
+    if (!venue) {
+      await invalidateVenueDiscoveryInventoryCandidate(db, {
+        inventoryId: candidate.id,
+        runId: result.runId,
+        reason: "Wikidata detail no longer normalizes as an approved Japan Venue",
+      });
+      result.inventoryInvalid = (result.inventoryInvalid || 0) + 1;
+      return;
+    }
+
+    result.fetched += 1;
+    result.processed += 1;
+    let core: VenueCoreResult;
+    try {
+      core = await processWikidataVenueCore({
+        db,
+        dataSourceId: ids[DATA_SOURCE_KEY],
+        existing,
+        venue,
+        runtime,
+        mode: input.mode,
+        result,
+      });
+    } catch (error) {
+      result.errors.push({ qid: candidate.external_id, message: error instanceof Error ? error.message : "Venue import failed" });
+      await retryVenueDiscoveryInventoryCandidate(db, { inventoryId: candidate.id, runId: result.runId, error });
+      result.inventoryRetried = (result.inventoryRetried || 0) + 1;
+      return;
+    }
+
+    await processVenueDiscoveryInventoryCandidate(db, {
+      inventoryId: candidate.id,
+      runId: result.runId,
+      linkedVenueId: core.linkedVenueId,
+    });
+    result.inventoryProcessed = (result.inventoryProcessed || 0) + 1;
   };
   try {
     if (targetedQids.length) {
       result.discoveryPages = 1;
       await processPage(targetedQids.map((qid) => ({ qid, rootIds: [] })));
+    } else if (inventoryBacked) {
+      const claimed = await claimVenueDiscoveryInventory(db, {
+        dataSourceId: ids[DATA_SOURCE_KEY],
+        runId: result.runId,
+        limit: count,
+      });
+      result.inventoryClaimed = claimed.length;
+      result.discovered = claimed.length;
+      if (!claimed.length) {
+        result.inventoryEmpty = true;
+        result.operatorMessage = "現在取り込める新規候補はありません。";
+      }
+      for (const candidate of claimed) {
+        await processInventoryCandidate(candidate);
+      }
     } else if (input.mode === "count") {
       let discovered = await discoverWikidataVenues({ limit: count, offset, runtimeBudget });
       if (!discovered.length && offset > 0) {
@@ -493,6 +653,13 @@ export async function importWikidataVenues(input: {
   } catch (error) {
     result.runtimeBudgetExhausted = error instanceof VenueImportRuntimeBudgetExhaustedError;
     const message = error instanceof Error ? error.message : "Wikidata discovery failed"; result.errors.push({ message });
+    if (inventoryBacked) {
+      try {
+        await releaseVenueDiscoveryInventoryClaims(db, { runId: result.runId, error });
+      } catch (releaseError) {
+        result.errors.push({ message: releaseError instanceof Error ? releaseError.message : "Inventory claim release failed" });
+      }
+    }
     if (!result.runtimeBudgetExhausted) result.after = await snapshot(db);
     await persistProgress(interruptedWikidataImportRunStatus(result.processed), true);
     return result;

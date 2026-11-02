@@ -48,6 +48,13 @@ export type WikidataVenueImportSummary = {
   imageDiscoveryErrors: Array<{ qid: string; fileTitle?: string; stage: string; message: string }>;
   runtimeBudgetExhausted: boolean;
   recoveredAbandonedRuns: number;
+  inventoryBacked?: boolean;
+  inventoryClaimed?: number;
+  inventoryProcessed?: number;
+  inventoryRetried?: number;
+  inventoryInvalid?: number;
+  inventoryEmpty?: boolean;
+  operatorMessage?: string;
   errors: Array<{ qid?: string; message: string }>;
   before: { total: number; averageCompleteness: number };
   after: { total: number; averageCompleteness: number };

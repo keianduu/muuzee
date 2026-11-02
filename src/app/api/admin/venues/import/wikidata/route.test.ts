@@ -44,12 +44,25 @@ describe("POST /api/admin/venues/import/wikidata", () => {
 
   it("preserves hosted count imports", async () => {
     vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("VENUE_INITIAL_ACQUISITION_ENABLED", "true");
     const response = await POST(request({ mode: "count", count: 25, offset: 50 }));
 
     expect(response.status).toBe(200);
-    expect(importWikidataVenues).toHaveBeenCalledWith({ mode: "count", count: 25, offset: 50, runtime: "hosted" });
+    expect(importWikidataVenues).toHaveBeenCalledWith({ mode: "count", count: 5, offset: 50, runtime: "hosted" });
     expect(revalidatePath).toHaveBeenCalledWith("/admin/venues");
     expect(revalidatePath).toHaveBeenCalledWith("/admin/imports");
+  });
+
+  it.each([undefined, "false"])("fails closed before importer work when the hosted flag is %s", async (value) => {
+    vi.stubEnv("VERCEL", "1");
+    if (value !== undefined) vi.stubEnv("VENUE_INITIAL_ACQUISITION_ENABLED", value);
+
+    const response = await POST(request({ mode: "count", count: 5 }));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ code: "venue_initial_acquisition_disabled" });
+    expect(importWikidataVenues).not.toHaveBeenCalled();
+    expect(createSupabaseAdminClient).not.toHaveBeenCalled();
   });
 
   it("keeps progress page load read-only", async () => {

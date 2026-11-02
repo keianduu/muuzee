@@ -133,4 +133,17 @@ describe("Data Acquisition availability", () => {
     expect(html).not.toContain("変更内容を確認");
     expect(html).not.toContain("情報を更新する");
   });
+
+  it("hides initial acquisition while preserving an eligible Periodic Refresh", () => {
+    const html = renderToStaticMarkup(<MasterDataOperationCard
+      overviews={entities.map((entity) => buildMasterOperatorOverview(entity, 58, 4))}
+      actionsEnabled
+      venueAcquisition={venueStarted}
+      initialAcquisitionEnabled={false}
+    />);
+    expect(html).not.toContain("初回取り込み");
+    expect(html).not.toContain("続きを取り込む");
+    expect(html).toContain("変更内容を確認");
+    expect(html).toContain("情報を更新する");
+  });
 });

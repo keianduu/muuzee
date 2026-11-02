@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source of Truth: supabase/migrations/*.sql
-// Applied migrations: 202609040001_admin_v0.sql .. 202611020001_venue_discovery_inventory.sql
+// Applied migrations: 202609040001_admin_v0.sql .. 202611020002_venue_discovery_inventory_consumer.sql
 // Regenerate: npm run db:docs
 
 Table artist_external_match_candidates {

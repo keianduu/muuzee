@@ -68,6 +68,7 @@ export function VenueInitialAcquisitionForm({ status, actionsEnabled = true }: {
     {status === "unavailable" && <p className="data-acquisition-empty-state">初回取り込み状況を取得できません。</p>}
     {result && <div className="master-refresh-result" role="status">
       <strong>取り込み結果</strong>
+      {result.operatorMessage && <p>{result.operatorMessage}</p>}
       <dl className="venue-initial-acquisition-result">
         {venueInitialAcquisitionResultMetrics(result).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}件</dd></div>)}
       </dl>

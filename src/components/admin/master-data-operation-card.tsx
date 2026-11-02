@@ -22,10 +22,11 @@ function MasterMetrics({ overview }: { overview: MasterOperatorOverview }) {
   </div>;
 }
 
-export function MasterDataOperationCard({ overviews, actionsEnabled, venueAcquisition }: {
+export function MasterDataOperationCard({ overviews, actionsEnabled, venueAcquisition, initialAcquisitionEnabled = true }: {
   overviews: MasterOperatorOverview[];
   actionsEnabled: boolean;
   venueAcquisition: VenueInitialAcquisitionState;
+  initialAcquisitionEnabled?: boolean;
 }) {
   return <section className="card data-acquisition-operation master-data-operation" id="master-data">
     <p className="eyebrow">Master Data</p>
@@ -40,10 +41,12 @@ export function MasterDataOperationCard({ overviews, actionsEnabled, venueAcquis
           <MasterMetrics overview={overview}/>
           {overview.entity === "venues"
             ? <div className="venue-operator-actions">
-              <VenueInitialAcquisitionForm status={venueAcquisition.status} actionsEnabled={actionsEnabled}/>
+              {initialAcquisitionEnabled && <VenueInitialAcquisitionForm status={venueAcquisition.status} actionsEnabled={actionsEnabled}/>}
               {venueAcquisition.linkedVenueCount !== null && venueAcquisition.linkedVenueCount > 0
                 ? <VenuePeriodicRefreshForm actionsEnabled={actionsEnabled}/>
-                : <div className="master-operator-pending"><p>初回取り込み後に情報更新を利用できます。</p></div>}
+                : initialAcquisitionEnabled
+                  ? <div className="master-operator-pending"><p>初回取り込み後に情報更新を利用できます。</p></div>
+                  : <div className="master-operator-pending"><p>現在利用できる更新操作はありません。</p></div>}
             </div>
             : <div className="master-operator-pending"><span className="status">準備中</span><p>現在利用できる更新操作はありません。</p></div>}
         </div>
