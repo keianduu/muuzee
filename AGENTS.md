@@ -76,6 +76,30 @@ When a shared class or module named above no longer exists in the current reposi
 
 ---
 
+## Automation-first execution principle
+
+Muuzee work should default to **Codex/agent-complete execution**: implementation and operations should be designed so Codex can inspect, implement, operate, validate, and close the authorized task with the tools and authenticated sessions already available, without asking the user to prepare intermediate setup.
+
+Rules:
+
+- Prefer existing authenticated CLI sessions, connectors, provider tooling, repository configuration, and durable automation over introducing new manual setup.
+- Do not choose a workflow that requires the user to fetch/copy/paste secrets, create one-off credentials, export environment variables, click provider dashboards, transfer data manually, or prepare local files merely to let Codex continue, unless that human step is genuinely unavoidable or materially better.
+- If a proposed implementation would require a new Human prerequisite, **stop before implementing that dependency and consult the user first**. Explain:
+  - why the Human step is needed;
+  - whether it is one-time or recurring;
+  - the agent-complete alternative;
+  - the implementation/operational cost difference;
+  - which option better fits the project's long-term management model;
+  - the recommended option.
+- Human involvement is reserved for genuinely Human-only gates such as login/MFA, ownership/account recovery, billing or purchase approval, legal confirmation, explicit destructive-operation approval, or another provider restriction that cannot be safely automated.
+- A Human path may also be recommended when it is overwhelmingly lower-cost, safer, or more maintainable than automation, but this must be discussed with the user **before** making it part of the implementation plan.
+- When a Human gate is unavoidable, minimize it to the smallest bounded action, preserve the current task state, and resume from that point without repeating completed work.
+- Do not create a recurring manual operational dependency when an existing authenticated agent/CLI path can perform the same operation safely.
+- Defer **non-blocking release-hardening or credential-management work** to an explicit pre-release task when the current phase can be completed safely without it. Never use this rule to bypass an existing mandatory security control, expose a secret, weaken RLS/access control, or ignore a currently material security risk.
+- Codex instructions must not introduce a new user-preparation prerequisite unless the prerequisite has already been explicitly approved by the user under this policy.
+
+---
+
 ## Core Operating Principle
 
 Use three distinct layers:

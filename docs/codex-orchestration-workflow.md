@@ -43,6 +43,31 @@ Codex owns the implementation/operation run described by the current instruction
 
 Codex must follow `AGENTS.md`, `docs/project-context.md`, `docs/git-workflow.md`, and any task-specific durable instructions.
 
+## Automation-first / human-minimal policy
+
+The default operating model is **agent-complete execution**.
+
+ChatGPT should design each Codex task so Codex can complete the authorized implementation/operation using the repository, connected tools, already-authenticated CLI/provider sessions, and durable automation wherever practical.
+
+Before proposing a workflow that requires the user to prepare something manually — for example creating/copying credentials, exporting environment variables, clicking a provider dashboard, downloading/uploading data, or performing an intermediate setup step — ChatGPT must first check whether Codex can complete the same goal through an existing authenticated CLI, connector, provider API, or repository automation.
+
+If a new Human prerequisite still appears necessary, ChatGPT must **consult the user before making it part of the implementation plan**. The consultation should state:
+
+- why the Human step is required;
+- whether it is one-time or recurring;
+- the agent-complete alternative;
+- the implementation and ongoing operational cost difference;
+- whether the Human route is materially safer, cheaper, or more maintainable;
+- the recommended path.
+
+Human work should be limited to genuine Human-only gates such as login/MFA, billing/purchase approval, legal confirmation, account ownership/recovery, explicit destructive-operation approval, or provider restrictions that cannot be safely automated.
+
+If a Human gate is unavoidable, minimize it to one bounded action where possible, preserve current task state, and resume without repeating completed work.
+
+Security remains mandatory. This policy means **automate safely and avoid unnecessary manual credential/setup work**; it does not authorize weakening existing controls. Non-blocking release-hardening or credential-management improvements may be deferred to an explicit pre-release task when the current phase can proceed safely without them.
+
+Codex instructions should therefore default to zero user-preparation steps. A user-preparation step may appear only when it is genuinely unavoidable or when the user has approved it after the consultation above.
+
 ## Canonical operating loop
 
 Use this loop by default:
