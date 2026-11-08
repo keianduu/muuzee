@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { pathToFileURL } from "node:url";
 import {
   buildVenueDiscoveryInventoryQuery,
   createInitialCheckpoint,
@@ -6,89 +7,14 @@ import {
   prepareGeneratorExecution,
   resumeVenueDiscoveryGeneration,
   runVenueDiscoveryInventoryGeneration,
-  VENUE_DISCOVERY_OPERATION,
 } from "./lib/venue-discovery-inventory-generator.mjs";
+import {
+  createLocalVenueDiscoveryPersistence,
+  createStgVenueDiscoveryPersistence,
+  createSupabaseCliExecutor,
+} from "./lib/venue-discovery-inventory-persistence.mjs";
 
-const { args, db } = prepareGeneratorExecution({
-  argv: process.argv.slice(2),
-  environment: process.env,
-  createDatabaseClient: (supabaseUrl, serviceRoleKey) => createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  }),
-});
-
-async function must(promise, context) {
-  const result = await promise;
-  if (result.error) throw new Error(`${context}: ${result.error.message}`);
-  return result.data;
-}
-
-async function findDataSource() {
-  const source = await must(
-    db.from("data_sources").select("id").eq("key", "wikidata").single(),
-    "Load Wikidata source",
-  );
-  return source.id;
-}
-
-async function loadOrCreateGeneration(dataSourceId) {
-  let existing = null;
-  if (args.resumeId) {
-    existing = await must(
-      db.from("import_runs")
-        .select("id,data_source_id,status,operation_type,metrics")
-        .eq("id", args.resumeId)
-        .single(),
-      "Load requested discovery generation",
-    );
-  } else {
-    existing = await must(
-      db.from("import_runs")
-        .select("id,data_source_id,status,operation_type,metrics")
-        .eq("data_source_id", dataSourceId)
-        .eq("operation_type", VENUE_DISCOVERY_OPERATION)
-        .in("status", ["running", "partial"])
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      "Find resumable discovery generation",
-    );
-  }
-
-  if (existing) {
-    return resumeVenueDiscoveryGeneration({
-      generation: existing,
-      dataSourceId,
-      startedAt: new Date().toISOString(),
-      updateGeneration: async (updates) => {
-        await must(
-          db.from("import_runs").update(updates).eq("id", existing.id),
-          "Resume discovery generation",
-        );
-      },
-    });
-  }
-
-  const checkpoint = createInitialCheckpoint();
-  checkpoint.attempts.push({
-    startedAt: new Date().toISOString(),
-    startRootIndex: 0,
-    startAfterQid: null,
-    status: "running",
-  });
-  const created = await must(
-    db.from("import_runs").insert({
-      data_source_id: dataSourceId,
-      operation_type: VENUE_DISCOVERY_OPERATION,
-      status: "running",
-      metrics: checkpoint,
-    }).select("id").single(),
-    "Create discovery generation",
-  );
-  return { id: created.id, checkpoint };
-}
-
-async function fetchProviderPage({ rootQid, afterQid, limit }) {
+export async function fetchVenueDiscoveryProviderPage({ rootQid, afterQid, limit }) {
   const url = new URL("https://query.wikidata.org/sparql");
   url.searchParams.set("query", buildVenueDiscoveryInventoryQuery({ rootQid, afterQid, limit }));
   url.searchParams.set("format", "json");
@@ -96,7 +22,10 @@ async function fetchProviderPage({ rootQid, afterQid, limit }) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
       const response = await fetch(url, {
-        headers: { Accept: "application/sparql-results+json", "User-Agent": "MuuzeeLocalVenueDiscoveryInventory/0.1 (https://github.com/keianduu/muuzee)" },
+        headers: {
+          Accept: "application/sparql-results+json",
+          "User-Agent": "MuuzeeLocalVenueDiscoveryInventory/0.1 (https://github.com/keianduu/muuzee)",
+        },
         signal: AbortSignal.timeout(45_000),
       });
       if (!response.ok) throw new Error(`WDQS HTTP ${response.status}`);
@@ -110,65 +39,132 @@ async function fetchProviderPage({ rootQid, afterQid, limit }) {
   throw lastError instanceof Error ? lastError : new Error("WDQS discovery failed.");
 }
 
-const dataSourceId = await findDataSource();
-const generation = await loadOrCreateGeneration(dataSourceId);
-let currentCheckpoint = generation.checkpoint;
-
-function finishCurrentAttempt(checkpoint, status) {
+function finishCurrentAttempt(checkpoint, status, now) {
   const attempts = [...checkpoint.attempts];
   const current = attempts.at(-1);
-  if (current) attempts[attempts.length - 1] = { ...current, status, finishedAt: new Date().toISOString() };
+  if (current) attempts[attempts.length - 1] = { ...current, status, finishedAt: now() };
   return { ...checkpoint, attempts };
 }
 
-try {
-  const result = await runVenueDiscoveryInventoryGeneration({
-    checkpoint: generation.checkpoint,
-    pageSize: args.pageSize,
-    maxPages: args.maxPages,
-    fetchPage: fetchProviderPage,
-    recordPage: async ({ rootQid, externalIds }) => {
-      await must(db.rpc("record_venue_discovery_inventory_page", {
-        p_data_source_id: dataSourceId,
-        p_generation_id: generation.id,
-        p_root_id: rootQid,
-        p_external_ids: externalIds,
-      }), "Persist discovery page");
-    },
-    saveCheckpoint: async (checkpoint) => {
-      currentCheckpoint = checkpoint;
-      await must(db.from("import_runs").update({ metrics: checkpoint }).eq("id", generation.id), "Save discovery checkpoint");
-    },
-    completeGeneration: async (checkpoint) => {
-      currentCheckpoint = finishCurrentAttempt(checkpoint, "completed");
-      await must(db.rpc("complete_venue_discovery_inventory_generation", {
-        p_generation_id: generation.id,
-        p_metrics: currentCheckpoint,
-      }), "Complete discovery generation");
-    },
-  });
+async function loadOrCreateGeneration({ args, persistence, dataSourceId, now }) {
+  const existing = args.resumeId
+    ? await persistence.loadGeneration(args.resumeId)
+    : await persistence.findResumableGeneration(dataSourceId);
 
-  if (!result.complete) {
-    currentCheckpoint = finishCurrentAttempt(result.checkpoint, "partial");
-    await must(db.from("import_runs").update({
-      status: "partial",
-      metrics: currentCheckpoint,
-      finished_at: new Date().toISOString(),
-    }).eq("id", generation.id), "Pause discovery generation");
+  if (existing) {
+    return resumeVenueDiscoveryGeneration({
+      generation: existing,
+      dataSourceId,
+      startedAt: now(),
+      updateGeneration: async (updates) => {
+        await persistence.updateGeneration(existing.id, updates, "Resume discovery generation");
+      },
+    });
   }
-  console.log(JSON.stringify({
-    generationId: generation.id,
-    status: result.complete ? "completed" : "partial",
-    pagesThisAttempt: result.pagesThisAttempt,
-    checkpoint: currentCheckpoint,
-  }, null, 2));
-} catch (error) {
-  currentCheckpoint = finishCurrentAttempt(currentCheckpoint, "failed");
-  await db.from("import_runs").update({
-    status: "partial",
-    errors: [{ message: error instanceof Error ? error.message : "Discovery generation failed" }],
-    metrics: currentCheckpoint,
-    finished_at: new Date().toISOString(),
-  }).eq("id", generation.id);
-  throw error;
+
+  const checkpoint = createInitialCheckpoint();
+  checkpoint.attempts.push({
+    startedAt: now(),
+    startRootIndex: 0,
+    startAfterQid: null,
+    status: "running",
+  });
+  const created = await persistence.createGeneration({ dataSourceId, checkpoint });
+  return { id: created.id, checkpoint };
+}
+
+export async function executeVenueDiscoveryInventoryGenerator({
+  argv = process.argv.slice(2),
+  environment = process.env,
+  createDatabaseClient = (supabaseUrl, serviceRoleKey) => createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  }),
+  createLocalPersistence = createLocalVenueDiscoveryPersistence,
+  createStgPersistence = createStgVenueDiscoveryPersistence,
+  createCliExecutor = createSupabaseCliExecutor,
+  fetchPage = fetchVenueDiscoveryProviderPage,
+  now = () => new Date().toISOString(),
+  output = (value) => console.log(value),
+} = {}) {
+  const { args, db } = prepareGeneratorExecution({ argv, environment, createDatabaseClient });
+  const persistence = args.target === "local"
+    ? createLocalPersistence(db)
+    : createStgPersistence({
+        executeCli: createCliExecutor(),
+        applyIntent: args.target === "stg" && args.apply,
+      });
+
+  // The approved-target/authentication check must finish before any import_run,
+  // provider request, or Inventory mutation can occur.
+  await persistence.preflight();
+
+  const dataSourceId = await persistence.loadDataSource();
+  const generation = await loadOrCreateGeneration({ args, persistence, dataSourceId, now });
+  let currentCheckpoint = generation.checkpoint;
+
+  try {
+    const result = await runVenueDiscoveryInventoryGeneration({
+      checkpoint: generation.checkpoint,
+      pageSize: args.pageSize,
+      maxPages: args.maxPages,
+      fetchPage,
+      recordPage: async ({ rootQid, externalIds }) => {
+        await persistence.recordPage({
+          dataSourceId,
+          generationId: generation.id,
+          rootQid,
+          externalIds,
+        });
+      },
+      saveCheckpoint: async (checkpoint) => {
+        currentCheckpoint = checkpoint;
+        await persistence.updateGeneration(
+          generation.id,
+          { metrics: checkpoint },
+          "Save discovery checkpoint",
+        );
+      },
+      completeGeneration: async (checkpoint) => {
+        currentCheckpoint = finishCurrentAttempt(checkpoint, "completed", now);
+        await persistence.completeGeneration({
+          generationId: generation.id,
+          checkpoint: currentCheckpoint,
+        });
+      },
+    });
+
+    if (!result.complete) {
+      currentCheckpoint = finishCurrentAttempt(result.checkpoint, "partial", now);
+      await persistence.updateGeneration(generation.id, {
+        status: "partial",
+        metrics: currentCheckpoint,
+        finished_at: now(),
+      }, "Pause discovery generation");
+    }
+
+    const summary = {
+      generationId: generation.id,
+      status: result.complete ? "completed" : "partial",
+      pagesThisAttempt: result.pagesThisAttempt,
+      checkpoint: currentCheckpoint,
+    };
+    output(JSON.stringify(summary, null, 2));
+    return summary;
+  } catch (error) {
+    currentCheckpoint = finishCurrentAttempt(currentCheckpoint, "failed", now);
+    await persistence.updateGeneration(generation.id, {
+      status: "partial",
+      errors: [{ message: error instanceof Error ? error.message : "Discovery generation failed" }],
+      metrics: currentCheckpoint,
+      finished_at: now(),
+    }, "Record discovery generation failure");
+    throw error;
+  }
+}
+
+const isDirectExecution = process.argv[1]
+  && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectExecution) {
+  await executeVenueDiscoveryInventoryGenerator();
 }

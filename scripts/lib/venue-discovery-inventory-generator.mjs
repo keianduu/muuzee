@@ -1,7 +1,6 @@
 export const VENUE_DISCOVERY_ROOTS = Object.freeze(["Q33506", "Q1007870"]);
 export const VENUE_DISCOVERY_OPERATION = "wikidata_venue_discovery_inventory";
 export const APPROVED_STG_PROJECT_REF = "steibqgeoqcsfsafaqcv";
-export const APPROVED_STG_SUPABASE_HOST = `${APPROVED_STG_PROJECT_REF}.supabase.co`;
 
 const QID_PATTERN = /^Q\d+$/;
 
@@ -18,24 +17,11 @@ export function validateLocalConfiguration({ supabaseUrl, vercel, nodeEnv }) {
   return parsed;
 }
 
-export function validateStgConfiguration({ supabaseUrl, projectRef, vercel, nodeEnv }) {
+export function validateStgConfiguration({ vercel, nodeEnv }) {
   if (vercel || nodeEnv === "production") {
     throw new Error("Refusing to run the STG generator from a Production/Vercel runtime.");
   }
-  if (projectRef !== APPROVED_STG_PROJECT_REF) {
-    throw new Error(`MUUZEE_STG_PROJECT_REF must equal ${APPROVED_STG_PROJECT_REF}.`);
-  }
-
-  let parsed;
-  try {
-    parsed = new URL(supabaseUrl || "");
-  } catch {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid STG Supabase URL.");
-  }
-  if (parsed.protocol !== "https:" || parsed.hostname !== APPROVED_STG_SUPABASE_HOST) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL does not identify the approved Muuzee STG project.");
-  }
-  return parsed;
+  return APPROVED_STG_PROJECT_REF;
 }
 
 export function parseGeneratorArgs(argv) {
@@ -71,28 +57,25 @@ export function parseGeneratorArgs(argv) {
 
 export function prepareGeneratorExecution({ argv, environment, createDatabaseClient }) {
   const args = parseGeneratorArgs(argv);
-  const supabaseUrl = environment.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = environment.SUPABASE_SERVICE_ROLE_KEY;
+  if (args.target === "stg") {
+    validateStgConfiguration({
+      vercel: environment.VERCEL,
+      nodeEnv: environment.NODE_ENV,
+    });
+    return { args, db: null };
+  }
 
-  const parsedUrl = args.target === "local"
-    ? validateLocalConfiguration({
-        supabaseUrl,
-        vercel: environment.VERCEL,
-        nodeEnv: environment.NODE_ENV,
-      })
-    : validateStgConfiguration({
-        supabaseUrl,
-        projectRef: environment.MUUZEE_STG_PROJECT_REF,
-        vercel: environment.VERCEL,
-        nodeEnv: environment.NODE_ENV,
-      });
-
-  if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required.");
+  const parsedUrl = validateLocalConfiguration({
+    supabaseUrl: environment.NEXT_PUBLIC_SUPABASE_URL,
+    vercel: environment.VERCEL,
+    nodeEnv: environment.NODE_ENV,
+  });
+  if (!environment.SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for LOCAL generation.");
 
   return {
     args,
     supabaseUrl: parsedUrl.href,
-    db: createDatabaseClient(parsedUrl.href, serviceRoleKey),
+    db: createDatabaseClient(parsedUrl.href, environment.SUPABASE_SERVICE_ROLE_KEY),
   };
 }
 

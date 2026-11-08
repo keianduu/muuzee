@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  APPROVED_STG_PROJECT_REF,
   buildVenueDiscoveryInventoryQuery,
   createInitialCheckpoint,
   parseGeneratorArgs,
@@ -37,67 +36,34 @@ describe("Venue Discovery Inventory generator", () => {
       .toThrow("non-LOCAL");
   });
 
-  it("accepts only the exact approved STG identity from a LOCAL process", () => {
-    const exactUrl = `https://${APPROVED_STG_PROJECT_REF}.supabase.co`;
-    expect(validateStgConfiguration({
-      supabaseUrl: exactUrl,
-      projectRef: APPROVED_STG_PROJECT_REF,
-      nodeEnv: "development",
-    }).hostname).toBe(`${APPROVED_STG_PROJECT_REF}.supabase.co`);
-    expect(() => validateStgConfiguration({
-      supabaseUrl: exactUrl,
-      projectRef: "wrong-project",
-      nodeEnv: "development",
-    })).toThrow("MUUZEE_STG_PROJECT_REF");
-    expect(() => validateStgConfiguration({
-      supabaseUrl: "https://wrong-project.supabase.co",
-      projectRef: APPROVED_STG_PROJECT_REF,
-      nodeEnv: "development",
-    })).toThrow("approved Muuzee STG project");
-    expect(() => validateStgConfiguration({
-      supabaseUrl: "https://production-project.supabase.co",
-      projectRef: APPROVED_STG_PROJECT_REF,
-      nodeEnv: "development",
-    })).toThrow("approved Muuzee STG project");
-    expect(() => validateStgConfiguration({
-      supabaseUrl: exactUrl,
-      projectRef: APPROVED_STG_PROJECT_REF,
-      vercel: "1",
-      nodeEnv: "development",
-    })).toThrow("Production/Vercel runtime");
-    expect(() => validateStgConfiguration({
-      supabaseUrl: exactUrl,
-      projectRef: APPROVED_STG_PROJECT_REF,
-      nodeEnv: "production",
-    })).toThrow("Production/Vercel runtime");
+  it("allows STG only from a non-Production, non-Vercel runtime", () => {
+    expect(validateStgConfiguration({ nodeEnv: "development" })).toBe("steibqgeoqcsfsafaqcv");
+    expect(() => validateStgConfiguration({ vercel: "1", nodeEnv: "development" }))
+      .toThrow("Production/Vercel runtime");
+    expect(() => validateStgConfiguration({ nodeEnv: "production" }))
+      .toThrow("Production/Vercel runtime");
   });
 
-  it("fails target and credential preflight before creating a database client", () => {
+  it("keeps LOCAL credentials/client creation and removes STG API credential requirements", () => {
     const createDatabaseClient = vi.fn();
-    expect(() => prepareGeneratorExecution({
+    const stg = prepareGeneratorExecution({
       argv: ["--stg", "--apply", "--max-pages", "1"],
-      environment: {
-        NEXT_PUBLIC_SUPABASE_URL: "https://production-project.supabase.co",
-        MUUZEE_STG_PROJECT_REF: APPROVED_STG_PROJECT_REF,
-        SUPABASE_SERVICE_ROLE_KEY: "not-read-by-failed-preflight",
-        NODE_ENV: "development",
-      },
+      environment: { NODE_ENV: "development" },
       createDatabaseClient,
-    })).toThrow("approved Muuzee STG project");
+    });
+    expect(stg).toMatchObject({ args: { target: "stg", apply: true }, db: null });
     expect(createDatabaseClient).not.toHaveBeenCalled();
 
     expect(() => prepareGeneratorExecution({
-      argv: ["--stg", "--apply", "--max-pages", "1"],
+      argv: ["--local", "--apply", "--max-pages", "1"],
       environment: {
-        NEXT_PUBLIC_SUPABASE_URL: `https://${APPROVED_STG_PROJECT_REF}.supabase.co`,
-        MUUZEE_STG_PROJECT_REF: APPROVED_STG_PROJECT_REF,
+        NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
         NODE_ENV: "development",
       },
       createDatabaseClient,
-    })).toThrow("SUPABASE_SERVICE_ROLE_KEY is required.");
-    expect(createDatabaseClient).not.toHaveBeenCalled();
+    })).toThrow("SUPABASE_SERVICE_ROLE_KEY is required for LOCAL generation");
 
-    prepareGeneratorExecution({
+    const local = prepareGeneratorExecution({
       argv: ["--local", "--apply", "--max-pages", "1"],
       environment: {
         NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
@@ -107,18 +73,7 @@ describe("Venue Discovery Inventory generator", () => {
       createDatabaseClient,
     });
     expect(createDatabaseClient).toHaveBeenCalledOnce();
-
-    prepareGeneratorExecution({
-      argv: ["--stg", "--apply", "--max-pages", "1"],
-      environment: {
-        NEXT_PUBLIC_SUPABASE_URL: `https://${APPROVED_STG_PROJECT_REF}.supabase.co`,
-        MUUZEE_STG_PROJECT_REF: APPROVED_STG_PROJECT_REF,
-        SUPABASE_SERVICE_ROLE_KEY: "stg-test-only",
-        NODE_ENV: "development",
-      },
-      createDatabaseClient,
-    });
-    expect(createDatabaseClient).toHaveBeenCalledTimes(2);
+    expect(local.db).toBeUndefined();
   });
 
   it("keeps the approved Japan, museum/gallery hierarchy, dissolved exclusion, and QID cursor contract", () => {
