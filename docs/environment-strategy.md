@@ -32,7 +32,7 @@ Status: **Approved Environment Policy pending provider provisioning** (Order 260
 
 The fact that each Vercel project uses Vercel's `Production` environment does not make STG Production data. The project boundary is authoritative: the STG Vercel project's Production variables point only to the STG Supabase project.
 
-The current `/admin` surface has no Production Admin authentication. STG must use deployment protection and limited membership. Production internet exposure of `/admin` remains prohibited until a dedicated Admin authorization boundary exists; Vercel project separation does not solve application authorization.
+The application-level Admin boundary uses the Supabase authenticated session and verified `app_metadata.muuzee_role`. The current role is `admin`, mapped to the single `admin:access` permission. `/admin/**` pages and `/api/admin/**` APIs fail closed before privileged operations; `SUPABASE_SERVICE_ROLE_KEY` remains server-only. STG Vercel Authentication remains additional infrastructure protection and does not replace application authorization. Production exposure still requires role provisioning and the approved release/security gates.
 
 ## 3. Vercel deployment model
 
@@ -225,7 +225,7 @@ Adopting PITR later requires Human Review of cost, target RPO, restore runbook, 
 - **Monitoring:** use provider health/build/runtime/Auth/database logs for the provider-retention window. Order 460 assigns named operators, alert destinations, and incident ownership and reassesses whether audit logs or an external log drain are required. No durable external log drain is approved yet.
 - **Change evidence:** each remote setup Order records provider project name/ID, region, plan, domain, relevant non-secret settings, credential owners, and validation time in the authorized operations record. Secret values are excluded.
 
-**Production launch gate:** do not make the public Production domain Current while anonymous `/admin` is reachable. Order 480 must either (A) implement Production-grade Admin authorization or (B) block/isolate the route in Production. Vercel Project Protection is defense in depth and never substitutes for application authorization.
+**Production launch gate:** do not make the public Production domain Current unless the application Admin boundary is enabled, the intended operator role is provisioned through an approved server-side operation, and protected page/API smoke tests pass. Vercel Project Protection is defense in depth and never substitutes for application authorization. Order 480 owns later permission refinement and privileged-operation isolation beyond the current single-role boundary.
 
 No separate MVP task for live `session_id → auth.sessions` validation is required by Order 260. Current sensitive Account deletion, reauthentication, and Password Recovery boundaries use fresh `getUser()` calls to the Auth server. Re-evaluate explicit live-session validation if a future high-risk mutation relies only on `getClaims()`/local JWT verification, a revoked-session JWT window becomes material, MFA or financial/high-value operations are added, or Security review requires immediate revocation semantics.
 
@@ -246,7 +246,7 @@ No separate MVP task for live `session_id → auth.sessions` validation is requi
 | 390 / 400 Provider contract/billing | Finalize concrete provider plans, contracts, and billing. |
 | 410 Email provider | Select/contract SMTP, sender domain, and template-delivery operations; environment setup Orders apply actual configuration. |
 | 460 Monitoring / operations | Assign named release/secret/incident/restore-test operators and reassess audit logs, log drains, and alerting. |
-| 480 Admin authorization | Implement Production Admin authorization or block/isolate `/admin` before the public Production domain becomes Current. |
+| 480 Admin authorization | Refine permissions and privileged-operation isolation beyond the current `admin:access` boundary before broader Admin operations require it. |
 
 ## 14. Provisioning and release checklists
 

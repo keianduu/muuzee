@@ -13,7 +13,7 @@ import { ADMIN_MASTER_DETAIL_OPEN_EVENT, applyBulkPublicationState, mergeUniqueR
 import { MASTER_LIST_COLUMNS, venueCoordinatePresentation } from "@/lib/admin/admin-list-presentation";
 import { formatAdminDateTime } from "@/lib/admin/admin-date-time";
 import { hasWorkTitle, workDisplayTitleJa } from "@/lib/work-title";
-import { workCandidateAdoptionReasons } from "@/lib/work-collection/adoption";
+import { workCandidateAdoptionReasons } from "@/lib/work-collection/adoption-policy";
 
 type ListRow = MasterListResult["rows"][number];
 type WorkCandidateRow = { id: string; artist_id: string | null; matched_work_id: string | null; title: string; title_ja: string | null; title_en: string | null; title_original: string | null; original_language: string | null; year_text: string | null; source_artist_name: string | null; source_venue_name: string | null; matched_venue_id: string | null; holding_type: string | null; presentation_type: string | null; presentation_status: string | null; match_status: string; representative_reason: string; source_url: string | null; data_sources?: { name?: string; key?: string } | Array<{ name?: string; key?: string }> };

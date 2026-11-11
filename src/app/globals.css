@@ -56,6 +56,15 @@ body { margin: 0; color: var(--ink); background: var(--paper); font-size: var(--
 a { color: inherit; }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
+.admin-auth-page { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: var(--shell); }
+.admin-auth-card { width: min(100%, 440px); padding: 28px; border: 1px solid var(--line); border-radius: var(--admin-radius-card); background: var(--surface-strong); box-shadow: var(--admin-shadow-2); }
+.admin-auth-card h1 { margin-bottom: 10px; font-family: var(--admin-serif); font-size: var(--admin-font-page); font-weight: 400; }
+.admin-auth-card > .muted { margin: 0; }
+.admin-auth-form { display: grid; gap: var(--admin-space-card); margin-top: var(--admin-space-section); }
+.admin-auth-form .button { width: 100%; }
+.admin-auth-error { margin: 0; color: var(--danger); font-size: var(--admin-font-meta); }
+.admin-auth-actions { margin-top: var(--admin-space-section); }
+.admin-auth-actions .button { width: 100%; }
 .admin-shell { --ink: var(--ink-950); --muted: var(--ink-600); --line: #deded8; --paper: var(--surface); --admin-disabled-bg: var(--surface-hover); --admin-disabled-border: var(--line); --admin-disabled-text: var(--ink-400); --admin-focus: var(--ink-800); --admin-space-section: 32px; --admin-space-page: 44px; --admin-font-page: 34px; --admin-font-section: 20px; min-height: 100vh; display: grid; grid-template-columns: 288px minmax(0,1fr); background: var(--shell); color: var(--ink); font-family: var(--admin-sans); font-size: var(--admin-font-body); }
 .admin-sidebar { position: sticky; top: 0; z-index: var(--admin-z-sidebar); align-self: start; height: 100dvh; display: flex; flex-direction: column; padding: 14px 14px 16px; border-right: 1px solid var(--line); background: var(--sidebar); }
 .brand { display: flex; align-items: baseline; gap: 6px; padding: 0 8px 14px; font-size: 20px; font-weight: 800; letter-spacing: -.025em; text-decoration: none; white-space: nowrap; }
