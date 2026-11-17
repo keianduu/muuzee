@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { executeVenueDiscoveryInventoryGenerator } from "./generate-venue-discovery-inventory.mjs";
 import {
+  APPROVED_PROD_REMOTE_ARGUMENT,
   APPROVED_STG_REMOTE_ARGUMENT,
   assertQid,
   assertUuid,
+  createRemoteVenueDiscoveryPersistence,
   createStgVenueDiscoveryPersistence,
   createSupabaseCliExecutor,
   sqlJsonLiteral,
@@ -24,7 +26,11 @@ describe("Venue Discovery Inventory persistence adapters", () => {
       stdout: JSON.stringify({ rows: [{ ok: true }] }),
       stderr: "Target: project muuzee-stg (steibqgeoqcsfsafaqcv) · production\n",
     });
-    const execute = createSupabaseCliExecutor({ executable: "/repo/node_modules/.bin/supabase", spawn });
+    const execute = createSupabaseCliExecutor({
+      approvedProjectRef: "steibqgeoqcsfsafaqcv",
+      executable: "/repo/node_modules/.bin/supabase",
+      spawn,
+    });
     const args = ["db", "query", "select true as ok", "--read-only", APPROVED_STG_REMOTE_ARGUMENT, "--output-format=json"];
 
     expect(execute(args)).toEqual({ rows: [{ ok: true }] });
@@ -37,25 +43,76 @@ describe("Venue Discovery Inventory persistence adapters", () => {
 
   it("fails closed with sanitized errors when the CLI is missing or authentication/query fails", () => {
     const missing = createSupabaseCliExecutor({
+      approvedProjectRef: "steibqgeoqcsfsafaqcv",
       spawn: vi.fn().mockReturnValue({ error: { code: "ENOENT", message: "sensitive path" } }),
     });
-    expect(() => missing(["db", "query", "select 1"])).toThrow("Supabase CLI is unavailable.");
+    expect(() => missing(["db", "query", "select 1", APPROVED_STG_REMOTE_ARGUMENT])).toThrow("Supabase CLI is unavailable.");
 
     const failed = createSupabaseCliExecutor({
+      approvedProjectRef: "steibqgeoqcsfsafaqcv",
       spawn: vi.fn().mockReturnValue({ status: 1, stdout: "secret", stderr: "access token rejected" }),
     });
-    expect(() => failed(["db", "query", "select 1"])).toThrow("Supabase CLI query failed.");
-    expect(() => failed(["db", "query", "select 1"])).not.toThrow(/secret|access token/i);
+    expect(() => failed(["db", "query", "select 1", APPROVED_STG_REMOTE_ARGUMENT])).toThrow("Supabase CLI query failed.");
+    expect(() => failed(["db", "query", "select 1", APPROVED_STG_REMOTE_ARGUMENT])).not.toThrow(/secret|access token/i);
 
     const wrongTarget = createSupabaseCliExecutor({
+      approvedProjectRef: "steibqgeoqcsfsafaqcv",
       spawn: vi.fn().mockReturnValue({
         status: 0,
         stdout: JSON.stringify({ rows: [{ ok: true }] }),
         stderr: "Target: project other (production-project-ref) · production\n",
       }),
     });
-    expect(() => wrongTarget(["db", "query", "select 1"]))
-      .toThrow("target could not be verified as the approved STG project");
+    expect(() => wrongTarget(["db", "query", "select 1", APPROVED_STG_REMOTE_ARGUMENT]))
+      .toThrow("target could not be verified as the approved remote project");
+  });
+
+  it("rejects bare, missing, duplicate, or different remote arguments before invoking the CLI", () => {
+    const spawn = vi.fn();
+    const execute = createSupabaseCliExecutor({
+      approvedProjectRef: "lqinmolonctddovltujy",
+      spawn,
+    });
+    for (const args of [
+      ["db", "query", "select 1"],
+      ["db", "query", "select 1", "--remote"],
+      ["db", "query", "select 1", APPROVED_STG_REMOTE_ARGUMENT],
+      ["db", "query", "select 1", APPROVED_PROD_REMOTE_ARGUMENT, APPROVED_PROD_REMOTE_ARGUMENT],
+    ]) {
+      expect(() => execute(args)).toThrow("exact approved remote project");
+    }
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a remote target and project ref do not match", () => {
+    expect(() => createRemoteVenueDiscoveryPersistence({
+      target: "stg",
+      projectRef: "lqinmolonctddovltujy",
+      executeCli: vi.fn(),
+      applyIntent: true,
+    })).toThrow("target and approved project ref do not match");
+    expect(() => createRemoteVenueDiscoveryPersistence({
+      target: "prod",
+      projectRef: "steibqgeoqcsfsafaqcv",
+      executeCli: vi.fn(),
+      applyIntent: true,
+    })).toThrow("target and approved project ref do not match");
+  });
+
+  it.each([
+    ["lqinmolonctddovltujy", APPROVED_PROD_REMOTE_ARGUMENT, "steibqgeoqcsfsafaqcv"],
+    ["steibqgeoqcsfsafaqcv", APPROVED_STG_REMOTE_ARGUMENT, "lqinmolonctddovltujy"],
+  ])("verifies requested target %s before parsing otherwise valid CLI output", (approvedProjectRef, remoteArgument, actualProjectRef) => {
+    const executor = createSupabaseCliExecutor({
+      approvedProjectRef,
+      spawn: vi.fn().mockReturnValue({
+        status: 0,
+        stdout: JSON.stringify({ rows: [{ approved_project_ref: approvedProjectRef }] }),
+        stderr: `Target: project unexpected (${actualProjectRef}) · production\n`,
+      }),
+    });
+    expect(() => executor(["db", "query", "select 1", remoteArgument]))
+      .toThrow("target could not be verified as the approved remote project");
   });
 
   it("uses the exact approved remote for every read and never adds bare --remote or --yes", async () => {
@@ -85,6 +142,53 @@ describe("Venue Discovery Inventory persistence adapters", () => {
     await expect(persistence.createGeneration({ dataSourceId: DATA_SOURCE_ID, checkpoint: {} }))
       .rejects.toThrow("explicit --stg --apply intent");
     expect(executeCli).not.toHaveBeenCalled();
+  });
+
+  it("uses the exact Production remote for reads without mutation confirmation", async () => {
+    const executeCli = vi.fn()
+      .mockResolvedValueOnce({ rows: [{ approved_project_ref: "lqinmolonctddovltujy" }] })
+      .mockResolvedValueOnce({ rows: [{ id: DATA_SOURCE_ID }] });
+    const persistence = createRemoteVenueDiscoveryPersistence({
+      target: "prod",
+      projectRef: "lqinmolonctddovltujy",
+      executeCli,
+      applyIntent: true,
+    });
+
+    await persistence.preflight();
+    await expect(persistence.loadDataSource()).resolves.toBe(DATA_SOURCE_ID);
+
+    for (const [args] of executeCli.mock.calls) {
+      expect(args).toContain(APPROVED_PROD_REMOTE_ARGUMENT);
+      expect(args).not.toContain("--remote");
+      expect(args).toContain("--read-only");
+      expect(args).not.toContain("--yes");
+    }
+  });
+
+  it("requires Production apply intent and uses its exact remote for mutations", async () => {
+    const executeCli = vi.fn().mockResolvedValue({ rows: [{ id: GENERATION_ID }] });
+    const withoutIntent = createRemoteVenueDiscoveryPersistence({
+      target: "prod",
+      projectRef: "lqinmolonctddovltujy",
+      executeCli,
+      applyIntent: false,
+    });
+    await expect(withoutIntent.createGeneration({ dataSourceId: DATA_SOURCE_ID, checkpoint: {} }))
+      .rejects.toThrow("explicit --prod --apply intent");
+    expect(executeCli).not.toHaveBeenCalled();
+
+    const withIntent = createRemoteVenueDiscoveryPersistence({
+      target: "prod",
+      projectRef: "lqinmolonctddovltujy",
+      executeCli,
+      applyIntent: true,
+    });
+    await withIntent.createGeneration({ dataSourceId: DATA_SOURCE_ID, checkpoint: {} });
+    expect(executeCli).toHaveBeenCalledOnce();
+    expect(executeCli.mock.calls[0][0]).toContain(APPROVED_PROD_REMOTE_ARGUMENT);
+    expect(executeCli.mock.calls[0][0]).toContain("--yes");
+    expect(executeCli.mock.calls[0][0]).not.toContain("--read-only");
   });
 
   it("preserves generation create/update semantics and uses exact mutation arguments", async () => {
@@ -147,6 +251,37 @@ describe("Venue Discovery Inventory persistence adapters", () => {
   });
 
   it.each([
+    ["stg", "steibqgeoqcsfsafaqcv"],
+    ["prod", "lqinmolonctddovltujy"],
+  ])("fails %s preflight before provider or persistence work", async (target, projectRef) => {
+    const preflightError = new Error("Supabase CLI query failed.");
+    const fetchPage = vi.fn();
+    const persistence = {
+      preflight: vi.fn().mockRejectedValue(preflightError),
+      loadDataSource: vi.fn(),
+      createGeneration: vi.fn(),
+    };
+    const createRemotePersistence = vi.fn(({ target: actualTarget, projectRef: actualProjectRef }) => {
+      expect(actualTarget).toBe(target);
+      expect(actualProjectRef).toBe(projectRef);
+      return persistence;
+    });
+
+    await expect(executeVenueDiscoveryInventoryGenerator({
+      argv: [`--${target}`, "--apply", "--max-pages", "1"],
+      environment: { NODE_ENV: "development" },
+      createCliExecutor: () => vi.fn(),
+      createRemotePersistence,
+      fetchPage,
+      output: vi.fn(),
+    })).rejects.toThrow(preflightError.message);
+
+    expect(persistence.loadDataSource).not.toHaveBeenCalled();
+    expect(persistence.createGeneration).not.toHaveBeenCalled();
+    expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it.each([
     new Error("Supabase CLI is unavailable."),
     new Error("Supabase CLI query failed."),
   ])("fails STG preflight before provider or persistence work: %s", async (preflightError) => {
@@ -161,7 +296,7 @@ describe("Venue Discovery Inventory persistence adapters", () => {
       argv: ["--stg", "--apply", "--max-pages", "1"],
       environment: { NODE_ENV: "development" },
       createCliExecutor: () => vi.fn(),
-      createStgPersistence: () => persistence,
+      createRemotePersistence: () => persistence,
       fetchPage,
       output: vi.fn(),
     })).rejects.toThrow(preflightError.message);
@@ -177,7 +312,7 @@ describe("Venue Discovery Inventory persistence adapters", () => {
     const preflightError = new Error("stop after LOCAL adapter selection");
     const localPersistence = { preflight: vi.fn().mockRejectedValue(preflightError) };
     const createLocalPersistence = vi.fn().mockReturnValue(localPersistence);
-    const createStgPersistence = vi.fn();
+    const createRemotePersistence = vi.fn();
 
     await expect(executeVenueDiscoveryInventoryGenerator({
       argv: ["--local", "--apply", "--max-pages", "1"],
@@ -188,11 +323,11 @@ describe("Venue Discovery Inventory persistence adapters", () => {
       },
       createDatabaseClient,
       createLocalPersistence,
-      createStgPersistence,
+      createRemotePersistence,
       output: vi.fn(),
     })).rejects.toThrow(preflightError.message);
 
     expect(createLocalPersistence).toHaveBeenCalledWith(databaseClient);
-    expect(createStgPersistence).not.toHaveBeenCalled();
+    expect(createRemotePersistence).not.toHaveBeenCalled();
   });
 });

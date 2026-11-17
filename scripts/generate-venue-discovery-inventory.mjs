@@ -10,7 +10,7 @@ import {
 } from "./lib/venue-discovery-inventory-generator.mjs";
 import {
   createLocalVenueDiscoveryPersistence,
-  createStgVenueDiscoveryPersistence,
+  createRemoteVenueDiscoveryPersistence,
   createSupabaseCliExecutor,
 } from "./lib/venue-discovery-inventory-persistence.mjs";
 
@@ -80,18 +80,20 @@ export async function executeVenueDiscoveryInventoryGenerator({
     auth: { persistSession: false, autoRefreshToken: false },
   }),
   createLocalPersistence = createLocalVenueDiscoveryPersistence,
-  createStgPersistence = createStgVenueDiscoveryPersistence,
+  createRemotePersistence = createRemoteVenueDiscoveryPersistence,
   createCliExecutor = createSupabaseCliExecutor,
   fetchPage = fetchVenueDiscoveryProviderPage,
   now = () => new Date().toISOString(),
   output = (value) => console.log(value),
 } = {}) {
-  const { args, db } = prepareGeneratorExecution({ argv, environment, createDatabaseClient });
+  const { args, db, projectRef } = prepareGeneratorExecution({ argv, environment, createDatabaseClient });
   const persistence = args.target === "local"
     ? createLocalPersistence(db)
-    : createStgPersistence({
-        executeCli: createCliExecutor(),
-        applyIntent: args.target === "stg" && args.apply,
+    : createRemotePersistence({
+        target: args.target,
+        projectRef,
+        executeCli: createCliExecutor({ approvedProjectRef: projectRef }),
+        applyIntent: args.apply,
       });
 
   // The approved-target/authentication check must finish before any import_run,

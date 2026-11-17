@@ -1,11 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
+  APPROVED_PROD_PROJECT_REF,
   APPROVED_STG_PROJECT_REF,
   VENUE_DISCOVERY_OPERATION,
 } from "./venue-discovery-inventory-generator.mjs";
 
 export const APPROVED_STG_REMOTE_ARGUMENT = `--remote=${APPROVED_STG_PROJECT_REF}`;
+export const APPROVED_PROD_REMOTE_ARGUMENT = `--remote=${APPROVED_PROD_PROJECT_REF}`;
 export const SUPABASE_CLI_EXECUTABLE = fileURLToPath(
   new URL("../../node_modules/.bin/supabase", import.meta.url),
 );
@@ -81,13 +83,22 @@ function parseCliJson(stdout) {
 }
 
 export function createSupabaseCliExecutor({
+  approvedProjectRef,
   executable = SUPABASE_CLI_EXECUTABLE,
   spawn = spawnSync,
   timeoutMs = 60_000,
 } = {}) {
+  if (![APPROVED_STG_PROJECT_REF, APPROVED_PROD_PROJECT_REF].includes(approvedProjectRef)) {
+    fail("An approved remote project ref is required.");
+  }
   return function executeSupabaseCli(args) {
     if (!Array.isArray(args) || args.some((argument) => typeof argument !== "string")) {
       fail("Supabase CLI arguments must be a string array.");
+    }
+    const expectedRemoteArgument = `--remote=${approvedProjectRef}`;
+    const remoteArguments = args.filter((argument) => argument === "--remote" || argument.startsWith("--remote="));
+    if (remoteArguments.length !== 1 || remoteArguments[0] !== expectedRemoteArgument) {
+      fail("Supabase CLI query must use the exact approved remote project.");
     }
     const result = spawn(executable, args, {
       encoding: "utf8",
@@ -97,9 +108,9 @@ export function createSupabaseCliExecutor({
     });
     if (result?.error?.code === "ENOENT") fail("Supabase CLI is unavailable.");
     if (result?.error || result?.status !== 0) fail("Supabase CLI query failed.");
-    const targetMarker = `(${APPROVED_STG_PROJECT_REF})`;
+    const targetMarker = `(${approvedProjectRef})`;
     if (!String(result.stderr || "").includes(targetMarker)) {
-      fail("Supabase CLI target could not be verified as the approved STG project.");
+      fail("Supabase CLI target could not be verified as the approved remote project.");
     }
     return parseCliJson(result.stdout);
   };
@@ -176,23 +187,23 @@ export function createLocalVenueDiscoveryPersistence(db) {
   };
 }
 
-function buildReadArguments(sql) {
+function buildReadArguments(sql, remoteArgument) {
   return [
     "db",
     "query",
     sql,
     "--read-only",
-    APPROVED_STG_REMOTE_ARGUMENT,
+    remoteArgument,
     "--output-format=json",
   ];
 }
 
-function buildMutationArguments(sql) {
+function buildMutationArguments(sql, remoteArgument) {
   return [
     "db",
     "query",
     sql,
-    APPROVED_STG_REMOTE_ARGUMENT,
+    remoteArgument,
     "--output-format=json",
     "--yes",
   ];
@@ -214,29 +225,39 @@ function validateUpdates(updates) {
   }
 }
 
-export function createStgVenueDiscoveryPersistence({ executeCli, applyIntent }) {
+export function createRemoteVenueDiscoveryPersistence({ target, projectRef, executeCli, applyIntent }) {
   if (typeof executeCli !== "function") fail("Supabase CLI executor is required.");
+  const approvedProjectRef = target === "stg"
+    ? APPROVED_STG_PROJECT_REF
+    : target === "prod"
+      ? APPROVED_PROD_PROJECT_REF
+      : null;
+  if (!approvedProjectRef || projectRef !== approvedProjectRef) {
+    fail("Remote target and approved project ref do not match.");
+  }
+  const remoteArgument = `--remote=${approvedProjectRef}`;
+  const targetLabel = target === "prod" ? "Production" : "STG";
 
   async function read(sql) {
-    return executeCli(buildReadArguments(sql));
+    return executeCli(buildReadArguments(sql, remoteArgument));
   }
 
   async function mutate(sql) {
-    if (applyIntent !== true) fail("STG mutation requires explicit --stg --apply intent.");
-    return executeCli(buildMutationArguments(sql));
+    if (applyIntent !== true) fail(`${targetLabel} mutation requires explicit --${target} --apply intent.`);
+    return executeCli(buildMutationArguments(sql, remoteArgument));
   }
 
   return {
-    target: "stg",
+    target,
     async preflight() {
-      const payload = await read(`select ${sqlStringLiteral(APPROVED_STG_PROJECT_REF)}::text as approved_project_ref;`);
-      if (rowOrNull(payload)?.approved_project_ref !== APPROVED_STG_PROJECT_REF) {
-        fail("Supabase CLI target could not be verified as the approved STG project.");
+      const payload = await read(`select ${sqlStringLiteral(approvedProjectRef)}::text as approved_project_ref;`);
+      if (rowOrNull(payload)?.approved_project_ref !== approvedProjectRef) {
+        fail("Supabase CLI target could not be verified as the approved remote project.");
       }
     },
     async loadDataSource() {
       const payload = await read("select id::text as id from public.data_sources where key = 'wikidata' order by id limit 2;");
-      if (payload.rows.length !== 1) fail("Approved STG Wikidata source could not be resolved uniquely.");
+      if (payload.rows.length !== 1) fail(`Approved ${targetLabel} Wikidata source could not be resolved uniquely.`);
       return assertUuid(payload.rows[0].id, "Wikidata source ID");
     },
     async findResumableGeneration(dataSourceId) {
@@ -301,4 +322,12 @@ returning id::text as id;`);
       if (payload.rows.length !== 1) fail("Discovery generation completion returned an invalid result.");
     },
   };
+}
+
+export function createStgVenueDiscoveryPersistence(options) {
+  return createRemoteVenueDiscoveryPersistence({
+    ...options,
+    target: "stg",
+    projectRef: APPROVED_STG_PROJECT_REF,
+  });
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  APPROVED_PROD_PROJECT_REF,
   buildVenueDiscoveryInventoryQuery,
   createInitialCheckpoint,
   parseGeneratorArgs,
@@ -7,6 +8,7 @@ import {
   resumeVenueDiscoveryGeneration,
   runVenueDiscoveryInventoryGeneration,
   validateLocalConfiguration,
+  validateProdConfiguration,
   validateStgConfiguration,
 } from "./lib/venue-discovery-inventory-generator.mjs";
 
@@ -15,7 +17,13 @@ describe("Venue Discovery Inventory generator", () => {
     expect(() => parseGeneratorArgs([])).toThrow("Exactly one explicit target");
     expect(() => parseGeneratorArgs(["--local", "--stg", "--apply", "--max-pages", "1"]))
       .toThrow("Exactly one explicit target");
+    expect(() => parseGeneratorArgs(["--stg", "--prod", "--apply", "--max-pages", "1"]))
+      .toThrow("Exactly one explicit target");
+    expect(() => parseGeneratorArgs(["--local", "--prod", "--apply", "--max-pages", "1"]))
+      .toThrow("Exactly one explicit target");
     expect(() => parseGeneratorArgs(["--stg", "--project-ref", "other", "--apply", "--max-pages", "1"]))
+      .toThrow("Unknown argument: --project-ref");
+    expect(() => parseGeneratorArgs(["--prod", "--project-ref", "other", "--apply", "--max-pages", "1"]))
       .toThrow("Unknown argument: --project-ref");
     expect(() => parseGeneratorArgs(["--local", "--apply"])).toThrow("--max-pages");
     expect(() => parseGeneratorArgs(["--local", "--apply", "--max-pages", "1", "--resume"])).toThrow("--resume requires");
@@ -23,6 +31,8 @@ describe("Venue Discovery Inventory generator", () => {
       .toMatchObject({ target: "local", apply: true, maxPages: 2, pageSize: 20 });
     expect(parseGeneratorArgs(["--stg", "--apply", "--max-pages", "1"]))
       .toMatchObject({ target: "stg", apply: true, maxPages: 1 });
+    expect(parseGeneratorArgs(["--prod", "--apply", "--max-pages", "1"]))
+      .toMatchObject({ target: "prod", apply: true, maxPages: 1 });
   });
 
   it("preserves LOCAL-only runtime and URL safeguards", () => {
@@ -44,7 +54,15 @@ describe("Venue Discovery Inventory generator", () => {
       .toThrow("Production/Vercel runtime");
   });
 
-  it("keeps LOCAL credentials/client creation and removes STG API credential requirements", () => {
+  it("allows Production only from a non-Production, non-Vercel operator runtime", () => {
+    expect(validateProdConfiguration({ nodeEnv: "development" })).toBe(APPROVED_PROD_PROJECT_REF);
+    expect(() => validateProdConfiguration({ vercel: "1", nodeEnv: "development" }))
+      .toThrow("Production/Vercel runtime");
+    expect(() => validateProdConfiguration({ nodeEnv: "production" }))
+      .toThrow("Production/Vercel runtime");
+  });
+
+  it("keeps LOCAL credentials/client creation and removes hosted API credential requirements", () => {
     const createDatabaseClient = vi.fn();
     const stg = prepareGeneratorExecution({
       argv: ["--stg", "--apply", "--max-pages", "1"],
@@ -52,6 +70,18 @@ describe("Venue Discovery Inventory generator", () => {
       createDatabaseClient,
     });
     expect(stg).toMatchObject({ args: { target: "stg", apply: true }, db: null });
+    expect(createDatabaseClient).not.toHaveBeenCalled();
+
+    const prod = prepareGeneratorExecution({
+      argv: ["--prod", "--apply", "--max-pages", "1"],
+      environment: { NODE_ENV: "development" },
+      createDatabaseClient,
+    });
+    expect(prod).toMatchObject({
+      args: { target: "prod", apply: true },
+      db: null,
+      projectRef: APPROVED_PROD_PROJECT_REF,
+    });
     expect(createDatabaseClient).not.toHaveBeenCalled();
 
     expect(() => prepareGeneratorExecution({

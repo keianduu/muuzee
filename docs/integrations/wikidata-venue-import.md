@@ -24,6 +24,20 @@ WDQS discovery → QID list → Action API batch detail → Normalize
 
 Discoveryは`P31/P279*`とQ17で絞り、P576があるEntityを除外する。library、theater、historical building、general cultural centerはrootへ追加しない。件数指定Importは直前runのoffsetの続きから取得し、末尾に達したら0へ戻る。
 
+### Discovery Inventory generator targets
+
+`scripts/generate-venue-discovery-inventory.mjs`は、Hosted consumerの前段となるQID Inventoryをoperator端末からbounded生成する。targetは`--local`、`--stg`、`--prod`のいずれか1つを必須とし、全targetで`--apply --max-pages <1..100>`を明示する。任意project refの指定は受け付けない。
+
+- STGは`steibqgeoqcsfsafaqcv`へhard-bindする。
+- Productionは`lqinmolonctddovltujy`へhard-bindする。
+- remote read/mutationは認証済みSupabase CLIを利用し、すべてのcallで対応するexact `--remote=<project-ref>`を渡す。
+- remote mutationは対応targetと`--apply`が一致する場合だけ許可する。
+- Vercel runtimeまたは`NODE_ENV=production`からのgenerator実行は拒否する。
+- target/auth preflightをWikidata provider request、`import_runs`作成、Inventory mutationより前に完了する。
+- remote `data_sources.key=wikidata`が一意に存在しない場合はfail closedとし、generator自身では作成・修正しない。
+
+Production Inventory生成はOrder 341 Phase Bの明示承認後にのみ行う。Phase Aはtarget supportとLOCAL testまでであり、Production/STGのInventoryや`import_runs`を変更しない。
+
 ## Field mapping
 
 | Wikidata | Muuzee | Rule |

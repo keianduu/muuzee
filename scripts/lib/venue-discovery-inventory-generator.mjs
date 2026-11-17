@@ -1,6 +1,7 @@
 export const VENUE_DISCOVERY_ROOTS = Object.freeze(["Q33506", "Q1007870"]);
 export const VENUE_DISCOVERY_OPERATION = "wikidata_venue_discovery_inventory";
 export const APPROVED_STG_PROJECT_REF = "steibqgeoqcsfsafaqcv";
+export const APPROVED_PROD_PROJECT_REF = "lqinmolonctddovltujy";
 
 const QID_PATTERN = /^Q\d+$/;
 
@@ -24,12 +25,19 @@ export function validateStgConfiguration({ vercel, nodeEnv }) {
   return APPROVED_STG_PROJECT_REF;
 }
 
+export function validateProdConfiguration({ vercel, nodeEnv }) {
+  if (vercel || nodeEnv === "production") {
+    throw new Error("Refusing to run the Production generator from a Production/Vercel runtime.");
+  }
+  return APPROVED_PROD_PROJECT_REF;
+}
+
 export function parseGeneratorArgs(argv) {
   const result = { target: null, apply: false, resumeId: null, pageSize: 50, maxPages: null };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--local" || argument === "--stg") {
-      if (result.target) throw new Error("Exactly one explicit target is required: --local or --stg.");
+    if (argument === "--local" || argument === "--stg" || argument === "--prod") {
+      if (result.target) throw new Error("Exactly one explicit target is required: --local, --stg, or --prod.");
       result.target = argument.slice(2);
     }
     else if (argument === "--apply") result.apply = true;
@@ -41,7 +49,7 @@ export function parseGeneratorArgs(argv) {
     else if (argument === "--max-pages") result.maxPages = Number(argv[++index]);
     else throw new Error(`Unknown argument: ${argument}`);
   }
-  if (!result.target) throw new Error("Exactly one explicit target is required: --local or --stg.");
+  if (!result.target) throw new Error("Exactly one explicit target is required: --local, --stg, or --prod.");
   if (!result.apply) throw new Error("Explicit --apply is required.");
   if (!Number.isInteger(result.pageSize) || result.pageSize < 1 || result.pageSize > 100) {
     throw new Error("--page-size must be an integer from 1 to 100.");
@@ -57,12 +65,17 @@ export function parseGeneratorArgs(argv) {
 
 export function prepareGeneratorExecution({ argv, environment, createDatabaseClient }) {
   const args = parseGeneratorArgs(argv);
-  if (args.target === "stg") {
-    validateStgConfiguration({
-      vercel: environment.VERCEL,
-      nodeEnv: environment.NODE_ENV,
-    });
-    return { args, db: null };
+  if (args.target === "stg" || args.target === "prod") {
+    const projectRef = args.target === "stg"
+      ? validateStgConfiguration({
+          vercel: environment.VERCEL,
+          nodeEnv: environment.NODE_ENV,
+        })
+      : validateProdConfiguration({
+          vercel: environment.VERCEL,
+          nodeEnv: environment.NODE_ENV,
+        });
+    return { args, db: null, projectRef };
   }
 
   const parsedUrl = validateLocalConfiguration({
