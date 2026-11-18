@@ -14,6 +14,8 @@ export const SUPABASE_CLI_EXECUTABLE = fileURLToPath(
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const QID_PATTERN = /^Q[0-9]+$/;
+const SUPABASE_PROJECT_REF_PATTERN = "[a-z0-9]{20}";
+const SUPABASE_TARGET_VERIFICATION_ERROR = "Supabase CLI target could not be verified as the approved remote project.";
 const GENERATION_STATUSES = new Set(["running", "partial"]);
 const UPDATE_FIELDS = new Set(["status", "errors", "finished_at", "metrics"]);
 
@@ -82,6 +84,37 @@ function parseCliJson(stdout) {
   return payload;
 }
 
+export function parseSupabaseCliTargetProjectRef(stderr) {
+  const targetLines = String(stderr || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("Target:"));
+
+  if (targetLines.length === 0) fail(SUPABASE_TARGET_VERIFICATION_ERROR);
+
+  const explicitRefPattern = new RegExp(
+    `^Target: project (${SUPABASE_PROJECT_REF_PATTERN}) \\(not the linked project\\)$`,
+  );
+  const namedProjectPattern = new RegExp(
+    `^Target: project [^()\\r\\n]+ \\((${SUPABASE_PROJECT_REF_PATTERN})\\)(?: · production)?$`,
+  );
+  const bareRefPattern = new RegExp(`^Target: project (${SUPABASE_PROJECT_REF_PATTERN})$`);
+  const projectRefs = [];
+
+  for (const line of targetLines) {
+    if (line.includes(" · branch ")) fail(SUPABASE_TARGET_VERIFICATION_ERROR);
+    const match = line.match(explicitRefPattern)
+      || line.match(namedProjectPattern)
+      || line.match(bareRefPattern);
+    if (!match) fail(SUPABASE_TARGET_VERIFICATION_ERROR);
+    projectRefs.push(match[1]);
+  }
+
+  const distinctProjectRefs = new Set(projectRefs);
+  if (distinctProjectRefs.size !== 1) fail(SUPABASE_TARGET_VERIFICATION_ERROR);
+  return projectRefs[0];
+}
+
 export function createSupabaseCliExecutor({
   approvedProjectRef,
   executable = SUPABASE_CLI_EXECUTABLE,
@@ -108,10 +141,8 @@ export function createSupabaseCliExecutor({
     });
     if (result?.error?.code === "ENOENT") fail("Supabase CLI is unavailable.");
     if (result?.error || result?.status !== 0) fail("Supabase CLI query failed.");
-    const targetMarker = `(${approvedProjectRef})`;
-    if (!String(result.stderr || "").includes(targetMarker)) {
-      fail("Supabase CLI target could not be verified as the approved remote project.");
-    }
+    const targetProjectRef = parseSupabaseCliTargetProjectRef(result.stderr);
+    if (targetProjectRef !== approvedProjectRef) fail(SUPABASE_TARGET_VERIFICATION_ERROR);
     return parseCliJson(result.stdout);
   };
 }

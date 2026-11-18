@@ -8,6 +8,7 @@ import {
   createRemoteVenueDiscoveryPersistence,
   createStgVenueDiscoveryPersistence,
   createSupabaseCliExecutor,
+  parseSupabaseCliTargetProjectRef,
   sqlJsonLiteral,
   sqlStringLiteral,
 } from "./lib/venue-discovery-inventory-persistence.mjs";
@@ -65,6 +66,63 @@ describe("Venue Discovery Inventory persistence adapters", () => {
     });
     expect(() => wrongTarget(["db", "query", "select 1", APPROVED_STG_REMOTE_ARGUMENT]))
       .toThrow("target could not be verified as the approved remote project");
+  });
+
+  it.each([
+    [
+      "Production explicit remote",
+      "Target: project lqinmolonctddovltujy (not the linked project)\n",
+      "lqinmolonctddovltujy",
+    ],
+    [
+      "STG named production",
+      "Target: project muuzee-stg (steibqgeoqcsfsafaqcv) · production\n",
+      "steibqgeoqcsfsafaqcv",
+    ],
+    [
+      "Production bare ref",
+      "Target: project lqinmolonctddovltujy\n",
+      "lqinmolonctddovltujy",
+    ],
+    [
+      "Production named project",
+      "Target: project muuzee-prod (lqinmolonctddovltujy)\n",
+      "lqinmolonctddovltujy",
+    ],
+  ])("parses the Supabase CLI v3 %s target banner", (_label, stderr, expected) => {
+    expect(parseSupabaseCliTargetProjectRef(stderr)).toBe(expected);
+  });
+
+  it.each([
+    ["branch target", "Target: project muuzee-prod (lqinmolonctddovltujy) · branch feature (abcdefghijklmnopqrst)\n"],
+    ["local target", "Target: local database\n"],
+    ["custom target", "Target: custom postgresql://example.invalid/database\n"],
+    ["missing target", "Supabase CLI lqinmolonctddovltujy query complete\n"],
+    ["malformed target", "Target: project muuzee-prod (lqinmolonctddovltujy) · preview\n"],
+    [
+      "conflicting targets",
+      "Target: project lqinmolonctddovltujy\nTarget: project steibqgeoqcsfsafaqcv\n",
+    ],
+  ])("rejects the Supabase CLI v3 %s without exposing output", (_label, stderr) => {
+    expect(() => parseSupabaseCliTargetProjectRef(stderr))
+      .toThrow("Supabase CLI target could not be verified as the approved remote project.");
+  });
+
+  it.each([
+    ["lqinmolonctddovltujy", APPROVED_PROD_REMOTE_ARGUMENT, "Target: project steibqgeoqcsfsafaqcv\n"],
+    ["steibqgeoqcsfsafaqcv", APPROVED_STG_REMOTE_ARGUMENT, "Target: project lqinmolonctddovltujy\n"],
+  ])("rejects a valid banner for the wrong approved project %s", (approvedProjectRef, remoteArgument, stderr) => {
+    const execute = createSupabaseCliExecutor({
+      approvedProjectRef,
+      spawn: vi.fn().mockReturnValue({
+        status: 0,
+        stdout: "not-json",
+        stderr,
+      }),
+    });
+
+    expect(() => execute(["db", "query", "select 1", remoteArgument]))
+      .toThrow("Supabase CLI target could not be verified as the approved remote project.");
   });
 
   it("rejects bare, missing, duplicate, or different remote arguments before invoking the CLI", () => {
