@@ -1,3 +1,9 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "tailwindcss/utilities.css" layer(utilities);
+
 :root {
   color-scheme: light;
   --ink: #262522;
@@ -567,3 +573,44 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width: 520px) { .image-candidate-summary { grid-template-columns: 64px minmax(0,1fr); } .image-candidate-summary img, .image-candidate-summary .thumb { width: 64px; height: 64px; } .image-candidate-summary .button { grid-column: 1 / -1; } }
 @media (max-width: 520px) { .venue-radio-grid, .venue-coordinate-group, .tag-form { grid-template-columns: 1fr; } .relation-row--managed { align-items: stretch; flex-direction: column; } .relation-actions { justify-content: space-between; } .tag-form .button { grid-column: auto; justify-self: start; } .admin-data-section > .section-heading-row, .admin-provenance-row, .admin-source-status-row, .admin-external-source-row { align-items: flex-start; flex-direction: column; } .admin-provenance-row b, .admin-provenance-row a, .admin-source-status-row span, .admin-source-status-row a, .admin-external-source-row > a, .admin-external-source-row > b { text-align: left; } }
 @media (max-width: 680px) { .canonical-image-compare { grid-template-columns: 1fr; } }
+
+@theme inline {
+  --font-sans: var(--admin-sans);
+  --font-serif: var(--admin-serif);
+  --font-heading: var(--admin-serif);
+  --color-background: var(--surface-strong);
+  --color-foreground: var(--ink-950);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink-950);
+  --color-popover: var(--surface-strong);
+  --color-popover-foreground: var(--ink-950);
+  --color-primary: var(--ink-950);
+  --color-primary-foreground: var(--white);
+  --color-secondary: var(--surface-hover);
+  --color-secondary-foreground: var(--ink-800);
+  --color-muted: var(--surface-hover);
+  --color-muted-foreground: var(--ink-500);
+  --color-accent: var(--surface-hover);
+  --color-accent-foreground: var(--ink-950);
+  --color-destructive: var(--danger);
+  --color-border: var(--line);
+  --color-input: var(--ink-300);
+  --color-ring: var(--admin-focus);
+  --spacing-admin-inline: var(--admin-space-inline);
+  --spacing-admin-field: var(--admin-space-field);
+  --spacing-admin-group: var(--admin-space-group);
+  --spacing-admin-card: var(--admin-space-card);
+  --spacing-admin-section: var(--admin-space-section);
+  --spacing-admin-page: var(--admin-space-page);
+  --radius-sm: var(--admin-radius-control);
+  --radius-md: var(--admin-radius-control);
+  --radius-lg: var(--admin-radius-control);
+  --radius-xl: var(--admin-radius-control);
+  --radius-2xl: var(--admin-radius-control);
+  --radius-3xl: var(--admin-radius-card);
+  --radius-4xl: var(--admin-radius-card);
+  --shadow-xs: var(--admin-shadow-1);
+  --shadow-sm: var(--admin-shadow-1);
+  --shadow-lg: var(--admin-shadow-2);
+  --shadow-xl: var(--admin-shadow-2);
+}
