@@ -14,8 +14,11 @@ export type WikidataVenueCandidate = {
   raw: unknown;
 };
 
+export type VenueNameMatchKind = "primary_label_exact" | "alias_exact" | "none";
+
 export type ScoredWikidataCandidate = WikidataVenueCandidate & {
   confidence: number;
   reasons: string[];
+  nameMatchKind: VenueNameMatchKind;
   suggestedStatus: "matched" | "candidate";
 };

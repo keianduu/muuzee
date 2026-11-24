@@ -68,6 +68,32 @@ Security remains mandatory. This policy means **automate safely and avoid unnece
 
 Codex instructions should therefore default to zero user-preparation steps. A user-preparation step may appear only when it is genuinely unavoidable or when the user has approved it after the consultation above.
 
+## Approval Envelope / Autonomous Retry Policy
+
+Human approval applies to the combination of the Task, target Environment / Project, approved Mutation Boundary, and cleanup obligations—not to each individual setup or provider call.
+
+Within the same Task, same Environment / Project, and same approved Mutation Boundary, Codex should autonomously recover from setup, authentication, deployment, bypass, temporary environment, or equivalent operational failures. It must:
+
+1. fail closed and verify the mutation count;
+2. clean up partial setup or temporary resources;
+3. identify the root cause;
+4. correct only the implementation or operational detail inside the existing boundary;
+5. retry safely; and
+6. verify final cleanup and state.
+
+This includes recreating or removing temporary deployments, flags, scoped environment settings, automation bypasses, protected sessions, or synthetic test identities when those actions do not broaden the approved target or data changes. A setup failure with `Production data mutation = 0` is not, by itself, a reason to request another Human approval.
+
+New explicit Human approval is required only for:
+
+- scope expansion to another Task, entity, Environment, or Project;
+- expansion of the approved mutation count, tables, operation type, publication, promotion, or other external effect;
+- destructive or irreversible action;
+- an integrity anomaly such as a duplicate, unexpected relation/publication, wrong-target mutation, or suspected corruption;
+- a security incident or weakening of access control; or
+- a Human-only gate such as login/MFA, billing, legal approval, or account ownership/recovery.
+
+This policy never relaxes secret handling, access control, fail-closed behavior, or task-specific stricter constraints. Secret values remain in-process where possible, temporary privilege must be removed at Task closeout, and final state must be verified from non-sensitive metadata.
+
 ## Canonical operating loop
 
 Use this loop by default:

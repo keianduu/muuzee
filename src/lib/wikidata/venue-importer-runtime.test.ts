@@ -99,6 +99,9 @@ function inventoryCoreDb(
   sourceBefore: { id: string; venue_id: string | null; checksum: string | null } | null = null,
 ) {
   const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+  const venueUpdates: Array<Record<string, unknown>> = [];
+  const sourceUpdates: Array<Record<string, unknown>> = [];
+  const matchUpserts: Array<Record<string, unknown>> = [];
   const rows = [...existingRows];
   const sourceRecord = sourceBefore || { id: "source-record", venue_id: null, checksum: null };
   const candidate = { id: "inventory-1", external_id: "Q1", discovery_root_ids: ["Q33506"], attempt_count: 1 };
@@ -118,16 +121,25 @@ function inventoryCoreDb(
           rows.push(created);
           return resultQuery(created);
         },
-        update: () => resultQuery(null),
+        update: (payload: Record<string, unknown>) => {
+          venueUpdates.push(payload);
+          return resultQuery(null);
+        },
       };
       if (table === "source_records") return {
         select: () => resultQuery(sourceBefore),
         upsert: () => resultQuery(sourceRecord),
-        update: () => resultQuery(null),
+        update: (payload: Record<string, unknown>) => {
+          sourceUpdates.push(payload);
+          return resultQuery(null);
+        },
       };
       if (table === "venue_external_match_candidates") return {
         select: () => resultQuery(null),
-        upsert: () => resultQuery(null),
+        upsert: (payload: Record<string, unknown>) => {
+          matchUpserts.push(payload);
+          return resultQuery(null);
+        },
       };
       if (table === "venue_field_sources") return {
         select: () => resultQuery([]),
@@ -143,7 +155,7 @@ function inventoryCoreDb(
     },
   } as unknown as SupabaseClient;
 
-  return { db, rpcCalls };
+  return { db, rpcCalls, venueUpdates, sourceUpdates, matchUpserts };
 }
 
 const validVenueCandidate = {
@@ -285,6 +297,43 @@ describe("Wikidata Venue importer hosted runtime finalization", () => {
     expect(rpcCalls).toContainEqual({
       name: "process_venue_discovery_inventory_candidate",
       args: { p_inventory_id: "inventory-1", p_run_id: "run-1", p_linked_venue_id: "existing-venue" },
+    });
+  });
+
+  it("keeps an alias-only high-scoring Venue in review without mutating or linking the existing Venue", async () => {
+    getWikidataEntities.mockResolvedValue([{
+      ...validVenueCandidate,
+      id: "Q11511731",
+      labelJa: "旭川市大雪クリスタルホール",
+      labelEn: "Asahikawa Taisetsu Crystal Hall",
+      aliases: ["旭川市博物館", "大雪クリスタルホール"],
+      description: "北海道旭川市にあるmuseumを含む複合施設",
+      officialUrl: "https://www.city.asahikawa.hokkaido.jp/kurashi/329/348/357/",
+    }]);
+    const { db, rpcCalls, venueUpdates, sourceUpdates, matchUpserts } = inventoryCoreDb([{
+      id: "asahikawa-museum",
+      name: "旭川市博物館",
+      official_url: "https://www.city.asahikawa.hokkaido.jp/hakubutukan/index.html",
+      prefecture: "北海道",
+      city: "旭川市",
+    }]);
+
+    const result = await importWikidataVenues({ mode: "count", count: 5, runtime: "hosted" }, db);
+
+    expect(result.linkedExisting).toBe(0);
+    expect(result.updated).toBe(0);
+    expect(result.sourceSelectionRequired).toBe(1);
+    expect(venueUpdates).toHaveLength(0);
+    expect(sourceUpdates).toHaveLength(0);
+    expect(matchUpserts).toContainEqual(expect.objectContaining({
+      venue_id: "asahikawa-museum",
+      external_id: "Q11511731",
+      status: "candidate",
+      match_reasons: expect.arrayContaining(["alias exact match"]),
+    }));
+    expect(rpcCalls).toContainEqual({
+      name: "process_venue_discovery_inventory_candidate",
+      args: { p_inventory_id: "inventory-1", p_run_id: "run-1", p_linked_venue_id: null },
     });
   });
 

@@ -1,4 +1,4 @@
-import type { ScoredWikidataCandidate, WikidataVenueCandidate } from "./types";
+import type { ScoredWikidataCandidate, VenueNameMatchKind, WikidataVenueCandidate } from "./types";
 import { ENTITY_AUTO_MATCH_THRESHOLD, ENTITY_REVIEW_THRESHOLD } from "@/lib/venue-enrichment/policy";
 
 export const WIKIDATA_AUTO_MATCH_THRESHOLD = ENTITY_AUTO_MATCH_THRESHOLD;
@@ -13,12 +13,24 @@ export function normalizeUrlDomain(value: string | null | undefined) {
   try { return new URL(value).hostname.toLowerCase().replace(/^www\./, ""); } catch { return null; }
 }
 
+export function venueNameMatchKind(
+  existingVenueName: string | null | undefined,
+  candidate: Pick<WikidataVenueCandidate, "labelJa" | "labelEn" | "aliases">,
+): VenueNameMatchKind {
+  const venueName = normalizeVenueName(existingVenueName);
+  if (!venueName) return "none";
+  const primaryLabels = [candidate.labelJa, candidate.labelEn].map(normalizeVenueName).filter(Boolean);
+  if (primaryLabels.includes(venueName)) return "primary_label_exact";
+  const aliases = candidate.aliases.map(normalizeVenueName).filter(Boolean);
+  return aliases.includes(venueName) ? "alias_exact" : "none";
+}
+
 export function scoreWikidataCandidate(venue: { name: string; official_url?: string | null; prefecture?: string | null; city?: string | null }, candidate: WikidataVenueCandidate): ScoredWikidataCandidate {
   const reasons: string[] = [];
   let confidence = 0;
-  const venueName = normalizeVenueName(venue.name);
-  const labels = [candidate.labelJa, candidate.labelEn, ...candidate.aliases].map(normalizeVenueName);
-  if (labels.includes(venueName)) { confidence += 0.6; reasons.push("normalized name exact match"); }
+  const nameMatchKind = venueNameMatchKind(venue.name, candidate);
+  if (nameMatchKind === "primary_label_exact") { confidence += 0.6; reasons.push("primary label exact match"); }
+  else if (nameMatchKind === "alias_exact") { confidence += 0.35; reasons.push("alias exact match"); }
   const venueDomain = normalizeUrlDomain(venue.official_url);
   const candidateDomain = normalizeUrlDomain(candidate.officialUrl);
   if (venueDomain && candidateDomain && venueDomain === candidateDomain) { confidence += 0.25; reasons.push("official domain exact match"); }
@@ -29,7 +41,15 @@ export function scoreWikidataCandidate(venue: { name: string; official_url?: str
   if (venue.prefecture && description.includes(venue.prefecture)) { confidence += 0.08; reasons.push("prefecture match"); }
   if (venue.city && description.includes(venue.city)) { confidence += 0.07; reasons.push("city match"); }
   confidence = Math.max(0, Math.min(1, Number(confidence.toFixed(2))));
-  return { ...candidate, confidence, reasons, suggestedStatus: confidence >= WIKIDATA_AUTO_MATCH_THRESHOLD ? "matched" : "candidate" };
+  return {
+    ...candidate,
+    confidence,
+    reasons,
+    nameMatchKind,
+    suggestedStatus: confidence >= WIKIDATA_AUTO_MATCH_THRESHOLD && nameMatchKind === "primary_label_exact"
+      ? "matched"
+      : "candidate",
+  };
 }
 
 export function rankWikidataCandidates(venue: { name: string; official_url?: string | null; prefecture?: string | null; city?: string | null }, candidates: WikidataVenueCandidate[]) {

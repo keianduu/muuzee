@@ -6,6 +6,7 @@ const candidate = (id: string, confidence: number, imageFileTitle: string | null
   id, confidence, imageFileTitle, labelJa: id, labelEn: null, aliases: [], description: null,
   officialUrl: null, latitude: null, longitude: null, countryId: "Q17", raw: {}, reasons: [],
   commonsCategory: null, wikipediaArticleTitle: null,
+  nameMatchKind: "primary_label_exact",
   suggestedStatus: confidence >= 0.85 ? "matched" : "candidate",
 });
 

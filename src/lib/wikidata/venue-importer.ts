@@ -5,7 +5,7 @@ import { calculateCompleteness } from "@/lib/admin/master-completeness";
 import { slugify } from "@/lib/admin/slug";
 import { getWikidataEntities } from "./client";
 import { scoreWikidataCandidate } from "./matcher";
-import type { ScoredWikidataCandidate, WikidataVenueCandidate } from "./types";
+import type { WikidataVenueCandidate } from "./types";
 import { discoverWikidataVenuePage, discoverWikidataVenues, type DiscoveredWikidataVenue } from "./venue-discovery";
 import { mapWikidataVenue } from "./venue-mapper";
 import { WIKIDATA_VENUE_CLASSES } from "./venue-type-mapper";
@@ -340,13 +340,12 @@ async function createVenue(db: SupabaseClient, venue: WikidataVenue, sourceRecor
   return data as ExistingVenue;
 }
 
-function asScoredCandidate(venue: WikidataVenue, confidence = 1, reasons: string[] = []): ScoredWikidataCandidate {
+function asWikidataCandidate(venue: WikidataVenue): WikidataVenueCandidate {
   return {
     id: venue.qid, labelJa: venue.name, labelEn: venue.nameEn, aliases: venue.aliases, description: venue.description,
     officialUrl: venue.officialUrl, latitude: venue.latitude, longitude: venue.longitude,
-    imageFileTitle: venue.imageFileTitle, countryId: "Q17", raw: sourceEnvelope(venue), confidence, reasons,
+    imageFileTitle: venue.imageFileTitle, countryId: "Q17", raw: sourceEnvelope(venue),
     commonsCategory: venue.commonsCategory, wikipediaArticleTitle: null,
-    suggestedStatus: confidence >= AUTO_MATCH ? "matched" : "candidate",
   };
 }
 
@@ -373,7 +372,7 @@ async function allExistingVenues(db: SupabaseClient) {
 }
 
 function bestExistingMatch(existing: ExistingVenue[], venue: WikidataVenue) {
-  const candidate = asScoredCandidate(venue);
+  const candidate = asWikidataCandidate(venue);
   return existing.map((row) => ({ row, scored: scoreWikidataCandidate(row, candidate) })).sort((a, b) => b.scored.confidence - a.scored.confidence)[0] || null;
 }
 
@@ -416,13 +415,17 @@ async function processWikidataVenueCore(input: {
   if (!target) {
     const match = bestExistingMatch(existing, venue);
     const classification = classifyWikidataVenueMatch(match?.scored.confidence || 0);
-    if (classification === "possible" && match) {
+    const automaticMatchEligible = classification === "high"
+      && match?.scored.nameMatchKind === "primary_label_exact";
+    const reviewCandidate = match
+      && (classification === "possible" || (classification === "high" && !automaticMatchEligible));
+    if (reviewCandidate) {
       const status = await saveMatchCandidate(db, match.row.id, venue, match.scored.confidence, match.scored.reasons, "candidate");
       if (status === "rejected") result.unchanged += 1;
       else result.sourceSelectionRequired += 1;
       return { linkedVenueId: null, outcome: status === "rejected" ? "unchanged" : "review" };
     }
-    if (classification === "high" && match) {
+    if (automaticMatchEligible && match) {
       target = match.row;
       result.linkedExisting += 1;
       matchMetadata = { confidence: match.scored.confidence, reasons: match.scored.reasons };

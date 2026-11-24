@@ -788,6 +788,7 @@ Key rules:
 - ChatGPT reviews the actual current state, creates/refines separate Tasks when needed, closes the current Task only after Acceptance Criteria/Human gates are satisfied, then prepares the next eligible Task.
 - In a new chat, recover state from durable project sources; do not require the user to restate prior chat history.
 - Every Codex instruction shown to the user must be one contiguous, self-contained block that can be copied in full with one action. Do not split required instructions across surrounding prose or multiple blocks.
+- Apply the canonical `Approval Envelope / Autonomous Retry Policy` in `docs/codex-orchestration-workflow.md`; do not request repeated approval for safe setup retries inside the same Task, target, and approved Mutation Boundary.
 
 
 ## Codex Completion Notification

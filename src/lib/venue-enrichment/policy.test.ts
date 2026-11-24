@@ -5,7 +5,8 @@ import { distanceMeters, findCoordinateCandidate, findImageCandidates } from "./
 const candidate = (id: string, confidence: number, options: { image?: string; coordinates?: [number, number] } = {}): ScoredWikidataCandidate => ({
   id, confidence, imageFileTitle: options.image || null, commonsCategory: null, wikipediaArticleTitle: null, labelJa: id, labelEn: null, aliases: [], description: null,
   officialUrl: null, latitude: options.coordinates?.[0] ?? null, longitude: options.coordinates?.[1] ?? null,
-  countryId: "Q17", raw: {}, reasons: [], suggestedStatus: confidence >= 0.85 ? "matched" : "candidate",
+  countryId: "Q17", raw: {}, reasons: [], nameMatchKind: "primary_label_exact",
+  suggestedStatus: confidence >= 0.85 ? "matched" : "candidate",
 });
 
 describe("venue enrichment threshold policy", () => {
