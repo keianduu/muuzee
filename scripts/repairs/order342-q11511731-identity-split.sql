@@ -29,6 +29,14 @@ declare
   q11511731_normalized jsonb;
   restored_values jsonb;
   affected integer;
+  before_published_venues bigint;
+  before_media_assets bigint;
+  before_source_records bigint;
+  before_inventory_total bigint;
+  before_inventory_pending bigint;
+  before_inventory_processing bigint;
+  before_inventory_processed bigint;
+  before_inventory_invalid bigint;
 begin
   -- All guards run before the first mutation. Any mismatch aborts the entire
   -- transaction so the artifact cannot silently target a changed Production state.
@@ -47,6 +55,20 @@ begin
     and venue_id = original_venue_id
     and checksum = '5f11598d628d9346a7b4f6425b4564f63f6931b939a15205875ca7749484fe25';
   if not found then raise exception 'Guard failed: Q11511731 source record changed'; end if;
+
+  select count(*) into before_published_venues
+  from public.venues where publication_status = 'published';
+  select count(*) into before_media_assets from public.media_assets;
+  select count(*) into before_source_records from public.source_records;
+  select count(*) into before_inventory_total from public.venue_discovery_inventory;
+  select count(*) into before_inventory_pending
+  from public.venue_discovery_inventory where state = 'pending';
+  select count(*) into before_inventory_processing
+  from public.venue_discovery_inventory where state = 'processing';
+  select count(*) into before_inventory_processed
+  from public.venue_discovery_inventory where state = 'processed';
+  select count(*) into before_inventory_invalid
+  from public.venue_discovery_inventory where state = 'invalid';
 
   if (select count(*) from public.source_records where external_id = 'Q11511731') <> 1 then
     raise exception 'Guard failed: unexpected Q11511731 source record cardinality';
@@ -72,7 +94,7 @@ begin
     raise exception 'Guard failed: affected Canonical Venue changed';
   end if;
 
-  if (select count(*) from public.venues where publication_status = 'published') <> 0 then
+  if before_published_venues <> 0 then
     raise exception 'Guard failed: Production published Venue count is no longer zero';
   end if;
   if (select count(*) from public.media_assets where venue_id = original_venue_id) <> 0 then
@@ -299,16 +321,131 @@ begin
 
   -- In-transaction postconditions. A failed postcondition rolls everything back.
   if not exists (
+    select 1 from public.venues
+    where id = original_venue_id
+      and name is not distinct from restored_values ->> 'name'
+      and name_en is not distinct from restored_values ->> 'name_en'
+      and aliases is not distinct from coalesce(array(
+        select jsonb_array_elements_text(coalesce(q11511727_normalized -> 'aliases', '[]'::jsonb))
+      ), '{}'::text[])
+      and venue_type is not distinct from restored_values ->> 'venue_type'
+      and country_code is not distinct from restored_values ->> 'country_code'
+      and region is not distinct from restored_values ->> 'region'
+      and postal_code is not distinct from nullif(q11511727_normalized ->> 'postalCode', '')
+      and latitude is not distinct from (restored_values ->> 'latitude')::numeric
+      and longitude is not distinct from (restored_values ->> 'longitude')::numeric
+      and official_url is not distinct from restored_values ->> 'official_url'
+      and inception_year is not distinct from (restored_values ->> 'inception_year')::integer
+      and wikidata_match_status = 'matched'
+      and wikidata_match_confidence = 1
+      and wikidata_match_reason = 'Created from Wikidata Source A; QID is the stable external identifier'
+      and publication_status = 'draft'
+      and is_active is true
+  ) then raise exception 'Repair failed: original Venue postcondition'; end if;
+
+  if (select count(*) from public.venue_field_sources
+      where venue_id = original_venue_id
+        and source_record_id = q11511731_source_id
+        and is_current = false
+        and review_status = 'rejected') <> 11
+  then raise exception 'Repair failed: collision provenance postcondition'; end if;
+
+  if (select count(*) from public.venue_field_sources
+      where venue_id = original_venue_id
+        and source_record_id = q11511727_source_id
+        and field_name = any(restore_fields)
+        and is_current = true
+        and review_status = 'applied') <> 9
+  then raise exception 'Repair failed: restored provenance postcondition'; end if;
+
+  if not exists (
+    select 1 from public.venue_field_sources
+    where venue_id = original_venue_id
+      and source_record_id = q11511727_source_id
+      and field_name = 'address'
+      and is_current = true
+      and review_status = 'applied'
+      and value_snapshot = to_jsonb('北海道旭川市神楽3条7丁目大雪クリスタルホール内'::text)
+  ) then raise exception 'Repair failed: address provenance postcondition'; end if;
+
+  if exists (
+    select 1 from public.venue_field_sources
+    where venue_id = original_venue_id and is_current = true
+    group by field_name having count(*) > 1
+  ) then raise exception 'Repair failed: duplicate current original provenance'; end if;
+
+  if not exists (
+    select 1 from public.venues
+    where id = new_venue_id
+      and slug = '旭川市大雪クリスタルホール-q11511731'
+      and name is not distinct from q11511731_normalized ->> 'name'
+      and name_en is not distinct from nullif(q11511731_normalized ->> 'nameEn', '')
+      and aliases is not distinct from coalesce(array(
+        select jsonb_array_elements_text(coalesce(q11511731_normalized -> 'aliases', '[]'::jsonb))
+      ), '{}'::text[])
+      and venue_type is not distinct from q11511731_normalized ->> 'venueType'
+      and country_code is not distinct from nullif(q11511731_normalized ->> 'countryCode', '')
+      and region is not distinct from nullif(q11511731_normalized ->> 'region', '')
+      and city is not distinct from nullif(q11511731_normalized ->> 'city', '')
+      and address is not distinct from nullif(q11511731_normalized ->> 'address', '')
+      and postal_code is not distinct from nullif(q11511731_normalized ->> 'postalCode', '')
+      and latitude is not distinct from (q11511731_normalized ->> 'latitude')::numeric
+      and longitude is not distinct from (q11511731_normalized ->> 'longitude')::numeric
+      and official_url is not distinct from nullif(q11511731_normalized ->> 'officialUrl', '')
+      and inception_year is not distinct from (q11511731_normalized ->> 'inceptionYear')::integer
+      and opening_hours_text is not distinct from nullif(q11511731_normalized ->> 'openingHours', '')
+      and publication_status = 'draft'
+      and is_active is true
+      and wikidata_match_status = 'matched'
+      and wikidata_match_confidence = 1
+  ) then raise exception 'Repair failed: new Venue postcondition'; end if;
+
+  if (select count(*) from public.venue_field_sources
+      where venue_id = new_venue_id
+        and source_record_id = q11511731_source_id
+        and is_current = true
+        and review_status = 'applied') <> 11
+  then raise exception 'Repair failed: new provenance postcondition'; end if;
+
+  if not exists (
     select 1 from public.source_records
-    where id = q11511731_source_id and venue_id = new_venue_id
+    where id = q11511727_source_id and external_id = 'Q11511727' and venue_id = original_venue_id
   ) or not exists (
     select 1 from public.venue_discovery_inventory
-    where id = q11511731_inventory_id and state = 'processed' and linked_venue_id = new_venue_id
-  ) or (select count(*) from public.venue_field_sources
-        where venue_id = new_venue_id and is_current = true) <> 11
-    or (select count(*) from public.venue_external_match_candidates
-        where venue_id = new_venue_id and external_id = 'Q11511731' and status = 'matched') <> 1
-  then raise exception 'Repair failed: final postconditions not satisfied'; end if;
+    where id = q11511727_inventory_id and external_id = 'Q11511727'
+      and state = 'processed' and linked_venue_id = original_venue_id
+  ) or not exists (
+    select 1 from public.source_records
+    where id = q11511731_source_id and external_id = 'Q11511731' and venue_id = new_venue_id
+  ) or not exists (
+    select 1 from public.venue_discovery_inventory
+    where id = q11511731_inventory_id and external_id = 'Q11511731'
+      and state = 'processed' and linked_venue_id = new_venue_id
+  ) then raise exception 'Repair failed: source or Inventory link postcondition'; end if;
+
+  if not exists (
+    select 1 from public.venue_external_match_candidates
+    where id = wrong_candidate_id
+      and venue_id = original_venue_id
+      and external_id = 'Q11511731'
+      and status = 'rejected'
+  ) or (select count(*) from public.venue_external_match_candidates
+        where venue_id = new_venue_id
+          and provider = 'wikidata'
+          and external_id = 'Q11511731'
+          and status = 'matched'
+          and confidence = 1) <> 1
+  then raise exception 'Repair failed: match candidate postcondition'; end if;
+
+  if (select count(*) from public.venues where publication_status = 'published') <> before_published_venues
+    or (select count(*) from public.media_assets) <> before_media_assets
+    or (select count(*) from public.source_records) <> before_source_records
+    or (select count(*) from public.venue_discovery_inventory) <> before_inventory_total
+    or (select count(*) from public.venue_discovery_inventory where state = 'pending') <> before_inventory_pending
+    or (select count(*) from public.venue_discovery_inventory where state = 'processing') <> before_inventory_processing
+    or (select count(*) from public.venue_discovery_inventory where state = 'processed') <> before_inventory_processed
+    or (select count(*) from public.venue_discovery_inventory where state = 'invalid') <> before_inventory_invalid
+  then raise exception 'Repair failed: global invariant postcondition'; end if;
 end
 $repair$;
 
