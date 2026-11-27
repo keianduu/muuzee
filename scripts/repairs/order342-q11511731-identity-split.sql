@@ -155,7 +155,7 @@ begin
     and field_name = any(restore_fields)
     and is_current = false
     and review_status = 'applied';
-  if jsonb_object_length(coalesce(restored_values, '{}'::jsonb)) <> 9 then
+  if (select count(*) from jsonb_object_keys(coalesce(restored_values, '{}'::jsonb))) <> 9 then
     raise exception 'Guard failed: exact pre-collision provenance is incomplete';
   end if;
 
