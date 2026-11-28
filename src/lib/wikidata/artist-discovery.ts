@@ -22,7 +22,15 @@ ${after ? "" : `OFFSET ${offset}`}`;
 }
 
 export function normalizeArtistDiscovery(payload: Response) {
-  return [...new Set((payload.results?.bindings || []).flatMap((row) => row.item?.value?.match(/\/entity\/(Q\d+)$/)?.[1] || []))].map((qid) => ({ qid }));
+  if (!payload || typeof payload !== "object" || !Array.isArray(payload.results?.bindings)) {
+    throw new Error("Wikidata Artist discovery response schema is invalid");
+  }
+  const qids = payload.results.bindings.map((row) => {
+    const qid = row.item?.value?.match(/\/entity\/(Q\d+)$/)?.[1];
+    if (!qid) throw new Error("Wikidata Artist discovery response contains an invalid item");
+    return qid;
+  });
+  return [...new Set(qids)].map((qid) => ({ qid }));
 }
 
 export async function discoverWikidataArtists(input: { limit: number; offset?: number; afterQid?: string | null }) {

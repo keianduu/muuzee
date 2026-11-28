@@ -5,7 +5,7 @@ import { isMasterCandidateUsable, shouldAutoSetMasterPrimary } from "@/lib/admin
 import { scoreArtistMatch, shouldSkipArtistSource } from "./artist-importer";
 
 describe("artist importer policy", () => {
-  it("matches exact name/alias and strengthens matching with birth year", () => { expect(scoreArtistMatch({ id: "1", name: "Claude Monet", aliases: [], birth_year: 1840 }, { name: "モネ", nameEn: "Claude Monet", aliases: [], birthYear: 1840 } as never).confidence).toBe(1); });
+  it("keeps exact name/alias plus birth year below the automatic identity threshold", () => { const match = scoreArtistMatch({ id: "1", name: "Claude Monet", aliases: [], birth_year: 1840 }, { name: "モネ", nameEn: "Claude Monet", aliases: [], birthYear: 1840 } as never); expect(match.confidence).toBe(0.7); expect(match.reasons).toContain("birth year corroboration; review still required"); });
   it("protects manual fields from Wikidata", () => { expect(shouldApplySourceField("Manual", "manual", "wikidata")).toBe(false); });
   it("skips an unchanged linked QID and not an unlinked raw record", () => { expect(shouldSkipArtistSource({ checksum: "x", artist_id: "a" }, "x")).toBe(true); expect(shouldSkipArtistSource({ checksum: "x", artist_id: null }, "x")).toBe(false); });
   it("auto-selects only one candidate when no primary exists", () => { expect(shouldAutoSetMasterPrimary({ primaryCount: 0, activeCandidateCount: 1 })).toBe(true); expect(shouldAutoSetMasterPrimary({ primaryCount: 1, activeCandidateCount: 1 })).toBe(false); expect(shouldAutoSetMasterPrimary({ primaryCount: 0, activeCandidateCount: 2 })).toBe(false); });

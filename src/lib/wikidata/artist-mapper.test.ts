@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { normalizeArtistEntity } from "./artist-mapper";
+import { describe, expect, it, vi } from "vitest";
+import { fetchNormalizedArtists, normalizeArtistEntity } from "./artist-mapper";
+import type { WikidataRawEntity } from "./client";
 
 const claim = (value: unknown, precision?: number) => [{ mainsnak: { datavalue: { value: precision ? { ...(value as object), precision } : value } } }];
 describe("artist mapping", () => {
@@ -11,5 +12,22 @@ describe("artist mapping", () => {
   it("does not collapse multiple citizenships into one canonical code", () => {
     const artist = normalizeArtistEntity("Q1", { labels: { en: { value: "A" } }, claims: { P27: [...claim({ id: "Q30" }), ...claim({ id: "Q145" })] } }, { Q30: { claims: { P297: claim("US") } }, Q145: { claims: { P297: claim("GB") } } });
     expect(artist?.nationalityCountryCode).toBeNull(); expect(artist?.nationalityQids).toEqual(["Q30", "Q145"]);
+  });
+  it("reuses reference entities across batches instead of refetching shared lookups", async () => {
+    const fetchEntities = vi.fn(async (qids: string[]): Promise<Record<string, WikidataRawEntity>> => {
+      const result: Record<string, WikidataRawEntity> = {};
+      for (const qid of qids) {
+        result[qid] = qid === "Q30"
+          ? { claims: { P297: claim("US") } }
+          : { labels: { en: { value: qid } }, claims: { P27: claim({ id: "Q30" }), P106: claim({ id: "Q1028181" }) } };
+      }
+      return result;
+    });
+    const cache = new Map();
+    await fetchNormalizedArtists([{ qid: "Q1" }], { cache, fetchEntities });
+    await fetchNormalizedArtists([{ qid: "Q2" }], { cache, fetchEntities });
+    const loaded = fetchEntities.mock.calls.flatMap(([qids]) => qids);
+    expect(loaded.filter((qid) => qid === "Q30")).toHaveLength(1);
+    expect(loaded.filter((qid) => qid === "Q1028181")).toHaveLength(1);
   });
 });

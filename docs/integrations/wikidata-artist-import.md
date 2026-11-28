@@ -1,6 +1,77 @@
-# Wikidata Artist Importer v1
+# Wikidata Artist Acquisition
 
-Status: Draft. Artist MasterのSource Aとして使うLOCAL実装と検証結果を記録する。
+Status: Draft. Artist MasterのSource A基盤と旧v1 LOCAL Importerの検証履歴を記録する。
+
+## Current contract (Order 343 Phase A, 2026-11-28)
+
+Production初回取得のCurrent contractは、全ArtistをApplication memoryへ読み込む旧Importerではなく、`artist_discovery_inventory`を介した永続・再開可能なパイプラインである。以下のPhase A contractは、このDocument後半に残す旧v1のIdentity自動照合と画像同期実行説明をsupersedeする。Phase AはLOCAL実装と性能検証までで、STG / Production migration、全量Discovery、Artist acquisitionは実行しない。
+
+Source of Truth:
+
+- Schema / atomic settlement: `supabase/migrations/202611280001_artist_discovery_inventory.sql`
+- Bounded LOCAL generator: `scripts/generate-artist-discovery-inventory.mjs`
+- Consumer: `src/lib/wikidata/artist-discovery-inventory.ts`
+- Transactional validation: `supabase/snippets/artist_discovery_inventory_validation.sql`
+- Benchmark: `scripts/benchmark-artist-acquisition-foundation.mjs`
+
+### Discovery scope evidence
+
+2026-11-28のWDQS実測では、現在の`P106/P279* Q3391743`条件は **737,777件**、COUNT応答は約16.0秒。Occupation別上位は画家247,098、映画監督103,064、写真家97,175、美術家68,517、彫刻家66,933、イラストレーター48,789。複数Occupationを持つItemがあるため合計は全体件数と一致しない。映画監督等も含む広いontologyだが、Phase Aで無断に対象条件を絞らない。
+
+ORDER BYなしの100件bounded sampleは、日本語ラベル67/100、英語ラベル94/100、国籍statement 96/100、日本国籍27/100。これは無作為標本ではなく、全体比率に一般化しない。日本人と海外Artistの両方が対象であることは確認できた。
+
+`ORDER BY STR(?item)`のQID cursor pageは35秒上限内に完了しない試行があった。Production inventory generationをこのWDQS pageだけに依存させず、公式Wikidata dumpのstreaming / partitioned extractionまたは同等のresumable workerをrollout前に確定する。
+
+### Identity and atomic settlement
+
+`source_records(data_source_id, external_id)`のexact QID一致だけが自動linkのIdentity authorityである。`artist_search_keys`は全Artist読み込みを排除するindexed collision searchであり、name / name_en / alias一致は自動linkの証拠には使わない。
+
+- exact QID/source link: 既存CanonicalのIdentityを維持
+- indexed name / alias collision: `review`へ隔離、Sourceはunlinkedのまま
+- 既存QIDを持つCanonicalへの別QID auto-link: 禁止
+- 生没年矛盾: Review evidenceとして保存
+- collisionなし: Draft Canonical / Source / Provenance / Inventoryを同一DB transactionでsettle
+- unknown schema / ownership mismatch / partial failure: 全batch rollback
+
+Review発生は後続Inventoryを停止しない。実際のownership mismatchやatomic apply failureはfail closedでretryへ戻す。
+
+### Image discovery separation
+
+P18 / Commons category / Wikipedia sitelinkはSource payloadの`imageDiscoveryHints`へ保持する。Canonical構築中は画像APIやStorageを呼ばず、batch resultは`imageDiscoveryExecuted=false`を返す。画像候補取得は後続のresumable processとし、Order 343の画像Acceptanceは削除しない。Rights自動承認とPublishは行わない。
+
+### Architecture comparison and recommendation
+
+| Option | Throughput / timeout | Retry / operations | Phase A assessment |
+| --- | --- | --- | --- |
+| A. Venue同等Hosted consumer | 5件batchは安全だが737k件にはoverheadが大きい | lease / resume可能 | 全量の第一候補にしない |
+| B. 最適化Hosted consumer | 50件、reference cache、2 DB RPC / batch | lease / backoff / checkpoint | persisted Inventory consumeの第一候補 |
+| C. 認証済みCLI resumable worker | dump / partitionと長時間workerに適合 | target verificationが必須 | Inventory generationで有力 |
+
+Phase A推奨は **CでDiscovery Inventoryを安定生成し、Bでbounded consumeするhybrid**。Production実行方式はrollout前reviewに残す。Phase A generatorは`--local --apply --max-pages`を必須とし、remote targetを受け付けない。
+
+### LOCAL benchmark and estimate
+
+Deterministic synthetic dataset（existing 5,000 / incoming 1,000）で、旧全件走査は513.3 records/sec、batch p50 39.144 ms / p95 41.341 ms。Indexed resolverのindex初期化は6.921 msで、identity CPUは全batch sizeでボトルネックではなく、RSS差分29.45 MiB、synthetic review rate 6.7%、retry/failure 0%だった。DB / provider request数は実装topologyからのmodel値。sub-millisecond区間は実行環境のnoiseを受けるため、batch選定ではCPU値単独ではなくprovider burst、DB round trip、memory、rollback範囲を優先する。
+
+| Batch | DB round trips / record | Provider requests / record (modeled) | CPU batch p95 |
+| ---: | ---: | ---: | ---: |
+| 5 | 0.400 | 0.600 | 0.009 ms |
+| 20 | 0.100 | 0.150 | 0.013 ms |
+| 50 | 0.040 | 0.100 | 3.124 ms |
+| 100 | 0.020 | 0.080 | 0.036 ms |
+
+Batch 100はprovider burst、memory、failure時rollback範囲が大きいため、**Phase A推奨batch sizeは50**。理論上は約14,756 batches、29,512 DB RPCs、reference cacheなしの保守的provider modelは約73,780 requests。
+
+100 QIDのbounded provider sampleはQID query + 50件ずつのentity fetchで約21秒（約4.8 records/sec、reference fetch・DB apply未含）。全量の初期見積もりは約43時間が下限で、retry / references / DB applyを含む計画範囲は **43〜140時間**。STG実測でrollout前に補正する。
+
+### Rollout plan
+
+1. Phase A migration / consumer / LOCAL generatorをHuman review。
+2. main統合後もSTG / Production migrationは別承認。
+3. STGで小規模Inventoryとbatch 20/50/100を再計測。
+4. Official dump / partitioned generatorのgeneration completenessとtarget verificationを確定。
+5. Production Inventory完了証跡後にbounded consumerをresume可能に実行。
+6. Canonical構築後に画像候補を別processで取得。
 
 ## Purpose and boundary
 

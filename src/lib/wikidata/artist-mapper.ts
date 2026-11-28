@@ -2,6 +2,7 @@ import { claimValue, claimValues, getWikidataRawEntities, wikidataEntityId, type
 import type { DiscoveredWikidataArtist, WikidataArtist } from "./artist-types";
 
 type LookupEntity = WikidataRawEntity;
+export type ArtistReferenceEntityCache = Map<string, WikidataRawEntity>;
 
 function ids(entity: WikidataRawEntity, property: string) {
   return claimValues(entity, property).map(wikidataEntityId).filter((value): value is string => Boolean(value));
@@ -52,19 +53,50 @@ export function normalizeArtistEntity(qid: string, entity: WikidataRawEntity, lo
   };
 }
 
-export async function fetchNormalizedArtists(discovered: DiscoveredWikidataArtist[]) {
+async function fetchIntoCache(
+  idsToLoad: string[],
+  cache: ArtistReferenceEntityCache,
+  fetchEntities: typeof getWikidataRawEntities,
+) {
+  const missing = [...new Set(idsToLoad)].filter((qid) => !cache.has(qid));
+  for (let start = 0; start < missing.length; start += 50) {
+    const entities = await fetchEntities(missing.slice(start, start + 50));
+    for (const [qid, entity] of Object.entries(entities)) cache.set(qid, entity);
+  }
+}
+
+export async function fetchNormalizedArtists(
+  discovered: DiscoveredWikidataArtist[],
+  options: {
+    cache?: ArtistReferenceEntityCache;
+    fetchEntities?: typeof getWikidataRawEntities;
+  } = {},
+) {
+  const cache = options.cache ?? new Map<string, WikidataRawEntity>();
+  const fetchEntities = options.fetchEntities ?? getWikidataRawEntities;
+  await fetchIntoCache(discovered.map((item) => item.qid), cache, fetchEntities);
   const entities: Record<string, WikidataRawEntity> = {};
-  for (let start = 0; start < discovered.length; start += 50) Object.assign(entities, await getWikidataRawEntities(discovered.slice(start, start + 50).map((item) => item.qid)));
+  for (const item of discovered) {
+    const entity = cache.get(item.qid);
+    if (entity) entities[item.qid] = entity;
+  }
   const referenced = new Set<string>();
   for (const entity of Object.values(entities)) for (const property of ["P27", "P19", "P106", "P101", "P135"]) ids(entity, property).forEach((id) => referenced.add(id));
+  await fetchIntoCache([...referenced], cache, fetchEntities);
   const lookup: Record<string, WikidataRawEntity> = {};
   const refs = [...referenced];
-  for (let start = 0; start < refs.length; start += 50) Object.assign(lookup, await getWikidataRawEntities(refs.slice(start, start + 50)));
+  for (const qid of refs) {
+    const entity = cache.get(qid);
+    if (entity) lookup[qid] = entity;
+  }
   const birthCountries = new Set<string>();
   for (const qid of refs) ids(lookup[qid] || {}, "P17").forEach((id) => birthCountries.add(id));
-  const missingCountries = [...birthCountries].filter((id) => !lookup[id]);
-  for (let start = 0; start < missingCountries.length; start += 50) Object.assign(lookup, await getWikidataRawEntities(missingCountries.slice(start, start + 50)));
+  await fetchIntoCache([...birthCountries], cache, fetchEntities);
+  for (const qid of birthCountries) {
+    const entity = cache.get(qid);
+    if (entity) lookup[qid] = entity;
+  }
   const artists: WikidataArtist[] = []; const errors: Array<{ qid: string; message: string }> = [];
   for (const item of discovered) { const artist = entities[item.qid] && normalizeArtistEntity(item.qid, entities[item.qid], lookup); if (artist) artists.push(artist); else errors.push({ qid: item.qid, message: "Artist has no usable label" }); }
-  return { artists, errors };
+  return { artists, errors, cache };
 }

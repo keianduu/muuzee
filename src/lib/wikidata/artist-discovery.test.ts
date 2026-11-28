@@ -9,4 +9,8 @@ describe("artist discovery", () => {
   it("normalizes and deduplicates QIDs", () => {
     expect(normalizeArtistDiscovery({ results: { bindings: [{ item: { value: "http://www.wikidata.org/entity/Q1" } }, { item: { value: "http://www.wikidata.org/entity/Q1" } }] } })).toEqual([{ qid: "Q1" }]);
   });
+  it("fails closed for an unknown provider schema instead of treating it as an empty result", () => {
+    expect(() => normalizeArtistDiscovery({})).toThrow("response schema is invalid");
+    expect(() => normalizeArtistDiscovery({ results: { bindings: [{}] } })).toThrow("invalid item");
+  });
 });
