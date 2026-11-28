@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseVercelEnvListJson, sanitizeVercelEnvMetadata } from "./lib/vercel-env-metadata.mjs";
+import {
+  assertExpectedVercelEnvMetadata,
+  parseVercelEnvListJson,
+  sanitizeVercelEnvMetadata,
+} from "./lib/vercel-env-metadata.mjs";
 
 describe("safe Vercel environment metadata projection", () => {
   it("emits only allowlisted metadata and drops every value-shaped field", () => {
@@ -45,5 +49,39 @@ describe("safe Vercel environment metadata projection", () => {
     } catch (error) {
       expect(String(error)).not.toContain(secret);
     }
+  });
+
+  it("fails closed for an unsupported JSON shape", () => {
+    expect(() => sanitizeVercelEnvMetadata({ unexpected: [] }))
+      .toThrow("Vercel CLI returned an unsupported metadata schema.");
+  });
+
+  it("fails closed for malformed records without exposing their fields", () => {
+    const secret = "synthetic-malformed-secret";
+    expect(() => sanitizeVercelEnvMetadata({ envs: [{ key: 42, value: secret }] }))
+      .toThrow("Vercel CLI returned an invalid key field.");
+    try {
+      sanitizeVercelEnvMetadata({ envs: [{ key: 42, value: secret }] });
+    } catch (error) {
+      expect(String(error)).not.toContain(secret);
+    }
+  });
+
+  it("distinguishes a supported empty list from parse or schema failure", () => {
+    expect(sanitizeVercelEnvMetadata([])).toEqual([]);
+    expect(sanitizeVercelEnvMetadata({ envs: [] })).toEqual([]);
+    expect(() => sanitizeVercelEnvMetadata({})).toThrow();
+  });
+
+  it("requires a known baseline key before absence conclusions", () => {
+    const records = sanitizeVercelEnvMetadata({
+      envs: [{ key: "NEXT_PUBLIC_SUPABASE_URL", target: ["production"] }],
+    });
+    expect(() => assertExpectedVercelEnvMetadata(records, ["SUPABASE_SERVICE_ROLE_KEY"]))
+      .toThrow("Expected Vercel environment metadata was not present.");
+    expect(() => assertExpectedVercelEnvMetadata([], ["NEXT_PUBLIC_SUPABASE_URL"]))
+      .toThrow("Expected Vercel environment metadata was not present.");
+    expect(() => assertExpectedVercelEnvMetadata(records, []))
+      .toThrow("At least one expected Vercel environment metadata key is required.");
   });
 });
