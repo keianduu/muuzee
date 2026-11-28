@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { importWikidataArtists } from "@/lib/wikidata/artist-importer";
 import { resolveWikidataArtistNames } from "@/lib/wikidata/artist-discovery";
+import { runArtistInitialAcquisition } from "@/lib/wikidata/artist-initial-acquisition";
 import { POST } from "./route";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/wikidata/artist-importer", () => ({ importWikidataArtists: vi.fn() }));
 vi.mock("@/lib/wikidata/artist-discovery", () => ({ resolveWikidataArtistNames: vi.fn() }));
+vi.mock("@/lib/wikidata/artist-initial-acquisition", () => ({ runArtistInitialAcquisition: vi.fn() }));
+vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn(() => ({ marker: "db" })) }));
 
 function request(body: Record<string, unknown>) {
   return new Request("http://localhost/api/admin/artists/import/wikidata", {
@@ -20,6 +23,7 @@ describe("POST /api/admin/artists/import/wikidata", () => {
     vi.clearAllMocks();
     vi.mocked(importWikidataArtists).mockResolvedValue({ processed: 0 } as never);
     vi.mocked(resolveWikidataArtistNames).mockResolvedValue([]);
+    vi.mocked(runArtistInitialAcquisition).mockResolvedValue({ runId: "run", claimed: 0 } as never);
   });
 
   afterEach(() => vi.unstubAllEnvs());
@@ -49,5 +53,18 @@ describe("POST /api/admin/artists/import/wikidata", () => {
 
     expect((await POST(request({ qids: ["Q42", "invalid"] }))).status).toBe(200);
     expect(importWikidataArtists).toHaveBeenLastCalledWith({ mode: "count", count: 20, offset: undefined, qids: ["Q42"] });
+  });
+
+  it("requires both the hosted feature flag and exact Supabase project target for manifest inventory", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("ARTIST_INITIAL_ACQUISITION_ENABLED", "true");
+    vi.stubEnv("ARTIST_INITIAL_ACQUISITION_PROJECT_REF", "steibqgeoqcsfsafaqcv");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://different-project.supabase.co");
+    expect((await POST(request({ mode: "manifest_inventory", count: 50 }))).status).toBe(403);
+    expect(runArtistInitialAcquisition).not.toHaveBeenCalled();
+
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://steibqgeoqcsfsafaqcv.supabase.co");
+    expect((await POST(request({ mode: "manifest_inventory", count: 80 }))).status).toBe(200);
+    expect(runArtistInitialAcquisition).toHaveBeenCalledWith(expect.anything(), { limit: 80 });
   });
 });

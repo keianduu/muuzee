@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchNormalizedArtists, normalizeArtistEntity } from "./artist-mapper";
+import { ARTIST_REFERENCE_CACHE_MAX_ENTRIES, fetchNormalizedArtists, normalizeArtistEntity } from "./artist-mapper";
 import type { WikidataRawEntity } from "./client";
 
 const claim = (value: unknown, precision?: number) => [{ mainsnak: { datavalue: { value: precision ? { ...(value as object), precision } : value } } }];
@@ -29,5 +29,20 @@ describe("artist mapping", () => {
     const loaded = fetchEntities.mock.calls.flatMap(([qids]) => qids);
     expect(loaded.filter((qid) => qid === "Q30")).toHaveLength(1);
     expect(loaded.filter((qid) => qid === "Q1028181")).toHaveLength(1);
+    expect(cache.has("Q1")).toBe(false);
+    expect(cache.has("Q2")).toBe(false);
+    expect(cache.size).toBeLessThanOrEqual(ARTIST_REFERENCE_CACHE_MAX_ENTRIES);
+  });
+  it("fails closed when the provider omits a requested entity", async () => {
+    await expect(fetchNormalizedArtists([{ qid: "Q404" }], {
+      fetchEntities: vi.fn(async () => ({})),
+    })).rejects.toThrow("omitted requested Artist IDs: Q404");
+  });
+  it("classifies a present entity without a usable label as terminal invalid", async () => {
+    const result = await fetchNormalizedArtists([{ qid: "Q1" }], {
+      fetchEntities: vi.fn(async (qids: string[]): Promise<Record<string, WikidataRawEntity>> => Object.fromEntries(qids.map((qid) => [qid, { claims: {} }]))),
+    });
+    expect(result.artists).toEqual([]);
+    expect(result.errors).toEqual([{ qid: "Q1", message: "Artist has no usable label", terminal: true }]);
   });
 });

@@ -8,6 +8,7 @@ import {
 
 export const ARTIST_INVENTORY_BATCH_SIZES = [5, 20, 50, 100] as const;
 export const RECOMMENDED_ARTIST_INVENTORY_BATCH_SIZE = 50;
+export const ARTIST_INVENTORY_SETTLEMENT_CHUNK_SIZE = 5;
 
 export type ArtistDiscoveryInventoryCandidate = {
   id: string;
@@ -22,11 +23,19 @@ export type ArtistInventorySettlement = {
   checksum: string;
 };
 
+export type ArtistInventoryInvalidSettlement = {
+  inventoryId: string;
+  externalId: string;
+  reason: string;
+};
+
 function sanitizedError(error: unknown, fallback: string) {
   const message = error instanceof Error
     ? error.message
     : typeof error === "string"
       ? error
+      : error && typeof error === "object" && "message" in error && typeof error.message === "string"
+        ? error.message
       : fallback;
   return message.replace(/[\r\n\t]+/g, " ").slice(0, 500);
 }
@@ -88,20 +97,27 @@ export async function claimArtistDiscoveryInventory(
 
 export async function applyArtistDiscoveryInventoryBatch(
   db: SupabaseClient,
-  input: { runId: string; items: ArtistInventorySettlement[] },
+  input: {
+    runId: string;
+    items: ArtistInventorySettlement[];
+    invalid?: ArtistInventoryInvalidSettlement[];
+  },
 ) {
-  if (input.items.length < 1 || input.items.length > 100) {
-    throw new Error("Artist settlement batch must contain 1 to 100 items");
+  const invalid = input.invalid ?? [];
+  if (input.items.length + invalid.length < 1 || input.items.length + invalid.length > 100) {
+    throw new Error("Artist mixed settlement batch must contain 1 to 100 items");
   }
-  const { data, error } = await db.rpc("apply_wikidata_artist_inventory_batch", {
+  const { data, error } = await db.rpc("settle_wikidata_artist_inventory_batch", {
     p_run_id: input.runId,
     p_items: input.items,
+    p_invalid: invalid,
   });
   rpcError(error, "Artist Discovery Inventory batch settlement failed");
   return data as {
     created: number;
     exactSource: number;
     review: number;
+    invalid: number;
     processed: number;
     imageDiscoveryExecuted: false;
   };
@@ -154,19 +170,52 @@ export async function consumeArtistDiscoveryInventoryBatch(
       candidates.map((candidate) => ({ qid: candidate.external_id })),
       { cache: input.cache },
     );
-    if (fetched.errors.length || fetched.artists.length !== candidates.length) {
+    const byQid = new Map(fetched.artists.map((artist) => [artist.qid, artist]));
+    const terminalByQid = new Map(
+      fetched.errors
+        .filter((error) => error.terminal === true)
+        .map((error) => [error.qid, error.message]),
+    );
+    if (fetched.errors.some((error) => error.terminal !== true)) {
       throw new Error("Artist provider batch was incomplete; no settlement was applied");
     }
-    const byQid = new Map(fetched.artists.map((artist) => [artist.qid, artist]));
-    const items = candidates.map((candidate) => {
+    const unresolved = candidates.filter(
+      (candidate) => !byQid.has(candidate.external_id) && !terminalByQid.has(candidate.external_id),
+    );
+    if (unresolved.length) {
+      throw new Error("Artist provider batch was incomplete; no settlement was applied");
+    }
+    const prepared = candidates.map((candidate) => {
       const artist = byQid.get(candidate.external_id);
-      if (!artist) throw new Error(`Artist provider batch omitted ${candidate.external_id}`);
-      return buildArtistInventorySettlement(candidate, artist);
+      const reason = terminalByQid.get(candidate.external_id);
+      return {
+        item: artist ? buildArtistInventorySettlement(candidate, artist) : null,
+        invalid: reason ? { inventoryId: candidate.id, externalId: candidate.external_id, reason } : null,
+      };
     });
-    const settled = await applyArtistDiscoveryInventoryBatch(db, { runId: input.runId, items });
+    const settled = { created: 0, exactSource: 0, review: 0, invalid: 0, processed: 0, imageDiscoveryExecuted: false as const };
+    for (let offset = 0; offset < prepared.length; offset += ARTIST_INVENTORY_SETTLEMENT_CHUNK_SIZE) {
+      const chunk = prepared.slice(offset, offset + ARTIST_INVENTORY_SETTLEMENT_CHUNK_SIZE);
+      const chunkResult = await applyArtistDiscoveryInventoryBatch(db, {
+        runId: input.runId,
+        items: chunk.flatMap((entry) => entry.item ? [entry.item] : []),
+        invalid: chunk.flatMap((entry) => entry.invalid ? [entry.invalid] : []),
+      });
+      settled.created += chunkResult.created ?? 0;
+      settled.exactSource += chunkResult.exactSource ?? 0;
+      settled.review += chunkResult.review ?? 0;
+      settled.invalid += chunkResult.invalid ?? 0;
+      settled.processed += chunkResult.processed ?? 0;
+    }
     return { claimed: candidates.length, settled, cache: fetched.cache };
   } catch (error) {
-    await releaseArtistDiscoveryInventoryClaims(db, { runId: input.runId, error });
+    try {
+      await releaseArtistDiscoveryInventoryClaims(db, { runId: input.runId, error });
+    } catch (releaseError) {
+      throw new Error(
+        `${sanitizedError(error, "Artist provider batch failed")}; claim release failed: ${sanitizedError(releaseError, "unknown release error")}`,
+      );
+    }
     throw error;
   }
 }

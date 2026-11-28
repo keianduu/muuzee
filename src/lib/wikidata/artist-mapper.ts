@@ -3,6 +3,13 @@ import type { DiscoveredWikidataArtist, WikidataArtist } from "./artist-types";
 
 type LookupEntity = WikidataRawEntity;
 export type ArtistReferenceEntityCache = Map<string, WikidataRawEntity>;
+export type ArtistProviderRecordError = {
+  qid: string;
+  message: string;
+  terminal: true;
+};
+
+export const ARTIST_REFERENCE_CACHE_MAX_ENTRIES = 500;
 
 function ids(entity: WikidataRawEntity, property: string) {
   return claimValues(entity, property).map(wikidataEntityId).filter((value): value is string => Boolean(value));
@@ -65,6 +72,18 @@ async function fetchIntoCache(
   }
 }
 
+function trimReferenceCache(
+  cache: ArtistReferenceEntityCache,
+  requestedArtistQids: Set<string>,
+) {
+  for (const qid of requestedArtistQids) cache.delete(qid);
+  while (cache.size > ARTIST_REFERENCE_CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next().value as string | undefined;
+    if (!oldest) break;
+    cache.delete(oldest);
+  }
+}
+
 export async function fetchNormalizedArtists(
   discovered: DiscoveredWikidataArtist[],
   options: {
@@ -75,6 +94,12 @@ export async function fetchNormalizedArtists(
   const cache = options.cache ?? new Map<string, WikidataRawEntity>();
   const fetchEntities = options.fetchEntities ?? getWikidataRawEntities;
   await fetchIntoCache(discovered.map((item) => item.qid), cache, fetchEntities);
+  const missingRequested = discovered
+    .map((item) => item.qid)
+    .filter((qid) => !cache.has(qid));
+  if (missingRequested.length) {
+    throw new Error(`Wikidata entity response omitted requested Artist IDs: ${missingRequested.join(", ")}`);
+  }
   const entities: Record<string, WikidataRawEntity> = {};
   for (const item of discovered) {
     const entity = cache.get(item.qid);
@@ -96,7 +121,8 @@ export async function fetchNormalizedArtists(
     const entity = cache.get(qid);
     if (entity) lookup[qid] = entity;
   }
-  const artists: WikidataArtist[] = []; const errors: Array<{ qid: string; message: string }> = [];
-  for (const item of discovered) { const artist = entities[item.qid] && normalizeArtistEntity(item.qid, entities[item.qid], lookup); if (artist) artists.push(artist); else errors.push({ qid: item.qid, message: "Artist has no usable label" }); }
+  const artists: WikidataArtist[] = []; const errors: ArtistProviderRecordError[] = [];
+  for (const item of discovered) { const artist = entities[item.qid] && normalizeArtistEntity(item.qid, entities[item.qid], lookup); if (artist) artists.push(artist); else errors.push({ qid: item.qid, message: "Artist has no usable label", terminal: true }); }
+  trimReferenceCache(cache, new Set(discovered.map((item) => item.qid)));
   return { artists, errors, cache };
 }

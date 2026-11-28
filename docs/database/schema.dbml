@@ -1,6 +1,6 @@
 // GENERATED FILE — DO NOT EDIT DIRECTLY
 // Source of Truth: supabase/migrations/*.sql
-// Applied migrations: 202609040001_admin_v0.sql .. 202611280001_artist_discovery_inventory.sql
+// Applied migrations: 202609040001_admin_v0.sql .. 202611280002_artist_seed_manifest.sql
 // Regenerate: npm run db:docs
 
 Table artist_discovery_inventory {
@@ -72,6 +72,39 @@ Table artist_search_keys {
 
   indexes {
     (artist_id, key_type, normalized_value) [pk]
+  }
+}
+
+Table artist_seed_manifest_items {
+  manifest_id uuid [not null, ref: > artist_seed_manifests.id]
+  rank integer [not null]
+  external_id text
+  identity_status text [not null]
+  artist_name text [not null]
+  evidence jsonb [not null]
+  inventory_id uuid [ref: > artist_discovery_inventory.id]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (manifest_id, rank) [pk]
+  }
+}
+
+Table artist_seed_manifests {
+  id uuid [pk, default: `gen_random_uuid()`]
+  data_source_id uuid [not null, ref: > data_sources.id]
+  generation_run_id uuid [not null, ref: > import_runs.id]
+  scope text [not null]
+  version text [not null]
+  checksum text [not null]
+  item_count integer [not null]
+  resolved_count integer [not null, default: 0]
+  review_count integer [not null, default: 0]
+  metadata jsonb [not null, default: `'{}'::jsonb`]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (scope, version) [unique]
   }
 }
 

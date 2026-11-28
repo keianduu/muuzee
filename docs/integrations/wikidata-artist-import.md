@@ -1,10 +1,57 @@
 # Wikidata Artist Acquisition
 
-Status: Draft. Artist MasterのSource A基盤と旧v1 LOCAL Importerの検証履歴を記録する。
+Status: Draft. Artist MasterのCurrent MVP acquisition contractと旧検証履歴を記録する。
 
-## Current contract (Order 343 Phase A, 2026-11-28)
+## Current contract (Order 343 Phase B, 2026-11-28)
 
-Production初回取得のCurrent contractは、全ArtistをApplication memoryへ読み込む旧Importerではなく、`artist_discovery_inventory`を介した永続・再開可能なパイプラインである。以下のPhase A contractは、このDocument後半に残す旧v1のIdentity自動照合と画像同期実行説明をsupersedeする。Phase AはLOCAL実装と性能検証までで、STG / Production migration、全量Discovery、Artist acquisitionは実行しない。
+MVP初回取得は、737,777件のWikidata Visual Artist occupation tree全量Discoveryを行わない。美術館の展覧会参加記録を起点に、出展者Role、異なる展覧会2件以上、再現可能なranking、exact QID Identityを満たす最大1,000人のversioned Seed Manifestを作り、Manifestから`artist_discovery_inventory`へ投入する。Wikidataは選定Sourceではなく、選定後のIdentity確認とCanonical基本情報取得に使う。
+
+Current Source of Truth:
+
+- Selection / ranking: `scripts/lib/artist-seed-manifest.mjs`
+- Reproducible generator: `scripts/build-artist-seed-manifest.mjs`
+- Manifest: `data/artist-acquisition/mvp-artist-seed-manifest.v1.json`
+- Manifest persistence / mixed settlement: `supabase/migrations/202611280002_artist_seed_manifest.sql`
+- Target-guarded persistence: `scripts/apply-artist-seed-manifest.mjs`
+- Bounded consumer / hosted route: `src/lib/wikidata/artist-discovery-inventory.ts`, `src/app/api/admin/artists/import/wikidata/route.ts`
+
+### Selection sources and evidence boundary
+
+v1は少数の信頼できるSourceに限定する。
+
+- MoMA Exhibition History: official GitHub datasetの固定commit `5e1ce97416613068832255bdc4ddccc0fec7c508`、CC0、`ExhibitionRole=Artist`のみ。
+- Art Platform Japan: MoMA条件を満たす日本人候補について、APJ Artist authorityのWikidata QIDがexact一致した場合だけboundedに展覧会Evidenceを追加。APJ全DBは複製しない。
+- Wikidata Entity API: 展覧会Evidenceで選定した後のQID label / occupation / field-of-work補足だけ。
+
+Art Commons / Japan Searchは現行MapperにArtist participant relationがなく、所蔵Worksを展覧会参加の代用にしないためv1には含めない。欧州Open Data候補も調査したが、Artist participantを一貫して取得できないSourceは採用しない。同一Source内の巡回展はtour rootで重複排除し、Sourceを跨ぐ自動同一展判定は行わずEvidenceを保存する。
+
+### Manifest v1 result
+
+Committed Manifestは1,000人、checksum `8db8f383d02fab2386fe489b6da0bbd68605e2a28ed67afa74bc5820a6b80317`。全件QID確認済み、Identity Review 0、各Artistは異なる展覧会Evidenceを2件以上持つ。MoMA由来で北米展示接点1,000人、APJ augmentationで日本展示接点27人、欧州展示接点15人。活動/国籍cohortでは欧州431人、日本30人、主要NationalitiesはAmerican 512 / French 128 / German 74 / British 61 / Italian 40 / Japanese 30。代表上位は横尾忠則、池田満寿夫、棟方志功、菅井汲、靉嘔、篠原有司男、河原温、北大路魯山人、Pablo Picasso、Henri Matisse。
+
+このCoverage値はSource由来のFactであり、世界全体のArtist分布推定ではない。地域CoverageはManifest全体として確保し、各Artistが3地域すべてで展示したという意味ではない。欧州館Evidenceはv1 Sourceの制約で15人に限られるため、追加SourceはArtist participantが明示された公式Open Dataだけを別versionで検討する。
+
+### Runtime and safety contract
+
+- Manifestはscope / version / checksum / count / ranked evidenceをDBへ保存する。
+- Manifest generationは無関係なInventoryをinactivateしない。
+- exact QID/sourceだけを自動Identity authorityとし、name / alias collisionはReviewへ隔離する。
+- validとterminal-invalidを同一transactionでsettleし、1件のlabel欠落でbatch全体を無限retryしない。
+- provider omission / unknown responseはtransientとしてbatchをreleaseし、fail closedする。
+- cross-entity Source ownershipは最初のwrite前に検証する。
+- hosted実行はfeature flagとSupabase project refのexact一致が必要。claim / provider fetchのbatch上限は50。STG Nanoでidentity collision量に左右されずstatement timeoutを避けるため、DB settlementは5件ずつのatomic chunkに分け、未settle claimだけをrelease / resumeする。
+- reference cacheは500 entityに上限を設け、Artist本体はbatch後にcacheから除外する。
+- CanonicalはDraft。画像hintはSource payloadへ保存するだけで、画像探索・Rights承認・Publishは別process。
+
+### Rollout boundary
+
+LOCAL migration / Manifest persistence / batch 20・50の検証後、exact STG `steibqgeoqcsfsafaqcv`だけへmigrationと最大150 Artist canaryを行う。Production `lqinmolonctddovltujy`へのmigration / mutationはPhase B対象外。STG canaryは専用generationで識別し、Venueを変更しない。
+
+LOCAL実測では20件batchが約24.1秒、50件batchが約37.7秒で、いずれもReview / invalid 0、Draft Canonical作成とsource / provenance / Inventory settlementが完了した。50件batchは1件あたり約0.75秒で、1,000件はprovider待ち・retry余裕を含めて約13〜25分を初期計画範囲とする。Manifest再適用後もprocessed 70 / pending 930を維持し、無関係なInventoryの無効化や重複Manifest生成はなかった。Production値はSTG canary実測で再補正し、Phase BではProductionへ適用しない。
+
+## Historical contract (Order 343 Phase A, superseded by Phase B)
+
+Phase Aは737,777件のGlobal scopeを実測し、永続Inventory / lease / atomic settlementを構築した履歴である。Global Discovery方針と全量時間推定はPhase B Human Decisionにより廃止されたが、安全基盤はManifest consumerへ再利用する。
 
 Source of Truth:
 

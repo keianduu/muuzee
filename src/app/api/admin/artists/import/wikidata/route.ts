@@ -4,6 +4,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { importWikidataArtists } from "@/lib/wikidata/artist-importer";
 import { resolveWikidataArtistNames } from "@/lib/wikidata/artist-discovery";
 import { HOSTED_WIKIDATA_FULL_SYNC_ERROR, shouldRejectHostedWikidataFullSync } from "@/lib/wikidata/runtime-policy";
+import { ARTIST_INITIAL_ACQUISITION_DISABLED, isArtistInitialAcquisitionEnabled } from "@/lib/admin/artist-initial-acquisition-capability";
+import { runArtistInitialAcquisition } from "@/lib/wikidata/artist-initial-acquisition";
 
 export const maxDuration = 300;
 
@@ -21,6 +23,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (body.mode === "manifest_inventory") {
+      if (!isArtistInitialAcquisitionEnabled()) {
+        return NextResponse.json(ARTIST_INITIAL_ACQUISITION_DISABLED, { status: 403 });
+      }
+      const db = createSupabaseAdminClient();
+      const result = await runArtistInitialAcquisition(db, { limit: Number(body.count) || 50 });
+      revalidatePath("/admin/artists");
+      revalidatePath("/admin/imports");
+      return NextResponse.json(result);
+    }
     if (shouldRejectHostedWikidataFullSync(body.mode)) {
       return NextResponse.json(HOSTED_WIKIDATA_FULL_SYNC_ERROR, { status: 409 });
     }
