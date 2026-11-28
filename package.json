@@ -23,6 +23,7 @@
     "db:generate:venue-discovery:local": "node --env-file=.env.local scripts/generate-venue-discovery-inventory.mjs",
     "db:generate:venue-discovery:stg": "node scripts/generate-venue-discovery-inventory.mjs",
     "db:generate:venue-discovery:prod": "node scripts/generate-venue-discovery-inventory.mjs",
+    "vercel:env:metadata": "node scripts/safe-vercel-env-metadata.mjs",
     "db:docs": "node scripts/generate-database-docs.mjs",
     "db:docs:check": "node scripts/generate-database-docs.mjs --check"
   },

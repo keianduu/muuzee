@@ -362,6 +362,24 @@ async function saveMatchCandidate(db: SupabaseClient, venueId: string, venue: Wi
   return preserved as "matched" | "candidate" | "rejected";
 }
 
+async function hasDifferentMatchedWikidataIdentity(
+  db: SupabaseClient,
+  venueId: string,
+  qid: string,
+) {
+  const { data, error } = await db
+    .from("venue_external_match_candidates")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("provider", "wikidata")
+    .eq("status", "matched")
+    .neq("external_id", qid)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
+
 async function allExistingVenues(db: SupabaseClient) {
   const rows: ExistingVenue[] = [];
   for (let start = 0; ; start += 1000) {
@@ -415,12 +433,19 @@ async function processWikidataVenueCore(input: {
   if (!target) {
     const match = bestExistingMatch(existing, venue);
     const classification = classifyWikidataVenueMatch(match?.scored.confidence || 0);
-    const automaticMatchEligible = classification === "high"
+    const baseAutomaticMatchEligible = classification === "high"
       && match?.scored.nameMatchKind === "primary_label_exact";
+    const differentMatchedIdentity = baseAutomaticMatchEligible && match
+      ? await hasDifferentMatchedWikidataIdentity(db, match.row.id, venue.qid)
+      : false;
+    const automaticMatchEligible = baseAutomaticMatchEligible && !differentMatchedIdentity;
+    const matchReasons = differentMatchedIdentity && match
+      ? [...match.scored.reasons, "existing Canonical has another matched Wikidata identity; explicit same-entity confirmation required"]
+      : match?.scored.reasons;
     const reviewCandidate = match
       && (classification === "possible" || (classification === "high" && !automaticMatchEligible));
     if (reviewCandidate) {
-      const status = await saveMatchCandidate(db, match.row.id, venue, match.scored.confidence, match.scored.reasons, "candidate");
+      const status = await saveMatchCandidate(db, match.row.id, venue, match.scored.confidence, matchReasons || [], "candidate");
       if (status === "rejected") result.unchanged += 1;
       else result.sourceSelectionRequired += 1;
       return { linkedVenueId: null, outcome: status === "rejected" ? "unchanged" : "review" };

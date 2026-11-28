@@ -97,6 +97,7 @@ function resultQuery(data: unknown, count: number | null = null) {
 function inventoryCoreDb(
   existingRows: Array<Record<string, unknown>> = [],
   sourceBefore: { id: string; venue_id: string | null; checksum: string | null } | null = null,
+  options: { hasDifferentMatchedWikidataIdentity?: boolean } = {},
 ) {
   const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
   const venueUpdates: Array<Record<string, unknown>> = [];
@@ -135,7 +136,9 @@ function inventoryCoreDb(
         },
       };
       if (table === "venue_external_match_candidates") return {
-        select: () => resultQuery(null),
+        select: (columns: string) => resultQuery(
+          columns === "id" && options.hasDifferentMatchedWikidataIdentity ? { id: "existing-match" } : null,
+        ),
         upsert: (payload: Record<string, unknown>) => {
           matchUpserts.push(payload);
           return resultQuery(null);
@@ -297,6 +300,44 @@ describe("Wikidata Venue importer hosted runtime finalization", () => {
     expect(rpcCalls).toContainEqual({
       name: "process_venue_discovery_inventory_candidate",
       args: { p_inventory_id: "inventory-1", p_run_id: "run-1", p_linked_venue_id: "existing-venue" },
+    });
+  });
+
+  it("keeps a primary-label match in review when the Canonical already has another matched QID", async () => {
+    getWikidataEntities.mockResolvedValue([{
+      ...validVenueCandidate,
+      id: "Q123125128",
+      labelJa: "札幌大学埋蔵文化財展示室",
+      labelEn: "Archaeological Museum of Sapporo University",
+      officialUrl: "https://www.sapporo-u.ac.jp/univ-guide/campus/museum.html",
+    }]);
+    const { db, rpcCalls, venueUpdates, sourceUpdates, matchUpserts } = inventoryCoreDb([{
+      id: "sapporo-university-museum",
+      name: "札幌大学埋蔵文化財展示室",
+      official_url: "https://www.sapporo-u.ac.jp/univ-guide/campus/museum.html",
+      prefecture: "北海道",
+      city: "札幌市",
+    }], null, { hasDifferentMatchedWikidataIdentity: true });
+
+    const result = await importWikidataVenues({ mode: "count", count: 5, runtime: "hosted" }, db);
+
+    expect(result.linkedExisting).toBe(0);
+    expect(result.updated).toBe(0);
+    expect(result.sourceSelectionRequired).toBe(1);
+    expect(venueUpdates).toHaveLength(0);
+    expect(sourceUpdates).toHaveLength(0);
+    expect(matchUpserts).toContainEqual(expect.objectContaining({
+      venue_id: "sapporo-university-museum",
+      external_id: "Q123125128",
+      status: "candidate",
+      match_reasons: expect.arrayContaining([
+        "primary label exact match",
+        "existing Canonical has another matched Wikidata identity; explicit same-entity confirmation required",
+      ]),
+    }));
+    expect(rpcCalls).toContainEqual({
+      name: "process_venue_discovery_inventory_candidate",
+      args: { p_inventory_id: "inventory-1", p_run_id: "run-1", p_linked_venue_id: null },
     });
   });
 

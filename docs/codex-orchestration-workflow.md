@@ -94,6 +94,20 @@ New explicit Human approval is required only for:
 
 This policy never relaxes secret handling, access control, fail-closed behavior, or task-specific stricter constraints. Secret values remain in-process where possible, temporary privilege must be removed at Task closeout, and final state must be verified from non-sensitive metadata.
 
+### Provider metadata inspection boundary
+
+Provider commands and APIs may return encrypted payloads or credential-shaped values even for list operations. Raw output from those responses must not be written to stdout, logs, screenshots, artifacts, Git, Notion, or temporary files. This includes raw `vercel env ls --json` output.
+
+The safe inspection pattern is:
+
+1. capture the provider response in process memory;
+2. parse it without echoing parse failures or raw stderr that may contain values;
+3. project each record onto an explicit allowlist: ID, key/name, type, target, branch scope, and configured/present status;
+4. print only that projected metadata; and
+5. test the projection with synthetic secret, token, encrypted-payload, and cookie fields to prove they cannot reach stdout.
+
+Ciphertext is still sensitive operational output. A security assessment must distinguish plaintext exposure, usable credential exposure, transcript/log retention, and unknown retention rather than assuming that encryption alone makes raw output acceptable.
+
 ## Canonical operating loop
 
 Use this loop by default:

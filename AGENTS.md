@@ -98,6 +98,13 @@ Rules:
 - Defer **non-blocking release-hardening or credential-management work** to an explicit pre-release task when the current phase can be completed safely without it. Never use this rule to bypass an existing mandatory security control, expose a secret, weaken RLS/access control, or ignore a currently material security risk.
 - Codex instructions must not introduce a new user-preparation prerequisite unless the prerequisite has already been explicitly approved by the user under this policy.
 
+### Provider metadata output safety
+
+- Never print a raw provider response when it may contain environment-variable values, encrypted payloads, tokens, secrets, cookies, or credentials. In particular, do not emit raw `vercel env ls --json` output.
+- Capture such responses in process memory and emit only an explicit allowlist of non-sensitive metadata such as ID, key/name, type, target, branch scope, and configured/present status.
+- Do not treat ciphertext or an encrypted envelope as safe operational output merely because it is not plaintext.
+- Prefer the repository safe metadata wrapper when one exists, and verify its redaction behavior with synthetic values before using it for provider inspection.
+
 ---
 
 ## Core Operating Principle

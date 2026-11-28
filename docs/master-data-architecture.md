@@ -4,7 +4,7 @@ Status: Draft. This document is the technical Source of Truth for the current ma
 
 ## Venue Source A
 
-Venue Master Source AはWikidata。Japanのmuseum / art gallery系QIDをDiscoveryし、QIDをstable external IDとして差分同期する。単一のidentity candidateはconfidenceをGateにせず既存Venueへ適用し、複数候補だけSource Candidate Selectionへ送る。新規VenueはDraftから開始する。詳細は[`docs/integrations/wikidata-venue-import.md`](./integrations/wikidata-venue-import.md)と[`docs/master-data/source-application-policy.md`](./master-data/source-application-policy.md)を参照。
+Venue Master Source AはWikidata。Japanのmuseum / art gallery系QIDをDiscoveryし、QIDをstable external IDとして差分同期する。新規QIDを既存Venueへ自動linkするにはprimary label exactを含む高い照合根拠が必要で、既に別QIDがmatchedなCanonicalは明示的なsame-entity確認までSource Candidate Selectionへ送る。新規VenueはDraftから開始する。詳細は[`docs/integrations/wikidata-venue-import.md`](./integrations/wikidata-venue-import.md)と[`docs/master-data/source-application-policy.md`](./master-data/source-application-policy.md)を参照。
 
 ## 1. Core masters
 
@@ -52,7 +52,7 @@ External record
   → render by joining the master
 ```
 
-For example, a source venue name resolves to `exhibition_occurrences.venue_id`; an artist name resolves to `exhibition_artists.artist_id`. For Venue Source A, candidate count—not confidence—is the identity gate: one candidate is applied, multiple candidates require selection, and zero candidates leave the Master unchanged.
+For example, a source venue name resolves to `exhibition_occurrences.venue_id`; an artist name resolves to `exhibition_artists.artist_id`. For Venue Source A, an exact QID/source link or an already-confirmed matched candidate remains authoritative. A new QID may auto-link only when a single high-confidence candidate has a primary-label exact match and that Canonical does not already carry another matched Wikidata identity. A different-QID candidate is isolated for explicit same-entity confirmation; generating that review candidate is a normal processed outcome and does not stop the remaining Inventory. Multiple QIDs on one Canonical are valid only after evidence-based confirmation and are not an integrity anomaly by themselves.
 
 ## 5. Field-level enrichment
 

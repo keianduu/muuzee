@@ -73,7 +73,10 @@ Wikidata sourceの`external_id = QID`を一意キーとし、raw + discovery cla
 
 - QID link済み + checksum同一 → Unchanged。Venue更新をskip
 - QID link済み + checksum変更 → Changed。空欄だけ補完
-- Existing VenueにWikidata候補が1件 → confidenceによらずSource Aとして自動適用
+- Existing Venueにprimary-label exactを含む単一high-confidence候補があり、別のmatched Wikidata QIDを持たない → Source Aとして自動適用
+- Existing Venueが既に別のmatched Wikidata QIDを持つ → 同一名称・同一domainだけで自動linkせずSource Candidate Selection。Wikidata redirect/duplicate、公式の同一施設履歴、所在地・親子関係・外部識別子等を組み合わせてsame entityを明示確認する
+- Confirmed same entityとして複数QIDを同一Canonicalへ紐づけること自体は許容する。distinct entity / unresolved identity / actual data corruptionを区別する
+- Review candidateはInventoryを`processed`かつunlinkedで安全に隔離する正常系であり、Canonical field/provenanceを更新せず後続候補の処理を継続する
 - Existing Venueに候補が複数 → Duplicateを作らずSource Candidate Selection
 - 候補なし → Existing Venueは変更しない
 - Source A discoveryで既存候補がない独立Entity → New VenueをDraft作成
